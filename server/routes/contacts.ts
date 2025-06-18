@@ -1,0 +1,39 @@
+import { Router, Request, Response } from 'express';
+import { Contact } from '../models/Contact';
+
+const router = Router();
+
+// GET /api/contacts - Fetch all contacts for sidebar
+router.get('/', async (req: Request, res: Response) => {
+    try {
+        // Fetch contacts sorted by lastSeen (most recent first)
+        const contacts = await Contact.find({})
+            .sort({ lastSeen: -1 })
+            .select('phone lastSeen createdAt updatedAt')
+            .limit(50); // Limit to 50 most recent contacts for sidebar
+
+        res.json(contacts);
+    } catch (error) {
+        console.error('Error fetching contacts:', error);
+        res.status(500).json({ error: 'Failed to fetch contacts' });
+    }
+});
+
+// GET /api/contacts/:phone - Fetch specific contact
+router.get('/:phone', async (req: Request, res: Response) => {
+    try {
+        const { phone } = req.params;
+        const contact = await Contact.findOne({ phone });
+        
+        if (!contact) {
+            return res.status(404).json({ error: 'Contact not found' });
+        }
+
+        res.json(contact);
+    } catch (error) {
+        console.error('Error fetching contact:', error);
+        res.status(500).json({ error: 'Failed to fetch contact' });
+    }
+});
+
+export default router; 
