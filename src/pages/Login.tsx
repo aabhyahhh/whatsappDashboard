@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -14,7 +15,7 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth', {
+      const response = await fetch(`${apiBaseUrl}/api/auth`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

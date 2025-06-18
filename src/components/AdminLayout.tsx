@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -44,7 +45,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     const fetchContacts = async () => {
       try {
         setContactsLoading(true);
-        const response = await fetch('http://localhost:5000/api/contacts');
+        const response = await fetch(`${apiBaseUrl}/api/contacts`);
         
         if (!response.ok) {
           throw new Error('Failed to fetch contacts');
