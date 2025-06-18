@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 interface Message {
   _id: string;
