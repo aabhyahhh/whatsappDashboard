@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import AdminLayout from '../components/AdminLayout';
 import { useNavigate } from 'react-router-dom';
 
@@ -56,7 +56,7 @@ export default function OTPVerification() {
           setSentOTP(data.otp);
         }
       } else {
-        setMessage(data.error || 'Failed to send OTP');
+        setMessage(data.message || 'Failed to send OTP');
         setMessageType('error');
       }
     } catch (error) {

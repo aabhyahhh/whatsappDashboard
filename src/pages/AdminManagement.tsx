@@ -318,17 +318,6 @@ export default function AdminManagement() {
                 />
               </div>
               <div>
-                <label htmlFor="editPassword" className="block text-sm font-medium text-gray-700">New Password (leave blank to keep current)</label>
-                <input
-                  type="password"
-                  name="password"
-                  id="editPassword"
-                  value={editForm.password || ''}
-                  onChange={handleEditAdminChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-              </div>
-              <div>
                 <label htmlFor="editRole" className="block text-sm font-medium text-gray-700">Role</label>
                 <select
                   name="role"
