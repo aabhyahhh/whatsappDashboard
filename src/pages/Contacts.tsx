@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import AdminLayout from '../components/AdminLayout';
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
 interface Contact {
   _id: string;
@@ -18,7 +19,7 @@ export default function Contacts() {
     const fetchContacts = async () => {
       try {
         setLoading(true);
-        const response = await fetch('http://localhost:5000/api/contacts');
+        const response = await fetch(`${apiBaseUrl}/api/contacts`);
         
         if (!response.ok) {
           throw new Error('Failed to fetch contacts');

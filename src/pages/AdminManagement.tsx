@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
 interface AdminUser {
   _id: string;
@@ -39,7 +40,7 @@ export default function AdminManagement() {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/admin/users', {
+      const response = await fetch(`${apiBaseUrl}/api/admin/users`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -86,7 +87,7 @@ export default function AdminManagement() {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/admin/users', {
+      const response = await fetch(`${apiBaseUrl}/api/admin/users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -134,7 +135,7 @@ export default function AdminManagement() {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/admin/users/${editingAdmin._id}`,
+      const response = await fetch(`${apiBaseUrl}/api/admin/users/${editingAdmin._id}`,
         {
           method: 'PUT',
           headers: {
@@ -174,7 +175,7 @@ export default function AdminManagement() {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/admin/users/${id}`,
+      const response = await fetch(`${apiBaseUrl}/api/admin/users/${id}`,
         {
           method: 'DELETE',
           headers: {

@@ -11,7 +11,6 @@ import contactsRoutes from './routes/contacts';
 import messagesRoutes from './routes/messages';
 import verifyRoutes from './routes/verify';
 
-
 const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';

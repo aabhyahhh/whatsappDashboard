@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
 interface Dish {
   name: string;
@@ -76,7 +77,7 @@ export default function UserManagement() {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/users', {
+      const response = await fetch(`${apiBaseUrl}/api/users`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -168,7 +169,7 @@ export default function UserManagement() {
     };
 
     try {
-      const response = await fetch('http://localhost:5000/api/users', {
+      const response = await fetch(`${apiBaseUrl}/api/users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -241,7 +242,7 @@ export default function UserManagement() {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/users/${editingUser._id}`,
+      const response = await fetch(`${apiBaseUrl}/api/users/${editingUser._id}`,
         {
           method: 'PUT',
           headers: {
@@ -281,7 +282,7 @@ export default function UserManagement() {
     }
 
     try {
-      const response = await fetch(`http://localhost:5000/api/users/${id}`,
+      const response = await fetch(`${apiBaseUrl}/api/users/${id}`,
         {
           method: 'DELETE',
           headers: {

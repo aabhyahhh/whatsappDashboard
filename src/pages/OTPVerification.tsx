@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import AdminLayout from '../components/AdminLayout';
 import { useNavigate } from 'react-router-dom';
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
 interface OTPResponse {
   success: boolean;
@@ -37,7 +38,7 @@ export default function OTPVerification() {
     setMessage('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/verify/request', {
+      const response = await fetch(`${apiBaseUrl}/api/verify/request`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -78,7 +79,7 @@ export default function OTPVerification() {
     setMessage('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/verify/verify', {
+      const response = await fetch(`${apiBaseUrl}/api/verify/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

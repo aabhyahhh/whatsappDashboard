@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
 interface Message {
   _id: string;
@@ -27,7 +28,7 @@ export default function ChatView() {
 
       try {
         setLoading(true);
-        const response = await fetch(`http://localhost:5000/api/messages/${phone}`);
+        const response = await fetch(`${apiBaseUrl}/api/messages/${phone}`);
 
         if (!response.ok) {
           const errorData = await response.json();
@@ -62,7 +63,7 @@ export default function ChatView() {
 
     try {
       setSending(true);
-      const response = await fetch('http://localhost:5000/api/messages/send', {
+      const response = await fetch('${apiBaseUrl}/api/messages/send', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
