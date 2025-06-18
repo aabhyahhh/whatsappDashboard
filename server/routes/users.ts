@@ -57,9 +57,9 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
             return;
         }
 
-        // Validate bestDishes (first 3 compulsory)
-        if (!bestDishes || bestDishes.length < 3 || bestDishes.slice(0, 3).some((dish: any) => !dish.name || !dish.name.trim())) {
-            res.status(400).json({ message: 'At least first 3 best dishes are required and must have a name' });
+        // Validate bestDishes (at least 1 required)
+        if (!bestDishes || bestDishes.length < 1 || !bestDishes[0].name || !bestDishes[0].name.trim()) {
+            res.status(400).json({ message: 'At least one best dish is required and must have a name' });
             return;
         }
 
@@ -97,8 +97,8 @@ router.put('/:id', authenticateToken, async (req: Request, res: Response) => {
 
         // Basic validation for updates
         if (bestDishes) {
-            if (bestDishes.length < 3 || bestDishes.slice(0, 3).some((dish: any) => !dish.name || !dish.name.trim())) {
-                res.status(400).json({ message: 'At least first 3 best dishes are required and must have a name' });
+            if (bestDishes.length < 1 || !bestDishes[0].name || !bestDishes[0].name.trim()) {
+                res.status(400).json({ message: 'At least one best dish is required and must have a name' });
                 return;
             }
         }
