@@ -348,18 +348,18 @@ export default function UserManagement() {
 
   return (
     <AdminLayout>
-      <div className="container mx-auto p-6">
+      <div className="max-w-7xl mx-auto px-2 md:px-6 py-4 flex flex-col">
         <h1 className="text-3xl font-bold mb-6 text-gray-800">User Management</h1>
 
         <button
           onClick={() => setShowAddForm(!showAddForm)}
-          className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mb-6"
+          className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mb-4 self-start"
         >
           {showAddForm ? 'Hide Add User Form' : 'Add New User'}
         </button>
 
         {showAddForm && (
-          <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+          <div className="bg-white p-4 md:p-6 rounded-lg shadow-md mb-4 w-full max-w-2xl mx-auto">
             <h2 className="text-2xl font-bold mb-4">Add New User</h2>
             {addError && <div className="text-red-600 mb-4">Error: {addError}</div>}
             <form onSubmit={handleAddUserSubmit} className="space-y-4">
@@ -495,14 +495,14 @@ export default function UserManagement() {
               {[...Array(6)].map((_, index) => (
                 <div key={index} className="grid grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor={`newBestDishName${index + 1}`} className="block text-sm font-medium text-gray-700">Best Dish {index + 1}{index < 3 && ' (Required)'}</label>
+                    <label htmlFor={`newBestDishName${index + 1}`} className="block text-sm font-medium text-gray-700">Best Dish {index + 1}{index === 0 && ' (Required)'}</label>
                     <input
                       type="text"
                       name={`bestDishName${index + 1}`}
                       id={`newBestDishName${index + 1}`}
                       value={newUser.bestDishes[index]?.name || ''}
                       onChange={(e) => handleAddDishChange(index, 'name', e.target.value)}
-                      required={index < 3} // First 3 are compulsory
+                      required={index === 0} // Only the first is compulsory
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     />
                   </div>
@@ -553,7 +553,7 @@ export default function UserManagement() {
         )}
 
         {editingUser && (
-          <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+          <div className="bg-white p-4 md:p-6 rounded-lg shadow-md mb-4 w-full max-w-2xl mx-auto">
             <h2 className="text-2xl font-bold mb-4">Edit User</h2>
             {editError && <div className="text-red-600 mb-4">Error: {editError}</div>}
             <form onSubmit={handleUpdateUserSubmit} className="space-y-4">
@@ -752,46 +752,46 @@ export default function UserManagement() {
         {users.length === 0 ? (
           <p className="text-gray-600">No users found.</p>
         ) : (
-          <div className="overflow-x-auto relative shadow-md sm:rounded-lg">
-            <table className="w-full text-sm text-left text-gray-500">
-              <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+          <div className="w-full max-w-full overflow-x-auto rounded-lg shadow-md bg-white mt-2">
+            <table className="min-w-full divide-y divide-gray-200 text-sm text-left">
+              <thead className="bg-gray-50">
                 <tr>
-                  <th scope="col" className="py-3 px-6">Contact Number</th>
-                  <th scope="col" className="py-3 px-6">Name</th>
-                  <th scope="col" className="py-3 px-6">Status</th>
-                  <th scope="col" className="py-3 px-6">Last Active</th>
-                  <th scope="col" className="py-3 px-6">Profile Picture</th>
-                  <th scope="col" className="py-3 px-6">Open Time</th>
-                  <th scope="col" className="py-3 px-6">Close Time</th>
-                  <th scope="col" className="py-3 px-6">Operating Days</th>
-                  <th scope="col" className="py-3 px-6">Food Type</th>
-                  <th scope="col" className="py-3 px-6">Best Dishes</th>
-                  <th scope="col" className="py-3 px-6">Menu Link</th>
-                  <th scope="col" className="py-3 px-6">Maps Link</th>
-                  <th scope="col" className="py-3 px-6">Actions</th>
+                  <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Contact Number</th>
+                  <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Name</th>
+                  <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Status</th>
+                  <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Last Active</th>
+                  <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Profile</th>
+                  <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Open</th>
+                  <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Close</th>
+                  <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Days</th>
+                  <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Food</th>
+                  <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Best Dishes</th>
+                  <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Menu</th>
+                  <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Maps</th>
+                  <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-gray-100">
                 {users.map((user) => (
-                  <tr key={user._id} className="bg-white border-b hover:bg-gray-50">
-                    <td className="py-4 px-6 font-medium text-gray-900 whitespace-nowrap">{user.contactNumber}</td>
-                    <td className="py-4 px-6">{user.name}</td>
-                    <td className="py-4 px-6">{user.status}</td>
-                    <td className="py-4 px-6">{new Date(user.lastActive).toLocaleDateString()}</td>
-                    <td className="py-4 px-6">
-                      {user.profilePictureUrl && <img src={user.profilePictureUrl} alt="Profile" className="h-10 w-10 rounded-full" />}
+                  <tr key={user._id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900 truncate max-w-[140px]">{user.contactNumber}</td>
+                    <td className="px-4 py-3 whitespace-nowrap truncate max-w-[180px]">{user.name}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{user.status}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{new Date(user.lastActive).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {user.profilePictureUrl && <img src={user.profilePictureUrl} alt="Profile" className="h-8 w-8 rounded-full object-cover" />}
                     </td>
-                    <td className="py-4 px-6">{user.operatingHours.openTime || 'N/A'}</td>
-                    <td className="py-4 px-6">{user.operatingHours.closeTime || 'N/A'}</td>
-                    <td className="py-4 px-6">{(user.operatingHours.days && user.operatingHours.days.length > 0) ? user.operatingHours.days.join(', ') : 'N/A'}</td>
-                    <td className="py-4 px-6">{user.foodType || 'N/A'}</td>
-                    <td className="py-4 px-6">
+                    <td className="px-4 py-3 whitespace-nowrap">{user.operatingHours.openTime || 'N/A'}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{user.operatingHours.closeTime || 'N/A'}</td>
+                    <td className="px-4 py-3 whitespace-nowrap truncate max-w-[120px]">{(user.operatingHours.days && user.operatingHours.days.length > 0) ? user.operatingHours.days.join(', ') : 'N/A'}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{user.foodType || 'N/A'}</td>
+                    <td className="px-4 py-3 whitespace-nowrap truncate max-w-[180px]">
                       {(user.bestDishes && user.bestDishes.filter(dish => dish.name).length > 0) ?
                         user.bestDishes.filter(dish => dish.name).map(dish => `${dish.name} (${dish.price || 'N/A'})`).join(', ') : 'N/A'}
                     </td>
-                    <td className="py-4 px-6"><a href={user.menuLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{user.menuLink ? 'Link' : 'N/A'}</a></td>
-                    <td className="py-4 px-6"><a href={user.mapsLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{user.mapsLink || 'N/A'}</a></td>
-                    <td className="py-4 px-6">
+                    <td className="px-4 py-3 whitespace-nowrap truncate max-w-[100px]"><a href={user.menuLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{user.menuLink ? 'Link' : 'N/A'}</a></td>
+                    <td className="px-4 py-3 whitespace-nowrap truncate max-w-[120px]"><a href={user.mapsLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{user.mapsLink || 'N/A'}</a></td>
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <button 
                         onClick={() => handleEditClick(user)}
                         className="font-medium text-blue-600 hover:underline mr-3">
