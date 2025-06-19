@@ -63,7 +63,7 @@ export default function ChatView() {
 
     try {
       setSending(true);
-      const response = await fetch('${apiBaseUrl}/api/messages/send', {
+      const response = await fetch(`${apiBaseUrl}/api/messages/send`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
