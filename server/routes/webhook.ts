@@ -4,6 +4,8 @@ import { Contact } from '../models/Contact';
 
 const router = Router();
 
+const twilioNumber = process.env.TWILIO_PHONE_NUMBER;
+
 // Helper function to extract coordinates from Google Maps URL
 function extractCoordinatesFromGoogleMaps(url: string): { latitude: number; longitude: number } | null {
     try {
@@ -116,6 +118,12 @@ router.post('/', async (req: Request, res: Response) => {
         if (!From || !Body || !To) {
             console.error('Missing required fields in webhook payload:', req.body);
             return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        // Only save as inbound if From is NOT your Twilio number
+        if (From.replace('whatsapp:', '') === twilioNumber.replace('whatsapp:', '')) {
+            console.log('Skipping saving message from own Twilio number as inbound.');
+            return res.status(200).send('OK');
         }
 
         // Extract location data if present

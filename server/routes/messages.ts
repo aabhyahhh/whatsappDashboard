@@ -17,7 +17,7 @@ function escapeRegExp(string: string) {
 }
 
 // POST /api/send - Send WhatsApp message via Twilio
-router.post('/send', async (req: Request, res: Response) => {
+router.post('/send', async (req: Request, res: Response, next) => {
     try {
         const { to, body } = req.body;
 
@@ -51,6 +51,20 @@ router.post('/send', async (req: Request, res: Response) => {
 
         console.log(`✅ Message sent successfully! SID: ${message.sid}`);
 
+        // Save outbound message to MongoDB (Task 22)
+        try {
+            await Message.create({
+                from: fromNumber,
+                to: to,
+                body: body,
+                direction: 'outbound',
+                timestamp: new Date(),
+            });
+            console.log('💾 Outbound message saved to MongoDB');
+        } catch (dbError) {
+            console.error('❌ Failed to save outbound message to MongoDB:', dbError);
+        }
+
         res.json({ 
             success: true, 
             messageId: message.sid,
@@ -61,8 +75,7 @@ router.post('/send', async (req: Request, res: Response) => {
 
     } catch (error) {
         console.error('❌ Error sending WhatsApp message:', error);
-        
-        // Handle Twilio-specific errors
+        // Always return a JSON error response
         if (error instanceof Error) {
             if (error.message.includes('not a valid phone number')) {
                 return res.status(400).json({ 
@@ -75,10 +88,16 @@ router.post('/send', async (req: Request, res: Response) => {
                 });
             }
         }
+        // Pass to error-handling middleware for any other error
+        next(error);
+    }
+});
 
-        res.status(500).json({ 
-            error: 'Failed to send WhatsApp message' 
-        });
+// Error-handling middleware for this router
+router.use((err, req, res, next) => {
+    console.error('Unhandled error in /api/messages:', err);
+    if (!res.headersSent) {
+        res.status(500).json({ error: 'Internal server error', details: err?.message || err });
     }
 });
 

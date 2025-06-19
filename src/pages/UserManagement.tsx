@@ -149,9 +149,9 @@ export default function UserManagement() {
       !newUser.operatingHours.openTime ||
       !newUser.operatingHours.closeTime ||
       !newUser.operatingHours.days.length ||
-      !newUser.bestDishes.slice(0, 3).every(dish => dish.name && dish.name.trim())
+      !newUser.bestDishes[0] || !newUser.bestDishes[0].name || !newUser.bestDishes[0].name.trim()
     ) {
-      setAddError('Please fill all required fields and at least 3 best dishes.');
+      setAddError('Please fill all required fields and at least 1 best dish.');
       setIsAdding(false);
       return;
     }
@@ -502,7 +502,7 @@ export default function UserManagement() {
                       id={`newBestDishName${index + 1}`}
                       value={newUser.bestDishes[index]?.name || ''}
                       onChange={(e) => handleAddDishChange(index, 'name', e.target.value)}
-                      required={index === 0} // Only the first is compulsory
+                      required={index === 0}
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     />
                   </div>
@@ -682,14 +682,14 @@ export default function UserManagement() {
               {[...Array(6)].map((_, index) => (
                 <div key={index} className="grid grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor={`editBestDishName${index + 1}`} className="block text-sm font-medium text-gray-700">Best Dish {index + 1}{index < 3 && ' (Required)'}</label>
+                    <label htmlFor={`editBestDishName${index + 1}`} className="block text-sm font-medium text-gray-700">Best Dish {index + 1}{index === 0 && ' (Required)'}</label>
                     <input
                       type="text"
                       name={`bestDishName${index + 1}`}
                       id={`editBestDishName${index + 1}`}
                       value={editForm.bestDishes?.[index]?.name || ''}
                       onChange={(e) => handleEditDishChange(index, 'name', e.target.value)}
-                      required={index < 3} // First 3 are compulsory
+                      required={index === 0}
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     />
                   </div>
@@ -752,7 +752,7 @@ export default function UserManagement() {
         {users.length === 0 ? (
           <p className="text-gray-600">No users found.</p>
         ) : (
-          <div className="w-full max-w-full overflow-x-auto rounded-lg shadow-md bg-white mt-2">
+          <div className="w-full max-w-full overflow-x-auto rounded-lg shadow-md bg-white mt-2" style={{ WebkitOverflowScrolling: 'touch' }}>
             <table className="min-w-full divide-y divide-gray-200 text-sm text-left">
               <thead className="bg-gray-50">
                 <tr>

@@ -61,7 +61,7 @@ const userSchema = new mongoose.Schema({
     },
     foodType: {
         type: String,
-        enum: ['veg', 'Nonveg', 'Swaminarayan', 'Jain'],
+        enum: ['veg', 'nonveg', 'swaminarayan', 'jain'],
         required: false
     },
     profilePictureUrl: {

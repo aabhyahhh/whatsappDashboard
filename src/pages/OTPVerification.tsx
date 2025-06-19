@@ -10,7 +10,7 @@ interface OTPResponse {
 }
 
 export default function OTPVerification() {
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState('+91');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -146,12 +146,12 @@ export default function OTPVerification() {
                   setPhone(e.target.value);
                   clearMessage();
                 }}
-                placeholder="+1234567890"
+                placeholder="+91"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 disabled={loading}
               />
               <p className="text-xs text-gray-500 mt-1">
-                Enter phone number with country code (e.g., +1234567890)
+                Enter phone number with country code (e.g., +91)
               </p>
             </div>
 
@@ -252,7 +252,7 @@ export default function OTPVerification() {
           <div className="space-y-2 text-sm text-blue-700">
             <div className="flex items-start">
               <span className="bg-blue-200 text-blue-800 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold mr-3 mt-0.5">1</span>
-              <p>Enter the phone number with country code (e.g., +1234567890)</p>
+              <p>Enter the phone number with country code (e.g., +91)</p>
             </div>
             <div className="flex items-start">
               <span className="bg-blue-200 text-blue-800 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold mr-3 mt-0.5">2</span>
