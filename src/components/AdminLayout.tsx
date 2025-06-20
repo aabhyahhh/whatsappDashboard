@@ -245,7 +245,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </div>
       </div>
       {/* Main Content */}
-      <div className="flex-1 flex flex-col md:ml-64">
+      <div className="flex-1 flex flex-col">
         {/* Mobile Topbar */}
         <header className="bg-white shadow-sm border-b border-gray-200 px-4 py-3 flex md:hidden items-center justify-between sticky top-0 z-10">
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-lg hover:bg-gray-100">
