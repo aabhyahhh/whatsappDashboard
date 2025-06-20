@@ -132,7 +132,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
           md:static md:translate-x-0
         `}
-        style={{ minWidth: '16rem' }}
+        style={{ minWidth: '256px' }}
       >
         {/* Sidebar Header */}
         <div className="p-4 border-b border-gray-200 flex-shrink-0 h-16 flex items-center justify-between md:block">

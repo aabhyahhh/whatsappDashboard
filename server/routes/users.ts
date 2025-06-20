@@ -146,4 +146,15 @@ router.delete('/:id', authenticateToken, async (req: Request, res: Response) => 
     }
 });
 
+// GET all user contact numbers and names (public, for contacts list)
+router.get('/user-contacts', async (req: Request, res: Response) => {
+    try {
+        const users = await User.find({}, { contactNumber: 1, name: 1, _id: 0 });
+        res.json(users);
+    } catch (error) {
+        console.error('Error fetching user contacts:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
 export default router; 

@@ -36,4 +36,19 @@ router.get('/:phone', async (req: Request, res: Response) => {
     }
 });
 
+// DELETE /api/contacts/delete-many - Delete multiple contacts by phone numbers (admin/test only)
+router.delete('/delete-many', async (req: Request, res: Response) => {
+    try {
+        const { phones } = req.body;
+        if (!Array.isArray(phones) || phones.length === 0) {
+            return res.status(400).json({ error: 'phones array required' });
+        }
+        const result = await Contact.deleteMany({ phone: { $in: phones } });
+        res.json({ deletedCount: result.deletedCount });
+    } catch (error) {
+        console.error('Error deleting contacts:', error);
+        res.status(500).json({ error: 'Failed to delete contacts' });
+    }
+});
+
 export default router; 
