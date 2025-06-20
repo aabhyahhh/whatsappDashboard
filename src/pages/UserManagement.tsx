@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
@@ -60,6 +60,7 @@ export default function UserManagement() {
   const navigate = useNavigate();
   const location = useLocation();
   const [isVerified, setIsVerified] = useState(false);
+  const editFormRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (location.state?.phone && location.state?.verified) {
@@ -212,6 +213,11 @@ export default function UserManagement() {
       mapsLink: user.mapsLink,
     });
     setShowAddForm(false);
+    setTimeout(() => {
+      if (editFormRef.current) {
+        editFormRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 0);
   };
 
   const handleEditUserChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -553,7 +559,7 @@ export default function UserManagement() {
         )}
 
         {editingUser && (
-          <div className="bg-white p-4 md:p-6 rounded-lg shadow-md mb-4 w-full max-w-2xl mx-auto">
+          <div ref={editFormRef} className="bg-white p-4 md:p-6 rounded-lg shadow-md mb-4 w-full max-w-2xl mx-auto">
             <h2 className="text-2xl font-bold mb-4">Edit User</h2>
             {editError && <div className="text-red-600 mb-4">Error: {editError}</div>}
             <form onSubmit={handleUpdateUserSubmit} className="space-y-4">
@@ -752,8 +758,8 @@ export default function UserManagement() {
         {users.length === 0 ? (
           <p className="text-gray-600">No users found.</p>
         ) : (
-          <div className="w-full max-w-full overflow-x-auto rounded-lg shadow-md bg-white mt-2" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <table className="min-w-full divide-y divide-gray-200 text-sm text-left">
+          <div className="w-full bg-white">
+            <table className="w-full divide-y divide-gray-200 text-sm text-left">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Contact Number</th>

@@ -32,7 +32,7 @@ const requestOTP: RequestHandler = async (req, res) => {
     console.log('Attempting to send OTP to:', phone); // Logging before Twilio call
     // Use WhatsApp template for OTP
     await client.messages.create({
-      from: process.env.TWILIO_WHATSAPP_FROM!,
+      from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER!}`,
       to: `whatsapp:${phone}`,
       contentSid: 'HX53634524df0195b948e15de6fd0c602c', // Your template SID
       contentVariables: JSON.stringify({ '1': otp }), // Assuming your template uses {{1}} for OTP
