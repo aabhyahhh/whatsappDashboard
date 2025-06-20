@@ -23,6 +23,9 @@ export interface IUser extends Document {
     menuLink?: string;
     createdAt: Date;
     updatedAt: Date;
+    status?: string;
+    openTime?: string;
+    closeTime?: string;
 }
 
 // Define the dish schema
@@ -42,6 +45,18 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true,
         index: true
+    },
+    status: {
+        type: String,
+        required: false
+    },
+    openTime: {
+        type: String,
+        required: false
+    },
+    closeTime: {
+        type: String,
+        required: false
     },
     mapsLink: {
         type: String,

@@ -71,6 +71,27 @@ export default function Contacts() {
     return date.toLocaleDateString();
   };
 
+  // Add send message handler
+  const handleSendMessage = async (phone: string) => {
+    const message = window.prompt('Enter the message to send:');
+    if (!message) return;
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/messages/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: phone, body: message })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        alert('Message sent successfully!');
+      } else {
+        alert('Failed to send message: ' + (data.error || 'Unknown error'));
+      }
+    } catch (err) {
+      alert('Failed to send message: ' + (err instanceof Error ? err.message : 'Unknown error'));
+    }
+  };
+
   if (loading) {
     return (
       <AdminLayout>
@@ -162,7 +183,7 @@ export default function Contacts() {
                         >
                           View Chat
                         </button>
-                        <button className="text-green-600 hover:text-green-900">
+                        <button className="text-green-600 hover:text-green-900" onClick={() => handleSendMessage(contact.phone)}>
                           Send Message
                         </button>
                       </td>
@@ -199,9 +220,12 @@ export default function Contacts() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button
                           onClick={() => window.location.href = `/dashboard/chat/${user.contactNumber}`}
-                          className="text-blue-600 hover:text-blue-900"
+                          className="text-blue-600 hover:text-blue-900 mr-4"
                         >
                           View Chat
+                        </button>
+                        <button className="text-green-600 hover:text-green-900" onClick={() => handleSendMessage(user.contactNumber)}>
+                          Send Message
                         </button>
                       </td>
                     </tr>

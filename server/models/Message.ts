@@ -11,6 +11,8 @@ export interface IMessage extends Document {
         latitude: number;
         longitude: number;
     };
+    address?: string; // Optional address for location messages
+    label?: string;   // Optional label for location messages
     createdAt: Date;
     updatedAt: Date;
 }
@@ -45,6 +47,16 @@ const messageSchema: Schema<IMessage> = new Schema({
     location: {
         latitude: { type: Number },
         longitude: { type: Number },
+    },
+    address: {
+        type: String,
+        required: false,
+        trim: true,
+    },
+    label: {
+        type: String,
+        required: false,
+        trim: true,
     },
     createdAt: {
         type: Date,

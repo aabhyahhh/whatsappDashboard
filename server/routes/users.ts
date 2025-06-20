@@ -2,6 +2,8 @@ import { Router, Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import User, { IUser } from '../models/User';
 import { Admin } from '../models/Admin'; // Import Admin model for JWT_SECRET consistency
+import schedule from 'node-schedule';
+import { client } from '../twilio';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'; // Ensure this matches auth.ts
@@ -75,6 +77,69 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
 
         const newUser = new User({ contactNumber, name, status, profilePictureUrl, openTime, closeTime, operatingHours, foodType, bestDishes: filteredBestDishes, menuLink, mapsLink });
         await newUser.save();
+
+        // Send WhatsApp message to the new user
+        try {
+          if (client) {
+            const msgPayload: any = {
+              from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
+              to: `whatsapp:${contactNumber}`,
+              contentSid: 'HX6a0f4a444898f786438781e8e2058a46',
+              contentVariables: JSON.stringify({})
+            };
+            if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
+              msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+            }
+            const twilioResp = await client.messages.create(msgPayload);
+            console.log('✅ Sent welcome template message HX6a0f4a444898f786438781e8e2058a46 to new user. Twilio response:', twilioResp);
+          }
+        } catch (err) {
+          console.error('Failed to send WhatsApp message to new user:', err?.message || err, err);
+        }
+
+        // Schedule WhatsApp message to vendor half hour before openTime
+        try {
+          if (client && openTime) {
+            // Parse openTime (e.g., '11:00') and schedule for half hour before
+            const [openHour, openMinute] = openTime.split(':').map(Number);
+            const now = new Date();
+            let scheduledTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), openHour, openMinute);
+            scheduledTime.setMinutes(scheduledTime.getMinutes() - 30);
+            if (scheduledTime < now) {
+              // If the time is in the past, schedule for next day
+              scheduledTime.setDate(scheduledTime.getDate() + 1);
+            }
+            schedule.scheduleJob(scheduledTime, async function() {
+              // Extract coordinates from mapsLink or WhatsApp location
+              let lat = null, lng = null;
+              if (mapsLink) {
+                // Try to extract from Google Maps link
+                const atMatch = mapsLink.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+                if (atMatch) {
+                  lat = atMatch[1];
+                  lng = atMatch[2];
+                } else {
+                  const qMatch = mapsLink.match(/[?&]q=([-?\d.]+),([-?\d.]+)/);
+                  if (qMatch) {
+                    lat = qMatch[1];
+                    lng = qMatch[2];
+                  }
+                }
+              }
+              // If not found, expect WhatsApp location to be sent by vendor in reply
+              if (client) {
+                await client.messages.create({
+                  from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
+                  to: `whatsapp:${contactNumber}`,
+                  contentSid: 'HXca82cc02b7d0270c00e675d0ba7f341a',
+                  contentVariables: JSON.stringify({ lat, lng })
+                });
+              }
+            });
+          }
+        } catch (err) {
+          console.error('Failed to schedule WhatsApp message to vendor:', err);
+        }
 
         res.status(201).json({ message: 'User created successfully', user: newUser });
     } catch (error) {
