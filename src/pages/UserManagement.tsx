@@ -34,7 +34,7 @@ export default function UserManagement() {
   const [error, setError] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newUser, setNewUser] = useState({
-    contactNumber: '',
+    contactNumber: '+91',
     name: '',
     status: 'active',
     profilePictureUrl: '',
@@ -184,7 +184,7 @@ export default function UserManagement() {
         throw new Error(errorData.message || 'Failed to add user');
       }
 
-      setNewUser({ contactNumber: '', name: '', status: 'active', profilePictureUrl: '', foodType: 'veg', bestDishes: Array(6).fill({ name: '', price: '' }) as Dish[], menuLink: '', mapsLink: '', operatingHours: { openTime: '', closeTime: '', days: [] } });
+      setNewUser({ contactNumber: '+91', name: '', status: 'active', profilePictureUrl: '', foodType: 'veg', bestDishes: Array(6).fill({ name: '', price: '' }) as Dish[], menuLink: '', mapsLink: '', operatingHours: { openTime: '', closeTime: '', days: [] } });
       setShowAddForm(false);
       fetchUsers(); // Refresh the list
       alert('User added successfully!');
@@ -377,7 +377,12 @@ export default function UserManagement() {
                     name="contactNumber"
                     id="newContactNumber"
                     value={newUser.contactNumber}
-                    onChange={handleAddUserChange}
+                    onChange={(e) => {
+                      // Always keep '+91' at the start
+                      let value = e.target.value;
+                      if (!value.startsWith('+91')) value = '+91' + value.replace(/^\+?91?/, '');
+                      setNewUser((prev) => ({ ...prev, contactNumber: value }));
+                    }}
                     required
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   />
@@ -569,8 +574,13 @@ export default function UserManagement() {
                   type="text"
                   name="contactNumber"
                   id="editContactNumber"
-                  value={editForm.contactNumber || ''}
-                  onChange={handleEditUserChange}
+                  value={editForm.contactNumber || '+91'}
+                  onChange={(e) => {
+                    // Always keep '+91' at the start
+                    let value = e.target.value;
+                    if (!value.startsWith('+91')) value = '+91' + value.replace(/^\+?91?/, '');
+                    setEditForm((prev) => ({ ...prev, contactNumber: value }));
+                  }}
                   required
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />

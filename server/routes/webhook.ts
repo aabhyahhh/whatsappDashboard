@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { Message } from '../models/Message';
 import { Contact } from '../models/Contact';
+import { client } from '../twilio';
 
 const router = Router();
 
@@ -112,35 +113,67 @@ function extractLocationFromMessage(body: string): { latitude: number; longitude
 // Webhook endpoint to receive Twilio messages
 router.post('/', async (req: Request, res: Response) => {
     try {
-        const { From, Body, To } = req.body;
+        // Debug log: print the entire incoming Twilio webhook payload
+        console.log('Incoming Twilio webhook payload:', req.body);
+        // Extract all relevant fields from the Twilio webhook payload
+        const { From, To, Body, Latitude, Longitude, Address, Label } = req.body;
 
-        // Basic validation
-        if (!From || !Body || !To) {
-            console.error('Missing required fields in webhook payload:', req.body);
-            return res.status(400).json({ error: 'Missing required fields' });
+        // Basic validation - must have From and To, and either Body or coordinates
+        if (!From || !To) {
+            console.error('Missing From or To in webhook payload:', req.body);
+            return res.status(400).json({ error: 'Missing required fields: From or To' });
+        }
+
+        // Check if we have either a body or location coordinates
+        const hasBody = Body !== undefined;
+        const hasCoordinates = Latitude !== undefined && Longitude !== undefined;
+        
+        if (!hasBody && !hasCoordinates) {
+            console.error('Missing both Body and coordinates in webhook payload:', req.body);
+            return res.status(400).json({ error: 'Missing required fields: Body or coordinates' });
         }
 
         // Only save as inbound if From is NOT your Twilio number
-        if (From.replace('whatsapp:', '') === twilioNumber.replace('whatsapp:', '')) {
+        if (twilioNumber && From.replace('whatsapp:', '') === twilioNumber.replace('whatsapp:', '')) {
             console.log('Skipping saving message from own Twilio number as inbound.');
             return res.status(200).send('OK');
         }
 
-        // Extract location data if present
-        const location = extractLocationFromMessage(Body);
+        // Extract location data if present in Body (existing logic)
+        let location: { latitude: number; longitude: number } | null = null;
+        let address = undefined;
+        let label = undefined;
+
+        if (hasBody) {
+            location = extractLocationFromMessage(Body);
+        }
+
+        // If not found in Body, check for native WhatsApp location fields from Twilio
+        if (!location && hasCoordinates) {
+            const lat = parseFloat(Latitude);
+            const lng = parseFloat(Longitude);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                location = { latitude: lat, longitude: lng };
+                address = Address;
+                label = Label;
+                console.log('📍 Extracted coordinates from Twilio location fields:', location);
+            }
+        }
 
         // Create new message document
         const messageData: any = {
             from: From,
             to: To,
-            body: Body,
+            body: Body || '', // Ensure body is never undefined
             direction: 'inbound',
             timestamp: new Date(),
         };
 
-        // Add location data if extracted
+        // Add location, address, and label if extracted
         if (location) {
             messageData.location = location;
+            if (address) messageData.address = address;
+            if (label) messageData.label = label;
         }
 
         const message = new Message(messageData);
@@ -151,10 +184,36 @@ router.post('/', async (req: Request, res: Response) => {
         console.log('✅ Saved inbound message:', {
             from: message.from,
             to: message.to,
-            body: message.body.substring(0, 50) + (message.body.length > 50 ? '...' : ''),
+            body: message.body.length > 0 ? message.body.substring(0, 50) + (message.body.length > 50 ? '...' : '') : '[Empty body - location message]',
             timestamp: message.timestamp,
             location: message.location && message.location.latitude && message.location.longitude ? '📍 Location included' : 'No location',
+            address: message.get('address') || undefined,
+            label: message.get('label') || undefined,
         });
+
+        // If the inbound message is exactly 'hi' (case-insensitive), send the template message
+        if (hasBody && typeof Body === 'string' && Body.trim().toLowerCase() === 'hi') {
+            console.log('Attempting to send template message in response to "hi"');
+            if (client) {
+                try {
+                    const msgPayload: any = {
+                        from: `whatsapp:${To.replace('whatsapp:', '')}`,
+                        to: From,
+                        contentSid: 'HX55104a6392c8cc079970a6116671ec51',
+                        contentVariables: JSON.stringify({})
+                    };
+                    if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
+                        msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+                    }
+                    const twilioResp = await client.messages.create(msgPayload);
+                    console.log('✅ Triggered outbound template message HX55104a6392c8cc079970a6116671ec51 in response to "hi". Twilio response:', twilioResp);
+                } catch (err) {
+                    console.error('❌ Failed to send outbound template message:', err?.message || err, err);
+                }
+            } else {
+                console.warn('⚠️ Twilio client not initialized, cannot send outbound template message.');
+            }
+        }
 
         // Upsert contact in contacts collection
         const phone = From.replace('whatsapp:', ''); // Remove whatsapp: prefix if present
@@ -181,4 +240,4 @@ router.post('/', async (req: Request, res: Response) => {
     }
 });
 
-export default router; 
+export default router;
