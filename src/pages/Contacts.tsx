@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import AdminLayout from '../components/AdminLayout';
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
 interface Contact {
   _id: string;

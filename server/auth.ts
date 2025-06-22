@@ -97,7 +97,7 @@ async function createInitialAdmin() {
         if (!adminExists) {
             const admin = new Admin({
                 username: 'admin',
-                password: 'admin123', // This will be hashed by the pre-save hook
+                password: 'L@@riKh0j0', // This will be hashed by the pre-save hook
                 email: 'admin@whatsapp.com',
                 role: 'super_admin'
             });

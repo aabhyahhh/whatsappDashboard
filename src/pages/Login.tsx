@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
 export default function Login() {
   const [username, setUsername] = useState('');
