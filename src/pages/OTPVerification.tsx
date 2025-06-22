@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import AdminLayout from '../components/AdminLayout';
 import { useNavigate } from 'react-router-dom';
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
 interface OTPResponse {
   success: boolean;
