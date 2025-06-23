@@ -14,7 +14,7 @@ interface User {
   name: string;
   status: 'active' | 'inactive' | 'suspended';
   lastActive: string;
-  profilePictureUrl?: string;
+  profilePictures?: string[];
   foodType?: 'veg' | 'Nonveg' | 'Swaminarayan' | 'Jain';
   bestDishes?: Dish[];
   menuLink?: string;
@@ -26,6 +26,15 @@ interface User {
   };
   createdAt: string;
   updatedAt: string;
+  preferredLanguages?: string[];
+  foodCategories?: string[];
+  stallType?: '' | 'fixed' | 'mobile';
+  whatsappConsent?: boolean;
+  onboardingType?: string;
+  aadharNumber?: string;
+  aadharFrontUrl?: string;
+  aadharBackUrl?: string;
+  panNumber?: string;
 }
 
 export default function UserManagement() {
@@ -37,7 +46,7 @@ export default function UserManagement() {
     contactNumber: '+91',
     name: '',
     status: 'active',
-    profilePictureUrl: '',
+    profilePictures: [] as string[],
     foodType: 'veg',
     bestDishes: Array(6).fill({ name: '', price: '' }) as Dish[],
     menuLink: '',
@@ -47,12 +56,42 @@ export default function UserManagement() {
       closeTime: '',
       days: [] as string[],
     },
+    preferredLanguages: [] as string[],
+    foodCategories: [] as string[],
+    stallType: '',
+    whatsappConsent: false,
+    onboardingType: '',
+    aadharNumber: '',
+    aadharFrontUrl: '',
+    aadharBackUrl: '',
+    panNumber: '',
   });
   const [addError, setAddError] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editForm, setEditForm] = useState<Partial<User>>({
+    contactNumber: '+91',
+    name: '',
+    status: 'active',
+    operatingHours: {
+      openTime: '',
+      closeTime: '',
+      days: [],
+    },
+    foodType: 'veg',
     bestDishes: Array(6).fill({ name: '', price: '' }) as Dish[],
+    menuLink: '',
+    mapsLink: '',
+    profilePictures: [],
+    preferredLanguages: [],
+    foodCategories: [],
+    stallType: '',
+    whatsappConsent: false,
+    onboardingType: '',
+    aadharNumber: '',
+    aadharFrontUrl: '',
+    aadharBackUrl: '',
+    panNumber: '',
   });
   const [editError, setEditError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -61,6 +100,8 @@ export default function UserManagement() {
   const location = useLocation();
   const [isVerified, setIsVerified] = useState(false);
   const editFormRef = useRef<HTMLDivElement>(null);
+
+  const allDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
   useEffect(() => {
     if (location.state?.phone && location.state?.verified) {
@@ -131,6 +172,19 @@ export default function UserManagement() {
     });
   };
 
+  const dayStringToNumber = (day: string) => {
+    switch (day) {
+      case 'Sunday': return 0;
+      case 'Monday': return 1;
+      case 'Tuesday': return 2;
+      case 'Wednesday': return 3;
+      case 'Thursday': return 4;
+      case 'Friday': return 5;
+      case 'Saturday': return 6;
+      default: return -1;
+    }
+  };
+
   const handleAddUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAddError(null);
@@ -162,11 +216,23 @@ export default function UserManagement() {
       contactNumber: newUser.contactNumber,
       name: newUser.name,
       mapsLink: newUser.mapsLink,
-      operatingHours: newUser.operatingHours,
+      operatingHours: {
+        ...newUser.operatingHours,
+        days: newUser.operatingHours.days.map(dayStringToNumber),
+      },
       bestDishes: newUser.bestDishes.filter(dish => dish.name && dish.name.trim()),
       foodType: newUser.foodType,
-      profilePictureUrl: newUser.profilePictureUrl,
+      profilePictures: newUser.profilePictures,
+      preferredLanguages: newUser.preferredLanguages,
+      foodCategories: newUser.foodCategories,
+      stallType: newUser.stallType,
+      whatsappConsent: newUser.whatsappConsent,
       menuLink: newUser.menuLink,
+      onboardingType: newUser.onboardingType,
+      aadharNumber: newUser.aadharNumber,
+      aadharFrontUrl: newUser.aadharFrontUrl,
+      aadharBackUrl: newUser.aadharBackUrl,
+      panNumber: newUser.panNumber,
     };
 
     try {
@@ -184,7 +250,7 @@ export default function UserManagement() {
         throw new Error(errorData.message || 'Failed to add user');
       }
 
-      setNewUser({ contactNumber: '+91', name: '', status: 'active', profilePictureUrl: '', foodType: 'veg', bestDishes: Array(6).fill({ name: '', price: '' }) as Dish[], menuLink: '', mapsLink: '', operatingHours: { openTime: '', closeTime: '', days: [] } });
+      setNewUser({ contactNumber: '+91', name: '', status: 'active', profilePictures: [], foodType: 'veg', bestDishes: Array(6).fill({ name: '', price: '' }) as Dish[], menuLink: '', mapsLink: '', operatingHours: { openTime: '', closeTime: '', days: [] }, preferredLanguages: [], foodCategories: [], stallType: '', whatsappConsent: false, onboardingType: '', aadharNumber: '', aadharFrontUrl: '', aadharBackUrl: '', panNumber: '' });
       setShowAddForm(false);
       fetchUsers(); // Refresh the list
       alert('User added successfully!');
@@ -201,7 +267,6 @@ export default function UserManagement() {
       contactNumber: user.contactNumber,
       name: user.name,
       status: user.status,
-      profilePictureUrl: user.profilePictureUrl,
       operatingHours: {
         openTime: user.operatingHours.openTime,
         closeTime: user.operatingHours.closeTime,
@@ -211,6 +276,16 @@ export default function UserManagement() {
       bestDishes: user.bestDishes ? [...user.bestDishes] : Array(6).fill({ name: '', price: '' }),
       menuLink: user.menuLink,
       mapsLink: user.mapsLink,
+      profilePictures: user.profilePictures || [],
+      preferredLanguages: user.preferredLanguages || [],
+      foodCategories: user.foodCategories || [],
+      stallType: user.stallType || '',
+      whatsappConsent: user.whatsappConsent || false,
+      onboardingType: user.onboardingType || '',
+      aadharNumber: user.aadharNumber || '',
+      aadharFrontUrl: user.aadharFrontUrl || '',
+      aadharBackUrl: user.aadharBackUrl || '',
+      panNumber: user.panNumber || '',
     });
     setShowAddForm(false);
     setTimeout(() => {
@@ -311,15 +386,15 @@ export default function UserManagement() {
     }
   };
 
-  if (loading) {
-    return <div className="text-center py-10">Loading users...</div>;
-  }
-
-  if (error) {
-    return <div className="text-center py-10 text-red-600">Error: {error}</div>;
-  }
-
-  const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const handleSelectAllDays = (checked: boolean) => {
+    setNewUser(prev => ({
+      ...prev,
+      operatingHours: {
+        ...prev.operatingHours,
+        days: checked ? [...allDays] : [],
+      },
+    }));
+  };
 
   const handleDayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value, checked } = e.target;
@@ -352,6 +427,14 @@ export default function UserManagement() {
 
   const timeOptions = generateTimeOptions();
 
+  if (loading) {
+    return <div className="text-center py-10">Loading users...</div>;
+  }
+
+  if (error) {
+    return <div className="text-center py-10 text-red-600">Error: {error}</div>;
+  }
+
   return (
     <AdminLayout>
       <div className="max-w-7xl mx-auto px-2 md:px-6 py-4 flex flex-col">
@@ -365,11 +448,11 @@ export default function UserManagement() {
         </button>
 
         {showAddForm && (
-          <div className="bg-white p-4 md:p-6 rounded-lg shadow-md mb-4 w-full max-w-2xl mx-auto">
-            <h2 className="text-2xl font-bold mb-4">Add New User</h2>
+          <div className="bg-white p-6 rounded-lg shadow-md mb-4 w-full max-w-2xl mx-auto border border-gray-200">
+            <h2 className="text-2xl font-bold mb-6">Add New User</h2>
             {addError && <div className="text-red-600 mb-4">Error: {addError}</div>}
-            <form onSubmit={handleAddUserSubmit} className="space-y-4">
-              <div>
+            <form onSubmit={handleAddUserSubmit} className="space-y-6">
+              <div className="space-y-2">
                 <label htmlFor="newContactNumber" className="block text-sm font-medium text-gray-700">Contact Number</label>
                 <div className="flex items-center">
                   <input
@@ -378,22 +461,19 @@ export default function UserManagement() {
                     id="newContactNumber"
                     value={newUser.contactNumber}
                     onChange={(e) => {
-                      // Always keep '+91' at the start
                       let value = e.target.value;
-                      if (!value.startsWith('+91')) value = '+91' + value.replace(/^\+?91?/, '');
+                      if (!value.startsWith('+91')) value = '+91' + value.replace(/^?91?/, '');
                       setNewUser((prev) => ({ ...prev, contactNumber: value }));
                     }}
                     required
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   />
                   {isVerified && (
-                    <span className="ml-2 text-green-600" title="Verified">
-                      ✓
-                    </span>
+                    <span className="ml-2 text-green-600" title="Verified">✓</span>
                   )}
                 </div>
               </div>
-              <div>
+              <div className="space-y-2">
                 <label htmlFor="newName" className="block text-sm font-medium text-gray-700">Name</label>
                 <input
                   type="text"
@@ -405,7 +485,7 @@ export default function UserManagement() {
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
               </div>
-              <div>
+              <div className="space-y-2">
                 <label htmlFor="newStatus" className="block text-sm font-medium text-gray-700">Status</label>
                 <select
                   name="status"
@@ -419,35 +499,200 @@ export default function UserManagement() {
                   <option value="suspended">Suspended</option>
                 </select>
               </div>
-              <div>
-                <label htmlFor="newProfilePictureUrl" className="block text-sm font-medium text-gray-700">Profile Picture URL (Optional)</label>
-                <input
-                  type="text"
-                  name="profilePictureUrl"
-                  id="newProfilePictureUrl"
-                  value={newUser.profilePictureUrl}
-                  onChange={handleAddUserChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
+              <div className="space-y-4 border border-gray-200 rounded-lg p-4 my-4 bg-gray-50">
+                <div className="mb-2">
+                  <label className="block font-semibold mb-1">Business Images <span className="text-xs">(min 1, max 10)</span>:</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="block mb-2"
+                    onChange={async (e) => {
+                      const files = Array.from(e.target.files || []);
+                      if (files.length > 10) {
+                        alert('You can upload a maximum of 10 images.');
+                        return;
+                      }
+                      const formData = new FormData();
+                      files.forEach(file => formData.append('images', file));
+                      const res = await fetch(`${apiBaseUrl}/api/users/upload-images`, {
+                        method: 'POST',
+                        body: formData,
+                        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                      });
+                      const data = await res.json();
+                      setNewUser(prev => ({ ...prev, profilePictures: data.urls }));
+                    }}
+                  />
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {newUser.profilePictures && newUser.profilePictures.map(url => (
+                      <img key={url} src={url} alt="Business" className="w-20 h-20 object-cover rounded border" />
+                    ))}
+                  </div>
+                </div>
+                <div className="mb-2">
+                  <label className="block font-semibold mb-1">Preferred Language:</label>
+                  <div className="flex gap-4">
+                    {['Hindi', 'English', 'Gujarati'].map(lang => (
+                      <label key={lang} className="inline-flex items-center gap-1">
+                        <input
+                          type="checkbox"
+                          value={lang}
+                          checked={newUser.preferredLanguages.includes(lang)}
+                          onChange={() => {
+                            setNewUser(prev => {
+                              const arr = prev.preferredLanguages.includes(lang)
+                                ? prev.preferredLanguages.filter(l => l !== lang)
+                                : [...prev.preferredLanguages, lang];
+                              return { ...prev, preferredLanguages: arr };
+                            });
+                          }}
+                        />
+                        {lang}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="mb-2">
+                  <label className="block font-semibold mb-1">Category of Food:</label>
+                  <div className="flex flex-wrap gap-4">
+                    {['Chaat','Juices','Tea/coffee','Snacks (Samosa, Vada Pav, etc.)','Dessert','Gujju Snacks','PavBhaji','Punjabi (Parathe, Lassi, etc)','Paan','Korean','Chinese','South Indian','Other'].map(cat => (
+                      <label key={cat} className="inline-flex items-center gap-1">
+                        <input
+                          type="checkbox"
+                          value={cat}
+                          checked={newUser.foodCategories.includes(cat)}
+                          onChange={() => {
+                            setNewUser(prev => {
+                              const arr = prev.foodCategories.includes(cat)
+                                ? prev.foodCategories.filter(c => c !== cat)
+                                : [...prev.foodCategories, cat];
+                              return { ...prev, foodCategories: arr };
+                            });
+                          }}
+                        />
+                        {cat}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="mb-2">
+                  <label className="block font-semibold mb-1">Stall Type:</label>
+                  <div className="flex gap-4">
+                    <label className="inline-flex items-center gap-1">
+                      <input
+                        type="radio"
+                        name="stallType"
+                        value="fixed"
+                        checked={newUser.stallType === 'fixed'}
+                        onChange={() => setNewUser(prev => ({ ...prev, stallType: 'fixed' }))}
+                      /> Fixed
+                    </label>
+                    <label className="inline-flex items-center gap-1">
+                      <input
+                        type="radio"
+                        name="stallType"
+                        value="mobile"
+                        checked={newUser.stallType === 'mobile'}
+                        onChange={() => setNewUser(prev => ({ ...prev, stallType: 'mobile' }))}
+                      /> Mobile
+                    </label>
+                  </div>
+                </div>
+                <div className="mb-2">
+                  <label className="inline-flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={newUser.whatsappConsent}
+                      onChange={() => setNewUser(prev => ({ ...prev, whatsappConsent: !prev.whatsappConsent }))}
+                    />
+                    Consent to receive WhatsApp messages
+                  </label>
+                </div>
+                <div className="mb-2">
+                  <label className="block font-semibold mb-1">Onboarding Type <span className="text-red-500">*</span>:</label>
+                  <div className="flex gap-4">
+                    {['on ground', 'manual entry', 'via website'].map(type => (
+                      <label key={type} className="inline-flex items-center gap-1">
+                        <input
+                          type="radio"
+                          name="onboardingType"
+                          value={type}
+                          checked={newUser.onboardingType === type}
+                          onChange={() => setNewUser(prev => ({ ...prev, onboardingType: type }))}
+                          required
+                        />
+                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="mb-2">
+                  <label className="block font-semibold mb-1">Aadhar Number (optional):</label>
+                  <input
+                    type="text"
+                    value={newUser.aadharNumber}
+                    onChange={(e) => setNewUser(prev => ({ ...prev, aadharNumber: e.target.value }))}
+                    className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    placeholder="Enter Aadhar Number"
+                  />
+                </div>
+                <div className="mb-2">
+                  <label className="block font-semibold mb-1">Aadhar Photo (Front, optional):</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const formData = new FormData();
+                      formData.append('image', file);
+                      const res = await fetch(`${apiBaseUrl}/api/users/upload-images`, {
+                        method: 'POST',
+                        body: formData,
+                        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                      });
+                      const data = await res.json();
+                      setNewUser(prev => ({ ...prev, aadharFrontUrl: data.urls[0] }));
+                    }}
+                  />
+                  {newUser.aadharFrontUrl && <img src={newUser.aadharFrontUrl} alt="Aadhar Front" className="w-20 h-20 object-cover rounded border mt-2" />}
+                </div>
+                <div className="mb-2">
+                  <label className="block font-semibold mb-1">Aadhar Photo (Back, optional):</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const formData = new FormData();
+                      formData.append('image', file);
+                      const res = await fetch(`${apiBaseUrl}/api/users/upload-images`, {
+                        method: 'POST',
+                        body: formData,
+                        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                      });
+                      const data = await res.json();
+                      setNewUser(prev => ({ ...prev, aadharBackUrl: data.urls[0] }));
+                    }}
+                  />
+                  {newUser.aadharBackUrl && <img src={newUser.aadharBackUrl} alt="Aadhar Back" className="w-20 h-20 object-cover rounded border mt-2" />}
+                </div>
+                <div className="mb-2">
+                  <label className="block font-semibold mb-1">PAN Number (optional):</label>
+                  <input
+                    type="text"
+                    value={newUser.panNumber}
+                    onChange={(e) => setNewUser(prev => ({ ...prev, panNumber: e.target.value }))}
+                    className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    placeholder="Enter PAN Number"
+                  />
+                </div>
               </div>
-              <div>
-                <label htmlFor="newFoodType" className="block text-sm font-medium text-gray-700">Food Type</label>
-                <select
-                  name="foodType"
-                  id="newFoodType"
-                  value={newUser.foodType}
-                  onChange={handleAddUserChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                >
-                  <option value="veg">Veg</option>
-                  <option value="nonveg">Non-Veg</option>
-                  <option value="swaminarayan">Swaminarayan</option>
-                  <option value="jain">Jain</option>
-                </select>
-              </div>
-              <div>
+              <div className="space-y-2 border border-gray-200 rounded-lg p-4 my-4 bg-gray-50">
                 <label className="block text-sm font-medium text-gray-700">Operating Hours</label>
-                <div className="mt-1 grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="newOpenTime" className="block text-sm font-medium text-gray-700">Open Time</label>
                     <select
@@ -459,9 +704,7 @@ export default function UserManagement() {
                     >
                       <option value="">Select Time</option>
                       {timeOptions.map((time) => (
-                        <option key={time} value={time}>
-                          {time}
-                        </option>
+                        <option key={time} value={time}>{time}</option>
                       ))}
                     </select>
                   </div>
@@ -476,81 +719,94 @@ export default function UserManagement() {
                     >
                       <option value="">Select Time</option>
                       {timeOptions.map((time) => (
-                        <option key={time} value={time}>
-                          {time}
-                        </option>
+                        <option key={time} value={time}>{time}</option>
                       ))}
                     </select>
                   </div>
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Operating Days</label>
-                <div className="mt-1 grid grid-cols-2 gap-2">
-                  {daysOfWeek.map((day) => (
-                    <label key={day} className="inline-flex items-center">
+                <div className="mt-2">
+                  <label className="block text-sm font-medium text-gray-700">Operating Days</label>
+                  <div className="mb-2">
+                    <label className="inline-flex items-center">
                       <input
                         type="checkbox"
-                        name="days"
-                        value={day}
-                        checked={newUser.operatingHours.days.includes(day)}
-                        onChange={handleDayChange}
-                        className="form-checkbox"
+                        checked={newUser.operatingHours.days.length === allDays.length}
+                        onChange={(e) => handleSelectAllDays(e.target.checked)}
+                        className="form-checkbox h-5 w-5 text-blue-600"
                       />
-                      <span className="ml-2 text-sm text-gray-700">{day}</span>
+                      <span className="ml-2 text-sm font-semibold">Select All</span>
                     </label>
-                  ))}
-                </div>
-              </div>
-              {/* Best Dishes (Menu) Fields */}
-              {[...Array(6)].map((_, index) => (
-                <div key={index} className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor={`newBestDishName${index + 1}`} className="block text-sm font-medium text-gray-700">Best Dish {index + 1}{index === 0 && ' (Required)'}</label>
-                    <input
-                      type="text"
-                      name={`bestDishName${index + 1}`}
-                      id={`newBestDishName${index + 1}`}
-                      value={newUser.bestDishes[index]?.name || ''}
-                      onChange={(e) => handleAddDishChange(index, 'name', e.target.value)}
-                      required={index === 0}
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                    />
                   </div>
-                  <div>
-                    <label htmlFor={`newBestDishPrice${index + 1}`} className="block text-sm font-medium text-gray-700">Price</label>
-                    <input
-                      type="number"
-                      name={`bestDishPrice${index + 1}`}
-                      id={`newBestDishPrice${index + 1}`}
-                      value={newUser.bestDishes[index]?.price || ''}
-                      onChange={(e) => handleAddDishChange(index, 'price', e.target.value === '' ? '' : parseFloat(e.target.value))}
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                    />
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-1">
+                    {allDays.map((day) => (
+                      <label key={day} className="inline-flex items-center">
+                        <input
+                          type="checkbox"
+                          name="days"
+                          value={day}
+                          checked={newUser.operatingHours.days.includes(day)}
+                          onChange={(e) => handleDayChange(e)}
+                          className="form-checkbox h-5 w-5 text-blue-600"
+                        />
+                        <span className="ml-2 text-sm text-gray-700">{day}</span>
+                      </label>
+                    ))}
                   </div>
                 </div>
-              ))}
-              <div>
-                <label htmlFor="newMenuLink" className="block text-sm font-medium text-gray-700">Menu Link</label>
-                <input
-                  type="text"
-                  name="menuLink"
-                  id="newMenuLink"
-                  value={newUser.menuLink}
-                  onChange={handleAddUserChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
               </div>
-              <div>
-                <label htmlFor="newMapsLink" className="block text-sm font-medium text-gray-700">Maps Link</label>
-                <input
-                  type="text"
-                  name="mapsLink"
-                  id="newMapsLink"
-                  value={newUser.mapsLink}
-                  onChange={handleAddUserChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
+              <div className="space-y-2 border border-gray-200 rounded-lg p-4 my-4 bg-gray-50">
+                <label className="block text-sm font-medium text-gray-700">Best Dishes (at least 1 required)</label>
+                {[...Array(6)].map((_, index) => (
+                  <div key={index} className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor={`newBestDishName${index + 1}`} className="block text-sm font-medium text-gray-700">Best Dish {index + 1}{index === 0 && ' (Required)'}</label>
+                      <input
+                        type="text"
+                        name={`bestDishName${index + 1}`}
+                        id={`newBestDishName${index + 1}`}
+                        value={newUser.bestDishes[index]?.name || ''}
+                        onChange={(e) => handleAddDishChange(index, 'name', e.target.value)}
+                        required={index === 0}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor={`newBestDishPrice${index + 1}`} className="block text-sm font-medium text-gray-700">Price</label>
+                      <input
+                        type="number"
+                        name={`newBestDishPrice${index + 1}`}
+                        id={`newBestDishPrice${index + 1}`}
+                        value={newUser.bestDishes[index]?.price || ''}
+                        onChange={(e) => handleAddDishChange(index, 'price', e.target.value === '' ? '' : parseFloat(e.target.value))}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-2 border border-gray-200 rounded-lg p-4 my-4 bg-gray-50">
+                <div>
+                  <label htmlFor="newMenuLink" className="block text-sm font-medium text-gray-700">Menu Link</label>
+                  <input
+                    type="text"
+                    name="menuLink"
+                    id="newMenuLink"
+                    value={newUser.menuLink}
+                    onChange={handleAddUserChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="newMapsLink" className="block text-sm font-medium text-gray-700">Maps Link</label>
+                  <input
+                    type="text"
+                    name="mapsLink"
+                    id="newMapsLink"
+                    value={newUser.mapsLink}
+                    onChange={handleAddUserChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                </div>
               </div>
               <button
                 type="submit"
@@ -612,30 +868,105 @@ export default function UserManagement() {
                 </select>
               </div>
               <div>
-                <label htmlFor="editProfilePictureUrl" className="block text-sm font-medium text-gray-700">Profile Picture URL (Optional)</label>
+                <label>Business Images (min 1, max 10):</label>
                 <input
-                  type="text"
-                  name="profilePictureUrl"
-                  id="editProfilePictureUrl"
-                  value={editForm.profilePictureUrl || ''}
-                  onChange={handleEditUserChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={async (e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (files.length > 10) {
+                      alert('You can upload a maximum of 10 images.');
+                      return;
+                    }
+                    const formData = new FormData();
+                    files.forEach(file => formData.append('images', file));
+                    const res = await fetch(`${apiBaseUrl}/api/users/upload-images`, {
+                      method: 'POST',
+                      body: formData,
+                      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                    });
+                    const data = await res.json();
+                    setEditForm(prev => ({ ...prev, profilePictures: data.urls }));
+                  }}
                 />
+                {editForm.profilePictures && editForm.profilePictures.map(url => (
+                  <img key={url} src={url} alt="Business" style={{ width: 80, margin: 4 }} />
+                ))}
               </div>
               <div>
-                <label htmlFor="editFoodType" className="block text-sm font-medium text-gray-700">Food Type</label>
+                <label>Preferred Language:</label>
+                {['Hindi', 'English', 'Gujarati'].map(lang => (
+                  <label key={lang}>
+                    <input
+                      type="checkbox"
+                      value={lang}
+                      checked={editForm.preferredLanguages?.includes(lang) || false}
+                      onChange={() => {
+                        setEditForm(prev => {
+                          const arr = prev.preferredLanguages?.includes(lang)
+                            ? prev.preferredLanguages.filter(l => l !== lang)
+                            : [...(prev.preferredLanguages || []), lang];
+                          return { ...prev, preferredLanguages: arr };
+                        });
+                      }}
+                    />
+                    {lang}
+                  </label>
+                ))}
+              </div>
+              <div>
+                <label>Category of Food:</label>
                 <select
-                  name="foodType"
-                  id="editFoodType"
-                  value={editForm.foodType || 'veg'}
-                  onChange={handleEditUserChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  value={editForm.foodCategories?.join(', ') || ''}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, foodCategories: e.target.value.split(', ') }))}
                 >
-                  <option value="veg">Veg</option>
-                  <option value="nonveg">Non-Veg</option>
-                  <option value="swaminarayan">Swaminarayan</option>
-                  <option value="jain">Jain</option>
+                  <option value="">Select</option>
+                  <option>Chaat</option>
+                  <option>Juices</option>
+                  <option>Tea/coffee</option>
+                  <option>Snacks (Samosa, Vada Pav, etc.)</option>
+                  <option>Dessert</option>
+                  <option>Gujju Snacks</option>
+                  <option>PavBhaji</option>
+                  <option>Punjabi (Parathe, Lassi, etc)</option>
+                  <option>Paan</option>
+                  <option>Korean</option>
+                  <option>Chinese</option>
+                  <option>South Indian</option>
+                  <option>Other</option>
                 </select>
+              </div>
+              <div>
+                <label>Stall Type:</label>
+                <label>
+                  <input
+                    type="radio"
+                    name="stallType"
+                    value="fixed"
+                    checked={editForm.stallType === 'fixed'}
+                    onChange={() => setEditForm(prev => ({ ...prev, stallType: 'fixed' }))}
+                  /> Fixed
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="stallType"
+                    value="mobile"
+                    checked={editForm.stallType === 'mobile'}
+                    onChange={() => setEditForm(prev => ({ ...prev, stallType: 'mobile' }))}
+                  /> Mobile
+                </label>
+              </div>
+              <div>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={editForm.whatsappConsent || false}
+                    onChange={() => setEditForm(prev => ({ ...prev, whatsappConsent: !prev.whatsappConsent }))}
+                  />
+                  Consent to receive WhatsApp messages
+                </label>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Operating Hours</label>
@@ -679,7 +1010,7 @@ export default function UserManagement() {
               <div>
                 <label className="block text-sm font-medium text-gray-700">Operating Days</label>
                 <div className="mt-1 grid grid-cols-2 gap-2">
-                  {daysOfWeek.map((day) => (
+                  {allDays.map((day) => (
                     <label key={day} className="inline-flex items-center">
                       <input
                         type="checkbox"
@@ -795,7 +1126,9 @@ export default function UserManagement() {
                     <td className="px-4 py-3 whitespace-nowrap">{user.status}</td>
                     <td className="px-4 py-3 whitespace-nowrap">{new Date(user.lastActive).toLocaleDateString()}</td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      {user.profilePictureUrl && <img src={user.profilePictureUrl} alt="Profile" className="h-8 w-8 rounded-full object-cover" />}
+                      {user.profilePictures && user.profilePictures.length > 0 && (
+                        <img src={user.profilePictures[0]} alt="Profile" className="h-8 w-8 rounded-full object-cover" />
+                      )}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">{user.operatingHours.openTime || 'N/A'}</td>
                     <td className="px-4 py-3 whitespace-nowrap">{user.operatingHours.closeTime || 'N/A'}</td>

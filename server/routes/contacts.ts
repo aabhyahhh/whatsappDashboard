@@ -1,10 +1,11 @@
-import { Router, Request, Response } from 'express';
-import { Contact } from '../models/Contact';
+import { Router } from 'express';
+import type { Request, Response } from 'express';
+import { Contact } from '../models/Contact.js';
 
 const router = Router();
 
 // GET /api/contacts - Fetch all contacts for sidebar
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', async (_req: Request, res: Response) => {
     try {
         // Fetch contacts sorted by lastSeen (most recent first)
         const contacts = await Contact.find({})
@@ -14,8 +15,7 @@ router.get('/', async (req: Request, res: Response) => {
 
         res.json(contacts);
     } catch (error) {
-        console.error('Error fetching contacts:', error);
-        res.status(500).json({ error: 'Failed to fetch contacts' });
+        res.status(500).json({ message: (error as Error)?.message || error });
     }
 });
 

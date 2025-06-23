@@ -1,7 +1,8 @@
-import { Router, Request, Response } from 'express';
-import { Message } from '../models/Message';
-import { Contact } from '../models/Contact';
-import { client } from '../twilio';
+import { Router } from 'express';
+import type { Request, Response } from 'express';
+import { Message } from '../models/Message.js';
+import { Contact } from '../models/Contact.js';
+import { client } from '../twilio.js';
 
 const router = Router();
 
@@ -45,7 +46,7 @@ function extractCoordinatesFromGoogleMaps(url: string): { latitude: number; long
 
         return null;
     } catch (error) {
-        console.error('Error extracting coordinates from Google Maps URL:', error);
+        console.error('Error extracting coordinates from Google Maps URL:', (error as Error)?.message);
         return null;
     }
 }
@@ -84,7 +85,7 @@ function extractCoordinatesFromWhatsAppLocation(body: string): { latitude: numbe
 
         return null;
     } catch (error) {
-        console.error('Error extracting coordinates from WhatsApp location:', error);
+        console.error('Error extracting coordinates from WhatsApp location:', (error as Error)?.message);
         return null;
     }
 }
@@ -208,7 +209,7 @@ router.post('/', async (req: Request, res: Response) => {
                     const twilioResp = await client.messages.create(msgPayload);
                     console.log('✅ Triggered outbound template message HX55104a6392c8cc079970a6116671ec51 in response to "hi". Twilio response:', twilioResp);
                 } catch (err) {
-                    console.error('❌ Failed to send outbound template message:', err?.message || err, err);
+                    console.error('❌ Failed to send outbound template message:', (err as Error)?.message || err, err);
                 }
             } else {
                 console.warn('⚠️ Twilio client not initialized, cannot send outbound template message.');
@@ -235,7 +236,7 @@ router.post('/', async (req: Request, res: Response) => {
         // Return 200 OK to Twilio
         res.status(200).send('OK');
     } catch (error) {
-        console.error('Error processing webhook:', error);
+        console.error('Error processing webhook:', (error as Error)?.message);
         res.status(500).json({ error: 'Internal server error' });
     }
 });

@@ -1,8 +1,9 @@
-import express, { RequestHandler } from 'express';
-import Verification from '../models/Verification';
-import { client } from '../twilio'; // adjust import if needed
+import { Router } from 'express';
+import type { RequestHandler } from 'express';
+import Verification from '../models/Verification.js';
+import { client } from '../twilio.js'; // adjust import if needed
 
-const router = express.Router();
+const router = Router();
 
 const requestOTP: RequestHandler = async (req, res) => {
   const { phone } = req.body;

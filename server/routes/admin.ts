@@ -1,6 +1,7 @@
-import { Router, Request, Response, NextFunction, RequestHandler, RequestParamHandler } from 'express';
+import { Router } from 'express';
+import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import jwt from 'jsonwebtoken';
-import { Admin, IAdmin } from '../models/Admin';
+import { Admin } from '../models/Admin.js';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'; // Ensure this matches auth.ts
@@ -51,7 +52,7 @@ const authorizeSuperAdmin = (req: Request, res: Response, next: NextFunction) =>
 };
 
 // GET all admin users
-router.get('/users', authenticateToken, authorizeSuperAdmin, asyncHandler(async (req: Request, res: Response) => {
+router.get('/users', authenticateToken, authorizeSuperAdmin, asyncHandler(async (_req: Request, res: Response) => {
     const admins = await Admin.find().select('-password'); // Exclude passwords
     res.json(admins);
 }));

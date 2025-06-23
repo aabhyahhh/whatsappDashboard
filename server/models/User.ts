@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import operatingHoursSchema from './operatingHoursModel';
+import operatingHoursSchema from './operatingHoursModel.js';
 
 // Define the interface for Dish sub-document
 interface IDish {
@@ -15,10 +15,10 @@ export interface IUser extends Document {
     operatingHours: {
         openTime: string;
         closeTime: string;
-        days: string[];
+        days: number[];
     };
     foodType?: string;
-    profilePictureUrl?: string;
+    profilePictures?: string[];
     bestDishes?: IDish[];
     menuLink?: string;
     createdAt: Date;
@@ -26,6 +26,15 @@ export interface IUser extends Document {
     status?: string;
     openTime?: string;
     closeTime?: string;
+    preferredLanguages?: string[];
+    foodCategories?: string[];
+    stallType?: 'fixed' | 'mobile';
+    whatsappConsent?: boolean;
+    onboardingType?: string;
+    aadharNumber?: string;
+    aadharFrontUrl?: string;
+    aadharBackUrl?: string;
+    panNumber?: string;
 }
 
 // Define the dish schema
@@ -79,7 +88,48 @@ const userSchema = new mongoose.Schema({
         enum: ['veg', 'nonveg', 'swaminarayan', 'jain'],
         required: false
     },
-    profilePictureUrl: {
+    profilePictures: {
+        type: [String],
+        required: false,
+        default: []
+    },
+    preferredLanguages: {
+        type: [String],
+        required: false,
+        default: []
+    },
+    foodCategories: {
+        type: [String],
+        required: false,
+        default: []
+    },
+    stallType: {
+        type: String,
+        enum: ['fixed', 'mobile'],
+        required: false
+    },
+    whatsappConsent: {
+        type: Boolean,
+        required: false,
+        default: false
+    },
+    onboardingType: {
+        type: String,
+        required: false
+    },
+    aadharNumber: {
+        type: String,
+        required: false
+    },
+    aadharFrontUrl: {
+        type: String,
+        required: false
+    },
+    aadharBackUrl: {
+        type: String,
+        required: false
+    },
+    panNumber: {
         type: String,
         required: false
     }
