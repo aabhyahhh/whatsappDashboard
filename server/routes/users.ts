@@ -54,8 +54,9 @@ function normalizeDays(days: any): number[] {
   // If it's a string, try to parse it as JSON
   if (typeof days === 'string') {
     try {
-      // Replace single quotes with double quotes for JSON.parse
-      const parsed = JSON.parse(days.replace(/'/g, '"'));
+      // Remove newlines and extra spaces, then replace single quotes with double quotes
+      const cleaned = days.replace(/\n|\r/g, '').replace(/'/g, '"').replace(/ +/g, ' ');
+      const parsed = JSON.parse(cleaned);
       if (Array.isArray(parsed)) days = parsed;
     } catch (e) {
       return [];
