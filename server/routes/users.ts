@@ -53,9 +53,11 @@ router.get('/', authenticateToken, async (_req: Request, res: Response) => {
 // POST create a new regular user
 router.post('/', authenticateToken, async (req: Request, res: Response) => {
     try {
+        // Destructure all expected fields from req.body
         const {
-            contactNumber, name, status, openTime, closeTime, operatingHours, foodType, bestDishes, menuLink, mapsLink,
-            profilePictures, preferredLanguages, foodCategories, stallType, whatsappConsent, onboardingType, aadharNumber, aadharFrontUrl, aadharBackUrl, panNumber
+            contactNumber, name, status, mapsLink, operatingHours, foodType, bestDishes, menuLink,
+            profilePictures, preferredLanguages, foodCategories, stallType, whatsappConsent,
+            onboardingType, aadharNumber, aadharFrontUrl, aadharBackUrl, panNumber
         } = req.body;
 
         // Basic validation
@@ -63,26 +65,27 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
             res.status(400).json({ message: 'Contact number and name are required' });
             return;
         }
-
-        // Validate bestDishes (at least 1 required)
+        if (!operatingHours || !operatingHours.openTime || !operatingHours.closeTime || !operatingHours.days) {
+            res.status(400).json({ message: 'Operating hours are required' });
+            return;
+        }
         if (!bestDishes || bestDishes.length < 1 || !bestDishes[0].name || !bestDishes[0].name.trim()) {
             res.status(400).json({ message: 'At least one best dish is required and must have a name' });
             return;
         }
 
-        // Filter out bestDishes without a name before saving
-        const filteredBestDishes = bestDishes ? bestDishes.filter((dish: any) => dish.name && dish.name.trim()) : [];
-
-        // Check if contact number already exists
+        // Check for duplicate contact number
         const existingUser = await User.findOne({ contactNumber });
         if (existingUser) {
             res.status(409).json({ message: 'User with that contact number already exists' });
             return;
         }
 
+        // Create and save the user with all fields
         const newUser = new User({
-            contactNumber, name, status, openTime, closeTime, operatingHours, foodType, bestDishes: filteredBestDishes, menuLink, mapsLink,
-            profilePictures, preferredLanguages, foodCategories, stallType, whatsappConsent, onboardingType, aadharNumber, aadharFrontUrl, aadharBackUrl, panNumber
+            contactNumber, name, status, mapsLink, operatingHours, foodType, bestDishes: bestDishes.filter((dish: any) => dish.name && dish.name.trim()), menuLink,
+            profilePictures, preferredLanguages, foodCategories, stallType, whatsappConsent,
+            onboardingType, aadharNumber, aadharFrontUrl, aadharBackUrl, panNumber
         });
         await newUser.save();
 
@@ -107,9 +110,9 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
 
         // Schedule WhatsApp message to vendor half hour before openTime
         try {
-            if (client && openTime) {
+            if (client && operatingHours.openTime) {
                 // Parse openTime (e.g., '11:00') and schedule for half hour before
-                const [openHour, openMinute] = openTime.split(':').map(Number);
+                const [openHour, openMinute] = operatingHours.openTime.split(':').map(Number);
                 const now = new Date();
                 let scheduledTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), openHour, openMinute);
                 scheduledTime.setMinutes(scheduledTime.getMinutes() - 30);
