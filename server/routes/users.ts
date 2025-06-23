@@ -39,6 +39,22 @@ const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
     });
 };
 
+// Helper: Convert day names to numbers
+const dayNameToNumber: Record<string, number> = {
+  Sunday: 0,
+  Monday: 1,
+  Tuesday: 2,
+  Wednesday: 3,
+  Thursday: 4,
+  Friday: 5,
+  Saturday: 6,
+};
+function normalizeDays(days: any): number[] {
+  if (!Array.isArray(days)) return [];
+  if (typeof days[0] === 'number') return days;
+  return days.map((d) => dayNameToNumber[d] ?? d).filter((d) => typeof d === 'number');
+}
+
 // GET all regular users
 router.get('/', authenticateToken, async (_req: Request, res: Response) => {
     try {
@@ -79,6 +95,11 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
         if (existingUser) {
             res.status(409).json({ message: 'User with that contact number already exists' });
             return;
+        }
+
+        // Normalize operating hours days
+        if (operatingHours && operatingHours.days) {
+            operatingHours.days = normalizeDays(operatingHours.days);
         }
 
         // Create and save the user with all fields
@@ -231,6 +252,9 @@ router.put('/:id', authenticateToken, async (req: Request, res: Response) => {
         if (aadharFrontUrl) user.aadharFrontUrl = aadharFrontUrl;
         if (aadharBackUrl) user.aadharBackUrl = aadharBackUrl;
         if (panNumber) user.panNumber = panNumber;
+        if (operatingHours && operatingHours.days) {
+            operatingHours.days = normalizeDays(operatingHours.days);
+        }
         user.updatedAt = new Date();
 
         await user.save();

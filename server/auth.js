@@ -10,6 +10,7 @@ import webhookRoutes from './routes/webhook.js';
 import contactsRoutes from './routes/contacts.js';
 import messagesRoutes from './routes/messages.js';
 import verifyRoutes from './routes/verify.js';
+import vendorRoutes from './routes/vendor.js';
 const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -31,6 +32,8 @@ app.use('/api/webhook', webhookRoutes);
 app.use('/api/contacts', contactsRoutes);
 // Use messages routes
 app.use('/api/messages', messagesRoutes);
+// Use vendor routes
+app.use('/api/vendor', vendorRoutes);
 // Health check endpoint
 app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', message: 'Auth server is running' });
