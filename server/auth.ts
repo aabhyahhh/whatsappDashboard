@@ -5,7 +5,6 @@ import cors from 'cors';
 import jwt from 'jsonwebtoken';
 import { connectDB } from './db.js';
 import { Admin } from './models/Admin.js';
-import type { IAdmin } from './models/Admin.js';
 import adminRoutes from './routes/admin.js';
 import userRoutes from './routes/users.js';
 import webhookRoutes from './routes/webhook.js';

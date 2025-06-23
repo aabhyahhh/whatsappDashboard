@@ -1,6 +1,7 @@
-import { Router, Request, Response, NextFunction, RequestHandler, RequestParamHandler } from 'express';
+import { Router } from 'express';
+import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import jwt from 'jsonwebtoken';
-import { Admin, IAdmin } from '../models/Admin';
+import { Admin } from '../models/Admin.js';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'; // Ensure this matches auth.ts

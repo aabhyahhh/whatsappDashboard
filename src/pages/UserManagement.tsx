@@ -380,26 +380,6 @@ export default function UserManagement() {
     }));
   };
 
-  const handleEditSelectAllDays = (checked: boolean) => {
-    setEditForm(prev => ({
-      ...prev,
-      operatingHours: {
-        ...prev.operatingHours,
-        days: checked ? [...allDays] : [],
-        openTime: prev.operatingHours?.openTime || '',
-        closeTime: prev.operatingHours?.closeTime || '',
-      },
-    }));
-  };
-
-  if (loading) {
-    return <div className="text-center py-10">Loading users...</div>;
-  }
-
-  if (error) {
-    return <div className="text-center py-10 text-red-600">Error: {error}</div>;
-  }
-
   const handleDayChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { value, checked } = e.target;
     setNewUser((prev) => {
@@ -430,6 +410,14 @@ export default function UserManagement() {
   };
 
   const timeOptions = generateTimeOptions();
+
+  if (loading) {
+    return <div className="text-center py-10">Loading users...</div>;
+  }
+
+  if (error) {
+    return <div className="text-center py-10 text-red-600">Error: {error}</div>;
+  }
 
   return (
     <AdminLayout>

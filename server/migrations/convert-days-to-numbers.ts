@@ -31,7 +31,6 @@ const migrateDays = async () => {
 
     for (const user of users) {
         if (user.operatingHours && Array.isArray(user.operatingHours.days)) {
-            const originalDays = [...user.operatingHours.days];
             const newDays = (user.operatingHours.days as any[])
                 .map(day => {
                     if (typeof day === 'string') {

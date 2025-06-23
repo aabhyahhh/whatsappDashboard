@@ -2,8 +2,6 @@ import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
-import type { IUser } from '../models/User.js';
-import { Admin } from '../models/Admin.js'; // Import Admin model for JWT_SECRET consistency
 import schedule from 'node-schedule';
 import { client } from '../twilio.js';
 import multer from 'multer';
