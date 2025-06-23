@@ -89,20 +89,30 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
         });
         await newUser.save();
 
-        // Send WhatsApp message to the new user
+        // Send WhatsApp message to the new user based on preferred language
         try {
             if (client) {
+                let contentSid = 'HXda3c67f5aec058d4f6d8d66f360a8c82'; // Default to English
+                if (preferredLanguages && Array.isArray(preferredLanguages)) {
+                    if (preferredLanguages.includes('English')) {
+                        contentSid = 'HXda3c67f5aec058d4f6d8d66f360a8c82';
+                    } else if (preferredLanguages.includes('Hindi')) {
+                        contentSid = 'HX5c2c5ca61cd5880f46e88afd33363a8b';
+                    } else if (preferredLanguages.includes('Gujarati')) {
+                        contentSid = 'HX48a3862650a7569ec5f9f2d70b3a4da5';
+                    }
+                }
                 const msgPayload: any = {
                     from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
                     to: `whatsapp:${contactNumber}`,
-                    contentSid: 'HX6a0f4a444898f786438781e8e2058a46',
+                    contentSid,
                     contentVariables: JSON.stringify({})
                 };
                 if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
                     msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
                 }
                 const twilioResp = await client.messages.create(msgPayload);
-                console.log('✅ Sent welcome template message HX6a0f4a444898f786438781e8e2058a46 to new user. Twilio response:', twilioResp);
+                console.log(`✅ Sent welcome template message ${contentSid} to new user. Twilio response:`, twilioResp);
             }
         } catch (err: any) {
             console.error('Failed to send WhatsApp message to new user:', err?.message || err, err);

@@ -172,6 +172,19 @@ export default function UserManagement() {
     });
   };
 
+  const dayStringToNumber = (day: string) => {
+    switch (day) {
+      case 'Sunday': return 0;
+      case 'Monday': return 1;
+      case 'Tuesday': return 2;
+      case 'Wednesday': return 3;
+      case 'Thursday': return 4;
+      case 'Friday': return 5;
+      case 'Saturday': return 6;
+      default: return -1;
+    }
+  };
+
   const handleAddUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAddError(null);
@@ -203,7 +216,10 @@ export default function UserManagement() {
       contactNumber: newUser.contactNumber,
       name: newUser.name,
       mapsLink: newUser.mapsLink,
-      operatingHours: newUser.operatingHours,
+      operatingHours: {
+        ...newUser.operatingHours,
+        days: newUser.operatingHours.days.map(dayStringToNumber),
+      },
       bestDishes: newUser.bestDishes.filter(dish => dish.name && dish.name.trim()),
       foodType: newUser.foodType,
       profilePictures: newUser.profilePictures,
