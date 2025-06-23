@@ -52,7 +52,7 @@ const authorizeSuperAdmin = (req: Request, res: Response, next: NextFunction) =>
 };
 
 // GET all admin users
-router.get('/users', authenticateToken, authorizeSuperAdmin, asyncHandler(async (req: Request, res: Response) => {
+router.get('/users', authenticateToken, authorizeSuperAdmin, asyncHandler(async (_req: Request, res: Response) => {
     const admins = await Admin.find().select('-password'); // Exclude passwords
     res.json(admins);
 }));
