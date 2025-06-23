@@ -50,6 +50,17 @@ const dayNameToNumber: Record<string, number> = {
   Saturday: 6,
 };
 function normalizeDays(days: any): number[] {
+  if (!days) return [];
+  // If it's a string, try to parse it as JSON
+  if (typeof days === 'string') {
+    try {
+      // Replace single quotes with double quotes for JSON.parse
+      const parsed = JSON.parse(days.replace(/'/g, '"'));
+      if (Array.isArray(parsed)) days = parsed;
+    } catch (e) {
+      return [];
+    }
+  }
   if (!Array.isArray(days)) return [];
   if (typeof days[0] === 'number') return days;
   return days.map((d) => dayNameToNumber[d] ?? d).filter((d) => typeof d === 'number');
