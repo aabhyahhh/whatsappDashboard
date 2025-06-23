@@ -1,15 +1,17 @@
 import 'dotenv/config';
-import express, { Request, Response, RequestHandler } from 'express';
+import express from 'express';
+import type { Request, Response, RequestHandler } from 'express';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
-import { connectDB } from './db';
-import { Admin, IAdmin } from './models/Admin';
-import adminRoutes from './routes/admin';
-import userRoutes from './routes/users';
-import webhookRoutes from './routes/webhook';
-import contactsRoutes from './routes/contacts';
-import messagesRoutes from './routes/messages';
-import verifyRoutes from './routes/verify';
+import { connectDB } from './db.js';
+import { Admin } from './models/Admin.js';
+import type { IAdmin } from './models/Admin.js';
+import adminRoutes from './routes/admin.js';
+import userRoutes from './routes/users.js';
+import webhookRoutes from './routes/webhook.js';
+import contactsRoutes from './routes/contacts.js';
+import messagesRoutes from './routes/messages.js';
+import verifyRoutes from './routes/verify.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
