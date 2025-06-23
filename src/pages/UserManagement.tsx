@@ -629,14 +629,14 @@ export default function UserManagement() {
                 </div>
                 <div className="mb-2">
                   <label className="block font-semibold mb-1">Aadhar Number (optional):</label>
-                  <input
-                    type="text"
+                <input
+                  type="text"
                     value={newUser.aadharNumber}
                     onChange={(e) => setNewUser(prev => ({ ...prev, aadharNumber: e.target.value }))}
                     className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     placeholder="Enter Aadhar Number"
-                  />
-                </div>
+                />
+              </div>
                 <div className="mb-2">
                   <label className="block font-semibold mb-1">Aadhar Photo (Front, optional):</label>
                   <input
@@ -657,7 +657,7 @@ export default function UserManagement() {
                     }}
                   />
                   {newUser.aadharFrontUrl && <img src={newUser.aadharFrontUrl} alt="Aadhar Front" className="w-20 h-20 object-cover rounded border mt-2" />}
-                </div>
+              </div>
                 <div className="mb-2">
                   <label className="block font-semibold mb-1">Aadhar Photo (Back, optional):</label>
                   <input
@@ -725,7 +725,7 @@ export default function UserManagement() {
                   </div>
                 </div>
                 <div className="mt-2">
-                  <label className="block text-sm font-medium text-gray-700">Operating Days</label>
+                <label className="block text-sm font-medium text-gray-700">Operating Days</label>
                   <div className="mb-2">
                     <label className="inline-flex items-center">
                       <input
@@ -739,73 +739,73 @@ export default function UserManagement() {
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-1">
                     {allDays.map((day) => (
-                      <label key={day} className="inline-flex items-center">
-                        <input
-                          type="checkbox"
-                          name="days"
-                          value={day}
-                          checked={newUser.operatingHours.days.includes(day)}
+                    <label key={day} className="inline-flex items-center">
+                      <input
+                        type="checkbox"
+                        name="days"
+                        value={day}
+                        checked={newUser.operatingHours.days.includes(day)}
                           onChange={(e) => handleDayChange(e)}
                           className="form-checkbox h-5 w-5 text-blue-600"
-                        />
-                        <span className="ml-2 text-sm text-gray-700">{day}</span>
-                      </label>
-                    ))}
-                  </div>
+                      />
+                      <span className="ml-2 text-sm text-gray-700">{day}</span>
+                    </label>
+                  ))}
                 </div>
+              </div>
               </div>
               <div className="space-y-2 border border-gray-200 rounded-lg p-4 my-4 bg-gray-50">
                 <label className="block text-sm font-medium text-gray-700">Best Dishes (at least 1 required)</label>
-                {[...Array(6)].map((_, index) => (
-                  <div key={index} className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor={`newBestDishName${index + 1}`} className="block text-sm font-medium text-gray-700">Best Dish {index + 1}{index === 0 && ' (Required)'}</label>
-                      <input
-                        type="text"
-                        name={`bestDishName${index + 1}`}
-                        id={`newBestDishName${index + 1}`}
-                        value={newUser.bestDishes[index]?.name || ''}
-                        onChange={(e) => handleAddDishChange(index, 'name', e.target.value)}
-                        required={index === 0}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor={`newBestDishPrice${index + 1}`} className="block text-sm font-medium text-gray-700">Price</label>
-                      <input
-                        type="number"
-                        name={`newBestDishPrice${index + 1}`}
-                        id={`newBestDishPrice${index + 1}`}
-                        value={newUser.bestDishes[index]?.price || ''}
-                        onChange={(e) => handleAddDishChange(index, 'price', e.target.value === '' ? '' : parseFloat(e.target.value))}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                      />
-                    </div>
+              {[...Array(6)].map((_, index) => (
+                <div key={index} className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor={`newBestDishName${index + 1}`} className="block text-sm font-medium text-gray-700">Best Dish {index + 1}{index === 0 && ' (Required)'}</label>
+                    <input
+                      type="text"
+                      name={`bestDishName${index + 1}`}
+                      id={`newBestDishName${index + 1}`}
+                      value={newUser.bestDishes[index]?.name || ''}
+                      onChange={(e) => handleAddDishChange(index, 'name', e.target.value)}
+                      required={index === 0}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    />
                   </div>
-                ))}
+                  <div>
+                    <label htmlFor={`newBestDishPrice${index + 1}`} className="block text-sm font-medium text-gray-700">Price</label>
+                    <input
+                      type="number"
+                        name={`newBestDishPrice${index + 1}`}
+                      id={`newBestDishPrice${index + 1}`}
+                      value={newUser.bestDishes[index]?.price || ''}
+                      onChange={(e) => handleAddDishChange(index, 'price', e.target.value === '' ? '' : parseFloat(e.target.value))}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    />
+                  </div>
+                </div>
+              ))}
               </div>
               <div className="space-y-2 border border-gray-200 rounded-lg p-4 my-4 bg-gray-50">
-                <div>
-                  <label htmlFor="newMenuLink" className="block text-sm font-medium text-gray-700">Menu Link</label>
-                  <input
-                    type="text"
-                    name="menuLink"
-                    id="newMenuLink"
-                    value={newUser.menuLink}
-                    onChange={handleAddUserChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="newMapsLink" className="block text-sm font-medium text-gray-700">Maps Link</label>
-                  <input
-                    type="text"
-                    name="mapsLink"
-                    id="newMapsLink"
-                    value={newUser.mapsLink}
-                    onChange={handleAddUserChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  />
+              <div>
+                <label htmlFor="newMenuLink" className="block text-sm font-medium text-gray-700">Menu Link</label>
+                <input
+                  type="text"
+                  name="menuLink"
+                  id="newMenuLink"
+                  value={newUser.menuLink}
+                  onChange={handleAddUserChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="newMapsLink" className="block text-sm font-medium text-gray-700">Maps Link</label>
+                <input
+                  type="text"
+                  name="mapsLink"
+                  id="newMapsLink"
+                  value={newUser.mapsLink}
+                  onChange={handleAddUserChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
                 </div>
               </div>
               <button
