@@ -523,7 +523,7 @@ export default function UserManagement() {
                           type="checkbox"
                           value={lang}
                           checked={newUser.preferredLanguages.includes(lang)}
-                          onChange={(e) => {
+                          onChange={() => {
                             setNewUser(prev => {
                               const arr = prev.preferredLanguages.includes(lang)
                                 ? prev.preferredLanguages.filter(l => l !== lang)
@@ -546,7 +546,7 @@ export default function UserManagement() {
                           type="checkbox"
                           value={cat}
                           checked={newUser.foodCategories.includes(cat)}
-                          onChange={(e) => {
+                          onChange={() => {
                             setNewUser(prev => {
                               const arr = prev.foodCategories.includes(cat)
                                 ? prev.foodCategories.filter(c => c !== cat)
@@ -588,7 +588,7 @@ export default function UserManagement() {
                     <input
                       type="checkbox"
                       checked={newUser.whatsappConsent}
-                      onChange={(e) => setNewUser(prev => ({ ...prev, whatsappConsent: e.target.checked }))}
+                      onChange={() => setNewUser(prev => ({ ...prev, whatsappConsent: !prev.whatsappConsent }))}
                     />
                     Consent to receive WhatsApp messages
                   </label>
@@ -886,7 +886,7 @@ export default function UserManagement() {
                       type="checkbox"
                       value={lang}
                       checked={editForm.preferredLanguages?.includes(lang) || false}
-                      onChange={(e) => {
+                      onChange={() => {
                         setEditForm(prev => {
                           const arr = prev.preferredLanguages?.includes(lang)
                             ? prev.preferredLanguages.filter(l => l !== lang)
@@ -947,7 +947,7 @@ export default function UserManagement() {
                   <input
                     type="checkbox"
                     checked={editForm.whatsappConsent || false}
-                    onChange={(e) => setEditForm(prev => ({ ...prev, whatsappConsent: e.target.checked }))}
+                    onChange={() => setEditForm(prev => ({ ...prev, whatsappConsent: !prev.whatsappConsent }))}
                   />
                   Consent to receive WhatsApp messages
                 </label>
