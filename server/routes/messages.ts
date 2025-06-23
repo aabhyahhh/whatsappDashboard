@@ -1,5 +1,6 @@
-import { Router, Request, Response, NextFunction } from 'express';
-import { Message } from '../models/Message';
+import { Router } from 'express';
+import type { Request, Response, NextFunction } from 'express';
+import { Message } from '../models/Message.js';
 import twilio from 'twilio';
 
 const router = Router();
@@ -17,7 +18,7 @@ function escapeRegExp(string: string) {
 }
 
 // POST /api/send - Send WhatsApp message via Twilio
-router.post('/send', async (req, res, next) => {
+router.post('/send', async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { to, body } = req.body;
 
@@ -94,15 +95,15 @@ router.post('/send', async (req, res, next) => {
 });
 
 // Error-handling middleware for this router
-router.use((err: any, req: Request, res: Response, next: NextFunction) => {
-    console.error('Unhandled error in /api/messages:', err);
+router.use((_err: any, _req: Request, res: Response, _next: NextFunction) => {
+    console.error('Unhandled error in /api/messages:', (_err as Error)?.message || _err);
     if (!res.headersSent) {
-        res.status(500).json({ error: 'Internal server error', details: err?.message || err });
+        res.status(500).json({ error: 'Internal server error', details: (_err as Error)?.message || _err });
     }
 });
 
 // GET /api/messages/:phone - Fetch messages for a specific phone number
-router.get('/:phone', async (req, res) => {
+router.get('/:phone', async (req: Request, res: Response) => {
     try {
         const { phone } = req.params;
         const escapedPhone = escapeRegExp(phone); // Escape the phone number

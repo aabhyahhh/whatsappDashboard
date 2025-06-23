@@ -40,7 +40,7 @@ const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
 };
 
 // GET all regular users
-router.get('/', authenticateToken, async (req: Request, res: Response) => {
+router.get('/', authenticateToken, async (_req: Request, res: Response) => {
     try {
         const users = await User.find();
         res.json(users);
@@ -231,7 +231,7 @@ router.delete('/:id', authenticateToken, async (req: Request, res: Response) => 
 });
 
 // GET all user contact numbers and names (public, for contacts list)
-router.get('/user-contacts', async (req: Request, res: Response) => {
+router.get('/user-contacts', async (_req: Request, res: Response) => {
     try {
         const users = await User.find({}, { contactNumber: 1, name: 1, _id: 0 });
         res.json(users);

@@ -523,7 +523,7 @@ export default function UserManagement() {
                           type="checkbox"
                           value={lang}
                           checked={newUser.preferredLanguages.includes(lang)}
-                          onChange={e => {
+                          onChange={(e) => {
                             setNewUser(prev => {
                               const arr = prev.preferredLanguages.includes(lang)
                                 ? prev.preferredLanguages.filter(l => l !== lang)
@@ -546,7 +546,7 @@ export default function UserManagement() {
                           type="checkbox"
                           value={cat}
                           checked={newUser.foodCategories.includes(cat)}
-                          onChange={e => {
+                          onChange={(e) => {
                             setNewUser(prev => {
                               const arr = prev.foodCategories.includes(cat)
                                 ? prev.foodCategories.filter(c => c !== cat)
@@ -588,7 +588,7 @@ export default function UserManagement() {
                     <input
                       type="checkbox"
                       checked={newUser.whatsappConsent}
-                      onChange={e => setNewUser(prev => ({ ...prev, whatsappConsent: e.target.checked }))}
+                      onChange={(e) => setNewUser(prev => ({ ...prev, whatsappConsent: e.target.checked }))}
                     />
                     Consent to receive WhatsApp messages
                   </label>
@@ -616,7 +616,7 @@ export default function UserManagement() {
                   <input
                     type="text"
                     value={newUser.aadharNumber}
-                    onChange={e => setNewUser(prev => ({ ...prev, aadharNumber: e.target.value }))}
+                    onChange={(e) => setNewUser(prev => ({ ...prev, aadharNumber: e.target.value }))}
                     className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     placeholder="Enter Aadhar Number"
                   />
@@ -668,7 +668,7 @@ export default function UserManagement() {
                   <input
                     type="text"
                     value={newUser.panNumber}
-                    onChange={e => setNewUser(prev => ({ ...prev, panNumber: e.target.value }))}
+                    onChange={(e) => setNewUser(prev => ({ ...prev, panNumber: e.target.value }))}
                     className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     placeholder="Enter PAN Number"
                   />
@@ -715,7 +715,7 @@ export default function UserManagement() {
                       <input
                         type="checkbox"
                         checked={newUser.operatingHours.days.length === allDays.length}
-                        onChange={e => handleSelectAllDays(e.target.checked)}
+                        onChange={(e) => handleSelectAllDays(e.target.checked)}
                         className="form-checkbox h-5 w-5 text-blue-600"
                       />
                       <span className="ml-2 text-sm font-semibold">Select All</span>
@@ -729,7 +729,7 @@ export default function UserManagement() {
                           name="days"
                           value={day}
                           checked={newUser.operatingHours.days.includes(day)}
-                          onChange={handleDayChange}
+                          onChange={(e) => handleDayChange(e)}
                           className="form-checkbox h-5 w-5 text-blue-600"
                         />
                         <span className="ml-2 text-sm text-gray-700">{day}</span>
@@ -886,7 +886,7 @@ export default function UserManagement() {
                       type="checkbox"
                       value={lang}
                       checked={editForm.preferredLanguages?.includes(lang) || false}
-                      onChange={e => {
+                      onChange={(e) => {
                         setEditForm(prev => {
                           const arr = prev.preferredLanguages?.includes(lang)
                             ? prev.preferredLanguages.filter(l => l !== lang)
@@ -903,7 +903,7 @@ export default function UserManagement() {
                 <label>Category of Food:</label>
                 <select
                   value={editForm.foodCategories?.join(', ') || ''}
-                  onChange={e => setEditForm(prev => ({ ...prev, foodCategories: e.target.value.split(', ') }))}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, foodCategories: e.target.value.split(', ') }))}
                 >
                   <option value="">Select</option>
                   <option>Chaat</option>
@@ -947,7 +947,7 @@ export default function UserManagement() {
                   <input
                     type="checkbox"
                     checked={editForm.whatsappConsent || false}
-                    onChange={e => setEditForm(prev => ({ ...prev, whatsappConsent: e.target.checked }))}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, whatsappConsent: e.target.checked }))}
                   />
                   Consent to receive WhatsApp messages
                 </label>

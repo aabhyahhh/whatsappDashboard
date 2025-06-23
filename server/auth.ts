@@ -43,7 +43,7 @@ app.use('/api/contacts', contactsRoutes);
 app.use('/api/messages', messagesRoutes);
 
 // Health check endpoint
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', message: 'Auth server is running' });
 });
 
