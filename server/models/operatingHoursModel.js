@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-const operatingHoursSchema = new mongoose.Schema({
+var operatingHoursSchema = new mongoose.Schema({
     openTime: { type: String, required: true },
     closeTime: { type: String, required: true },
     days: { type: [Number], required: true }

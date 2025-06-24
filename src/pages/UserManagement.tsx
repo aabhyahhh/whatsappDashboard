@@ -233,6 +233,7 @@ export default function UserManagement() {
       aadharFrontUrl: newUser.aadharFrontUrl,
       aadharBackUrl: newUser.aadharBackUrl,
       panNumber: newUser.panNumber,
+      mobile_verified: isVerified,
     };
 
     try {

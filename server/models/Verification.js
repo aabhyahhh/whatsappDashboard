@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-const verificationSchema = new mongoose.Schema({
+var verificationSchema = new mongoose.Schema({
     phone: { type: String, unique: true },
     otp: String,
     isVerified: { type: Boolean, default: false },

@@ -17,6 +17,10 @@ const userSchema = new mongoose.Schema({
         required: true,
         index: true
     },
+    mobile_verified: {
+        type: Boolean,
+        default: false
+    },
     status: {
         type: String,
         required: false

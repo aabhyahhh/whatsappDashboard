@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 const vendorSchema = new mongoose.Schema({
   name: { type: String, required: true },
   contactNumber: { type: String, required: true, unique: true },
+  mobile_verified: {type: Boolean, default: false},
   mapsLink: { type: String },
   operatingHours: {
     openTime: { type: String, required: true },

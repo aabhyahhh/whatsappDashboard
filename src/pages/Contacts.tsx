@@ -8,6 +8,7 @@ interface Contact {
   lastSeen: string;
   createdAt: string;
   updatedAt: string;
+  name?: string;
 }
 
 interface UserContact {
@@ -20,6 +21,8 @@ export default function Contacts() {
   const [userContacts, setUserContacts] = useState<UserContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editingContactId, setEditingContactId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState<string>('');
 
   useEffect(() => {
     const fetchContacts = async () => {
@@ -92,6 +95,35 @@ export default function Contacts() {
     }
   };
 
+  // Add save name handler for incoming contacts
+  const handleEditName = (contactId: string, currentName: string) => {
+    setEditingContactId(contactId);
+    setEditingName(currentName || '');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingContactId(null);
+    setEditingName('');
+  };
+
+  const handleSaveName = async (contactId: string) => {
+    if (!editingName.trim()) return;
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/contacts/${contactId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editingName.trim() })
+      });
+      if (!response.ok) throw new Error('Failed to update name');
+      const updatedContact = await response.json();
+      setContacts((prev) => prev.map(c => c._id === contactId ? { ...c, name: updatedContact.name } : c));
+      setEditingContactId(null);
+      setEditingName('');
+    } catch (err) {
+      alert('Failed to update name');
+    }
+  };
+
   if (loading) {
     return (
       <AdminLayout>
@@ -121,23 +153,22 @@ export default function Contacts() {
           <p className="text-gray-600">Manage your WhatsApp contacts and view conversation history</p>
         </div>
 
-        {/* Contacts List */}
-        <div className="bg-white rounded-lg shadow-md">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-800">Contact List</h2>
-            <p className="text-gray-600 mt-1">Total contacts: {contacts.length + userContacts.length}</p>
-          </div>
-          {(contacts.length === 0 && userContacts.length === 0) ? (
-            <div className="p-6 text-center">
-              <p className="text-gray-500">No contacts found.</p>
+        {/* Incoming Contacts (Blue) */}
+        {contacts.length > 0 && (
+          <div className="bg-white rounded-lg shadow-md">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-blue-700">Incoming Contacts</h2>
+              <p className="text-gray-600 mt-1">Total incoming: {contacts.length}</p>
             </div>
-          ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Name / Phone Number
+                      Phone Number
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Name
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Last Seen
@@ -151,7 +182,6 @@ export default function Contacts() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {/* WhatsApp contacts */}
                   {contacts.map((contact) => (
                     <tr key={contact._id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -169,6 +199,41 @@ export default function Contacts() {
                             </div>
                           </div>
                         </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {editingContactId === contact._id ? (
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="text"
+                              className="border rounded px-2 py-1 text-sm"
+                              value={editingName}
+                              onChange={e => setEditingName(e.target.value)}
+                              autoFocus
+                            />
+                            <button
+                              className="text-green-600 hover:text-green-900 font-semibold"
+                              onClick={() => handleSaveName(contact._id)}
+                            >
+                              Save
+                            </button>
+                            <button
+                              className="text-gray-500 hover:text-gray-700"
+                              onClick={handleCancelEdit}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center space-x-2">
+                            <span>{contact.name || <span className="italic text-gray-400">(no name)</span>}</span>
+                            <button
+                              className="text-blue-500 hover:text-blue-700 text-xs underline"
+                              onClick={() => handleEditName(contact._id, contact.name || '')}
+                            >
+                              Edit
+                            </button>
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {formatLastSeen(contact.lastSeen)}
@@ -189,7 +254,35 @@ export default function Contacts() {
                       </td>
                     </tr>
                   ))}
-                  {/* User contacts */}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Outgoing Contacts (Green) */}
+        {userContacts.length > 0 && (
+          <div className="bg-white rounded-lg shadow-md">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-green-700">Outgoing Contacts</h2>
+              <p className="text-gray-600 mt-1">Total outgoing: {userContacts.length}</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Name
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Phone Number
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
                   {userContacts.map((user) => (
                     <tr key={user.contactNumber} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -205,17 +298,11 @@ export default function Contacts() {
                             <div className="text-sm font-medium text-gray-900">
                               {user.name}
                             </div>
-                            <div className="text-xs text-gray-500">
-                              {user.contactNumber}
-                            </div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        --
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        --
+                        {user.contactNumber}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button
@@ -233,8 +320,15 @@ export default function Contacts() {
                 </tbody>
               </table>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {/* No contacts fallback */}
+        {(contacts.length === 0 && userContacts.length === 0) && (
+          <div className="bg-white rounded-lg shadow-md p-6 text-center">
+            <p className="text-gray-500">No contacts found.</p>
+          </div>
+        )}
       </div>
     </AdminLayout>
   );
