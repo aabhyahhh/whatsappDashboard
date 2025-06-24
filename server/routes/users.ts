@@ -315,7 +315,7 @@ router.delete('/:id', authenticateToken, async (req: Request, res: Response) => 
 });
 
 // ADD THIS: Database cleanup script (run this once to fix existing data)
-router.post('/cleanup-operating-hours', authenticateToken, async (req: Request, res: Response) => {
+router.post('/cleanup-operating-hours', authenticateToken, async (_req: Request, res: Response) => {
     try {
         console.log('Starting database cleanup for operatingHours...');
         
@@ -399,7 +399,7 @@ router.post('/upload-images', authenticateToken, upload.array('images', 10), asy
 });
 
 // Schedule for sending opening reminders
-const job = schedule.scheduleJob('*/10 * * * *', async () => {
+schedule.scheduleJob('*/10 * * * *', async () => {
     // ... existing code ...
 });
 
