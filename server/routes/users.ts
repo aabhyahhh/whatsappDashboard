@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import { client } from '../twilio.js';
 import multer from 'multer';
+import schedule from 'node-schedule';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'; // Ensure this matches auth.ts
@@ -197,8 +198,7 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
     }
 });
 
-// PUT update a user by ID
-// Alternative: More robust validation in the PUT route
+// PUT update a user by ID - FIXED VERSION
 router.put('/:id', authenticateToken, async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
@@ -206,12 +206,6 @@ router.put('/:id', authenticateToken, async (req: Request, res: Response) => {
             contactNumber, name, status, openTime, closeTime, operatingHours, foodType, bestDishes, menuLink, mapsLink,
             profilePictures, preferredLanguages, foodCategories, stallType, whatsappConsent, onboardingType, aadharNumber, aadharFrontUrl, aadharBackUrl, panNumber
         } = req.body;
-
-        const user = await User.findById(id);
-        if (!user) {
-            res.status(404).json({ message: 'User not found' });
-            return;
-        }
 
         // Basic validation for updates
         if (bestDishes) {
@@ -222,64 +216,80 @@ router.put('/:id', authenticateToken, async (req: Request, res: Response) => {
         }
 
         // Filter out bestDishes without a name before saving
-        const filteredBestDishes = bestDishes ? bestDishes.filter((dish: any) => dish.name && dish.name.trim()) : user.bestDishes;
+        const filteredBestDishes = bestDishes ? bestDishes.filter((dish: any) => dish.name && dish.name.trim()) : undefined;
 
-        if (contactNumber) user.contactNumber = contactNumber;
-        if (name) user.name = name;
-        if (status) user.status = status;
+        // Prepare the update object
+        const updateFields: any = {};
 
-        // Consolidate operating hours updates into user.operatingHours
-        if (!user.operatingHours) {
-            user.operatingHours = { openTime: '', closeTime: '', days: [] };
+        if (contactNumber) updateFields.contactNumber = contactNumber;
+        if (name) updateFields.name = name;
+        if (status) updateFields.status = status;
+        if (foodType) updateFields.foodType = foodType;
+        if (filteredBestDishes) updateFields.bestDishes = filteredBestDishes;
+        if (menuLink) updateFields.menuLink = menuLink;
+        if (mapsLink) updateFields.mapsLink = mapsLink;
+        if (profilePictures) updateFields.profilePictures = profilePictures;
+        if (preferredLanguages) updateFields.preferredLanguages = preferredLanguages;
+        if (foodCategories) updateFields.foodCategories = foodCategories;
+        if (stallType) updateFields.stallType = stallType;
+        if (typeof whatsappConsent === 'boolean') updateFields.whatsappConsent = whatsappConsent;
+        if (onboardingType) updateFields.onboardingType = onboardingType;
+        if (aadharNumber) updateFields.aadharNumber = aadharNumber;
+        if (aadharFrontUrl) updateFields.aadharFrontUrl = aadharFrontUrl;
+        if (aadharBackUrl) updateFields.aadharBackUrl = aadharBackUrl;
+        if (panNumber) updateFields.panNumber = panNumber;
+
+        // Handle operating hours with special care
+        const existingUser = await User.findById(id);
+        if (!existingUser) {
+            res.status(404).json({ message: 'User not found' });
+            return;
         }
-        
+
+        // Initialize operating hours if it doesn't exist
+        let currentOperatingHours = existingUser.operatingHours || { openTime: '', closeTime: '', days: [] };
+
+        // Update operating hours fields
         if (operatingHours) {
-            if (operatingHours.openTime) user.operatingHours.openTime = operatingHours.openTime;
-            if (operatingHours.closeTime) user.operatingHours.closeTime = operatingHours.closeTime;
+            if (operatingHours.openTime) currentOperatingHours.openTime = operatingHours.openTime;
+            if (operatingHours.closeTime) currentOperatingHours.closeTime = operatingHours.closeTime;
             if (operatingHours.days !== undefined) {
-                // Add validation and logging
                 console.log('Original operatingHours.days:', operatingHours.days);
                 console.log('Type of operatingHours.days:', typeof operatingHours.days);
                 
                 const normalizedDays = normalizeDays(operatingHours.days);
                 console.log('Normalized days:', normalizedDays);
                 
-                if (normalizedDays.length === 0 && operatingHours.days) {
-                    console.warn('Failed to normalize days, keeping existing:', user.operatingHours.days);
-                } else {
-                    user.operatingHours.days = normalizedDays;
-                }
+                currentOperatingHours.days = normalizedDays;
             }
         }
-        
-        // Handle legacy top-level openTime/closeTime for backward compatibility
-        if (openTime) {
-            user.operatingHours.openTime = openTime;
-        }
-        if (closeTime) {
-            user.operatingHours.closeTime = closeTime;
-        }
-        
-        // Update other fields
-        if (foodType) user.foodType = foodType;
-        user.bestDishes = filteredBestDishes;
-        if (menuLink) user.menuLink = menuLink;
-        if (mapsLink) user.mapsLink = mapsLink;
-        if (profilePictures) user.profilePictures = profilePictures;
-        if (preferredLanguages) user.preferredLanguages = preferredLanguages;
-        if (foodCategories) user.foodCategories = foodCategories;
-        if (stallType) user.stallType = stallType;
-        if (typeof whatsappConsent === 'boolean') user.whatsappConsent = whatsappConsent;
-        if (onboardingType) user.onboardingType = onboardingType;
-        if (aadharNumber) user.aadharNumber = aadharNumber;
-        if (aadharFrontUrl) user.aadharFrontUrl = aadharFrontUrl;
-        if (aadharBackUrl) user.aadharBackUrl = aadharBackUrl;
-        if (panNumber) user.panNumber = panNumber;
-        
-        user.updatedAt = new Date();
 
-        await user.save();
-        res.json({ message: 'User updated successfully', user });
+        // Handle legacy fields
+        if (openTime) currentOperatingHours.openTime = openTime;
+        if (closeTime) currentOperatingHours.closeTime = closeTime;
+
+        // Set the complete operating hours object
+        updateFields.operatingHours = currentOperatingHours;
+        updateFields.updatedAt = new Date();
+
+        // Use findByIdAndUpdate with { new: true, runValidators: true }
+        // This bypasses the existing document validation issues
+        const updatedUser = await User.findByIdAndUpdate(
+            id,
+            { $set: updateFields },
+            { 
+                new: true, 
+                runValidators: true,
+                context: 'query' // This helps with validation context
+            }
+        );
+
+        if (!updatedUser) {
+            res.status(404).json({ message: 'User not found' });
+            return;
+        }
+
+        res.json({ message: 'User updated successfully', user: updatedUser });
     } catch (error) {
         console.error('Error updating user:', error);
         res.status(500).json({ message: 'Internal server error' });
@@ -304,6 +314,72 @@ router.delete('/:id', authenticateToken, async (req: Request, res: Response) => 
     }
 });
 
+// ADD THIS: Database cleanup script (run this once to fix existing data)
+router.post('/cleanup-operating-hours', authenticateToken, async (req: Request, res: Response) => {
+    try {
+        console.log('Starting database cleanup for operatingHours...');
+        
+        const users = await User.find({});
+        let fixedCount = 0;
+        let errorCount = 0;
+
+        for (const user of users) {
+            try {
+                let needsUpdate = false;
+                let cleanOperatingHours = user.operatingHours || { openTime: '', closeTime: '', days: [] };
+
+                // Check if days field needs cleaning
+                if (user.operatingHours && user.operatingHours.days) {
+                    const currentDays = user.operatingHours.days;
+                    
+                    // Check if any element is not a number between 0-6
+                    const hasInvalidData = currentDays.some((day: any) => 
+                        typeof day !== 'number' || day < 0 || day > 6
+                    );
+
+                    if (hasInvalidData) {
+                        console.log(`Fixing user ${user._id}: ${user.name}`);
+                        console.log('Current days:', currentDays);
+                        
+                        const normalizedDays = normalizeDays(currentDays);
+                        console.log('Normalized to:', normalizedDays);
+                        
+                        cleanOperatingHours.days = normalizedDays;
+                        needsUpdate = true;
+                    }
+                }
+
+                if (needsUpdate) {
+                    await User.findByIdAndUpdate(
+                        user._id,
+                        { 
+                            $set: { 
+                                operatingHours: cleanOperatingHours,
+                                updatedAt: new Date()
+                            }
+                        },
+                        { runValidators: true }
+                    );
+                    fixedCount++;
+                }
+            } catch (userError) {
+                console.error(`Error fixing user ${user._id}:`, userError);
+                errorCount++;
+            }
+        }
+
+        console.log(`Cleanup completed. Fixed: ${fixedCount}, Errors: ${errorCount}`);
+        res.json({ 
+            message: 'Database cleanup completed', 
+            fixed: fixedCount, 
+            errors: errorCount 
+        });
+    } catch (error) {
+        console.error('Error during database cleanup:', error);
+        res.status(500).json({ message: 'Cleanup failed' });
+    }
+});
+
 // GET all user contact numbers and names (public, for contacts list)
 router.get('/user-contacts', async (_req: Request, res: Response) => {
     try {
@@ -320,6 +396,11 @@ router.post('/upload-images', authenticateToken, upload.array('images', 10), asy
     const files = req.files as Express.Multer.File[];
     const urls = files.map(file => `/uploads/${file.filename}`);
     res.json({ urls });
+});
+
+// Schedule for sending opening reminders
+const job = schedule.scheduleJob('*/10 * * * *', async () => {
+    // ... existing code ...
 });
 
 export default router; 
