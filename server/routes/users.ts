@@ -49,21 +49,46 @@ const dayNameToNumber: Record<string, number> = {
   Saturday: 6,
 };
 function normalizeDays(days: any): number[] {
-  if (!days) return [];
-  // If it's a string, try to parse it as JSON
-  if (typeof days === 'string') {
-    try {
-      // Remove newlines and extra spaces, then replace single quotes with double quotes
-      const cleaned = days.replace(/\n|\r/g, '').replace(/'/g, '"').replace(/ +/g, ' ');
-      const parsed = JSON.parse(cleaned);
-      if (Array.isArray(parsed)) days = parsed;
-    } catch (e) {
-      return [];
+    if (!days) return [];
+
+    let daysArray: any[] = [];
+
+    if (typeof days === 'string') {
+        try {
+            // Attempt to parse the string as JSON, allowing for single quotes
+            const parsed = JSON.parse(days.replace(/'/g, '"'));
+            if (Array.isArray(parsed)) {
+                daysArray = parsed;
+            }
+        } catch (e) {
+            // If JSON parsing fails, treat it as a comma-separated string
+            if (!days.includes('[') && !days.includes(']')) {
+                daysArray = days.split(',').map(s => s.trim());
+            } else {
+                // For malformed JSON-like strings (e.g., from logs), extract day names
+                const dayNames = days.match(/\b(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)\b/g);
+                if (dayNames) {
+                    daysArray = dayNames;
+                } else {
+                    return []; // Cannot parse the string
+                }
+            }
+        }
+    } else if (Array.isArray(days)) {
+        daysArray = days;
     }
-  }
-  if (!Array.isArray(days)) return [];
-  if (typeof days[0] === 'number') return days;
-  return days.map((d) => dayNameToNumber[d] ?? d).filter((d) => typeof d === 'number');
+
+    if (daysArray.length === 0) return [];
+    
+    // If the first element is already a number, assume all are numbers and return
+    if (typeof daysArray[0] === 'number') {
+        return daysArray.filter(d => typeof d === 'number');
+    }
+
+    // Convert day names to numbers
+    return daysArray
+        .map(d => dayNameToNumber[d as keyof typeof dayNameToNumber] ?? d)
+        .filter((d): d is number => typeof d === 'number');
 }
 
 // GET all regular users
