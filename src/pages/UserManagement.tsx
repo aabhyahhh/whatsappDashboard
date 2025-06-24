@@ -629,14 +629,14 @@ export default function UserManagement() {
                 </div>
                 <div className="mb-2">
                   <label className="block font-semibold mb-1">Aadhar Number (optional):</label>
-                  <input
-                    type="text"
+                <input
+                  type="text"
                     value={newUser.aadharNumber}
                     onChange={(e) => setNewUser(prev => ({ ...prev, aadharNumber: e.target.value }))}
                     className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     placeholder="Enter Aadhar Number"
-                  />
-                </div>
+                />
+              </div>
                 <div className="mb-2">
                   <label className="block font-semibold mb-1">Aadhar Photo (Front, optional):</label>
                   <input
@@ -657,7 +657,7 @@ export default function UserManagement() {
                     }}
                   />
                   {newUser.aadharFrontUrl && <img src={newUser.aadharFrontUrl} alt="Aadhar Front" className="w-20 h-20 object-cover rounded border mt-2" />}
-                </div>
+              </div>
                 <div className="mb-2">
                   <label className="block font-semibold mb-1">Aadhar Photo (Back, optional):</label>
                   <input
@@ -725,7 +725,7 @@ export default function UserManagement() {
                   </div>
                 </div>
                 <div className="mt-2">
-                  <label className="block text-sm font-medium text-gray-700">Operating Days</label>
+                <label className="block text-sm font-medium text-gray-700">Operating Days</label>
                   <div className="mb-2">
                     <label className="inline-flex items-center">
                       <input
@@ -739,73 +739,73 @@ export default function UserManagement() {
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-1">
                     {allDays.map((day) => (
-                      <label key={day} className="inline-flex items-center">
-                        <input
-                          type="checkbox"
-                          name="days"
-                          value={day}
-                          checked={newUser.operatingHours.days.includes(day)}
+                    <label key={day} className="inline-flex items-center">
+                      <input
+                        type="checkbox"
+                        name="days"
+                        value={day}
+                        checked={newUser.operatingHours.days.includes(day)}
                           onChange={(e) => handleDayChange(e)}
                           className="form-checkbox h-5 w-5 text-blue-600"
-                        />
-                        <span className="ml-2 text-sm text-gray-700">{day}</span>
-                      </label>
-                    ))}
-                  </div>
+                      />
+                      <span className="ml-2 text-sm text-gray-700">{day}</span>
+                    </label>
+                  ))}
                 </div>
+              </div>
               </div>
               <div className="space-y-2 border border-gray-200 rounded-lg p-4 my-4 bg-gray-50">
                 <label className="block text-sm font-medium text-gray-700">Best Dishes (at least 1 required)</label>
-                {[...Array(6)].map((_, index) => (
-                  <div key={index} className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor={`newBestDishName${index + 1}`} className="block text-sm font-medium text-gray-700">Best Dish {index + 1}{index === 0 && ' (Required)'}</label>
-                      <input
-                        type="text"
-                        name={`bestDishName${index + 1}`}
-                        id={`newBestDishName${index + 1}`}
-                        value={newUser.bestDishes[index]?.name || ''}
-                        onChange={(e) => handleAddDishChange(index, 'name', e.target.value)}
-                        required={index === 0}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor={`newBestDishPrice${index + 1}`} className="block text-sm font-medium text-gray-700">Price</label>
-                      <input
-                        type="number"
-                        name={`newBestDishPrice${index + 1}`}
-                        id={`newBestDishPrice${index + 1}`}
-                        value={newUser.bestDishes[index]?.price || ''}
-                        onChange={(e) => handleAddDishChange(index, 'price', e.target.value === '' ? '' : parseFloat(e.target.value))}
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                      />
-                    </div>
+              {[...Array(6)].map((_, index) => (
+                <div key={index} className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor={`newBestDishName${index + 1}`} className="block text-sm font-medium text-gray-700">Best Dish {index + 1}{index === 0 && ' (Required)'}</label>
+                    <input
+                      type="text"
+                      name={`bestDishName${index + 1}`}
+                      id={`newBestDishName${index + 1}`}
+                      value={newUser.bestDishes[index]?.name || ''}
+                      onChange={(e) => handleAddDishChange(index, 'name', e.target.value)}
+                      required={index === 0}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    />
                   </div>
-                ))}
+                  <div>
+                    <label htmlFor={`newBestDishPrice${index + 1}`} className="block text-sm font-medium text-gray-700">Price</label>
+                    <input
+                      type="number"
+                        name={`newBestDishPrice${index + 1}`}
+                      id={`newBestDishPrice${index + 1}`}
+                      value={newUser.bestDishes[index]?.price || ''}
+                      onChange={(e) => handleAddDishChange(index, 'price', e.target.value === '' ? '' : parseFloat(e.target.value))}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    />
+                  </div>
+                </div>
+              ))}
               </div>
               <div className="space-y-2 border border-gray-200 rounded-lg p-4 my-4 bg-gray-50">
-                <div>
-                  <label htmlFor="newMenuLink" className="block text-sm font-medium text-gray-700">Menu Link</label>
-                  <input
-                    type="text"
-                    name="menuLink"
-                    id="newMenuLink"
-                    value={newUser.menuLink}
-                    onChange={handleAddUserChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="newMapsLink" className="block text-sm font-medium text-gray-700">Maps Link</label>
-                  <input
-                    type="text"
-                    name="mapsLink"
-                    id="newMapsLink"
-                    value={newUser.mapsLink}
-                    onChange={handleAddUserChange}
-                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  />
+              <div>
+                <label htmlFor="newMenuLink" className="block text-sm font-medium text-gray-700">Menu Link</label>
+                <input
+                  type="text"
+                  name="menuLink"
+                  id="newMenuLink"
+                  value={newUser.menuLink}
+                  onChange={handleAddUserChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="newMapsLink" className="block text-sm font-medium text-gray-700">Maps Link</label>
+                <input
+                  type="text"
+                  name="mapsLink"
+                  id="newMapsLink"
+                  value={newUser.mapsLink}
+                  onChange={handleAddUserChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
                 </div>
               </div>
               <button
@@ -820,28 +820,29 @@ export default function UserManagement() {
         )}
 
         {editingUser && (
-          <div ref={editFormRef} className="bg-white p-4 md:p-6 rounded-lg shadow-md mb-4 w-full max-w-2xl mx-auto">
-            <h2 className="text-2xl font-bold mb-4">Edit User</h2>
+          <div ref={editFormRef} className="bg-white p-6 rounded-lg shadow-md mb-4 w-full max-w-2xl mx-auto border border-gray-200">
+            <h2 className="text-2xl font-bold mb-6">Edit User</h2>
             {editError && <div className="text-red-600 mb-4">Error: {editError}</div>}
-            <form onSubmit={handleUpdateUserSubmit} className="space-y-4">
-              <div>
+            <form onSubmit={handleUpdateUserSubmit} className="space-y-6">
+              <div className="space-y-2">
                 <label htmlFor="editContactNumber" className="block text-sm font-medium text-gray-700">Contact Number</label>
-                <input
-                  type="text"
-                  name="contactNumber"
-                  id="editContactNumber"
-                  value={editForm.contactNumber || '+91'}
-                  onChange={(e) => {
-                    // Always keep '+91' at the start
-                    let value = e.target.value;
-                    if (!value.startsWith('+91')) value = '+91' + value.replace(/^\+?91?/, '');
-                    setEditForm((prev) => ({ ...prev, contactNumber: value }));
-                  }}
-                  required
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
+                <div className="flex items-center">
+                  <input
+                    type="text"
+                    name="contactNumber"
+                    id="editContactNumber"
+                    value={editForm.contactNumber || '+91'}
+                    onChange={(e) => {
+                      let value = e.target.value;
+                      if (!value.startsWith('+91')) value = '+91' + value.replace(/^\+?91?/, '');
+                      setEditForm((prev) => ({ ...prev, contactNumber: value }));
+                    }}
+                    required
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                </div>
               </div>
-              <div>
+              <div className="space-y-2">
                 <label htmlFor="editName" className="block text-sm font-medium text-gray-700">Name</label>
                 <input
                   type="text"
@@ -853,7 +854,7 @@ export default function UserManagement() {
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
               </div>
-              <div>
+              <div className="space-y-2">
                 <label htmlFor="editStatus" className="block text-sm font-medium text-gray-700">Status</label>
                 <select
                   name="status"
@@ -867,110 +868,200 @@ export default function UserManagement() {
                   <option value="suspended">Suspended</option>
                 </select>
               </div>
-              <div>
-                <label>Business Images (min 1, max 10):</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={async (e) => {
-                    const files = Array.from(e.target.files || []);
-                    if (files.length > 10) {
-                      alert('You can upload a maximum of 10 images.');
-                      return;
-                    }
-                    const formData = new FormData();
-                    files.forEach(file => formData.append('images', file));
-                    const res = await fetch(`${apiBaseUrl}/api/users/upload-images`, {
-                      method: 'POST',
-                      body: formData,
-                      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-                    });
-                    const data = await res.json();
-                    setEditForm(prev => ({ ...prev, profilePictures: data.urls }));
-                  }}
-                />
-                {editForm.profilePictures && editForm.profilePictures.map(url => (
-                  <img key={url} src={url} alt="Business" style={{ width: 80, margin: 4 }} />
-                ))}
-              </div>
-              <div>
-                <label>Preferred Language:</label>
-                {['Hindi', 'English', 'Gujarati'].map(lang => (
-                  <label key={lang}>
+              <div className="space-y-4 border border-gray-200 rounded-lg p-4 my-4 bg-gray-50">
+                <div className="mb-2">
+                  <label className="block font-semibold mb-1">Business Images <span className="text-xs">(min 1, max 10)</span>:</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="block mb-2"
+                    onChange={async (e) => {
+                      const files = Array.from(e.target.files || []);
+                      if (files.length > 10) {
+                        alert('You can upload a maximum of 10 images.');
+                        return;
+                      }
+                      const formData = new FormData();
+                      files.forEach(file => formData.append('images', file));
+                      const res = await fetch(`${apiBaseUrl}/api/users/upload-images`, {
+                        method: 'POST',
+                        body: formData,
+                        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                      });
+                      const data = await res.json();
+                      setEditForm(prev => ({ ...prev, profilePictures: data.urls }));
+                    }}
+                  />
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {editForm.profilePictures && editForm.profilePictures.map(url => (
+                      <img key={url} src={url} alt="Business" className="w-20 h-20 object-cover rounded border" />
+                    ))}
+                  </div>
+                </div>
+                <div className="mb-2">
+                  <label className="block font-semibold mb-1">Preferred Language:</label>
+                  <div className="flex gap-4">
+                    {['Hindi', 'English', 'Gujarati'].map(lang => (
+                      <label key={lang} className="inline-flex items-center gap-1">
+                        <input
+                          type="checkbox"
+                          value={lang}
+                          checked={editForm.preferredLanguages?.includes(lang) || false}
+                          onChange={() => {
+                            setEditForm(prev => {
+                              const arr = prev.preferredLanguages?.includes(lang)
+                                ? prev.preferredLanguages.filter(l => l !== lang)
+                                : [...(prev.preferredLanguages || []), lang];
+                              return { ...prev, preferredLanguages: arr };
+                            });
+                          }}
+                        />
+                        {lang}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="mb-2">
+                  <label className="block font-semibold mb-1">Category of Food:</label>
+                  <div className="flex flex-wrap gap-4">
+                    {['Chaat','Juices','Tea/coffee','Snacks (Samosa, Vada Pav, etc.)','Dessert','Gujju Snacks','PavBhaji','Punjabi (Parathe, Lassi, etc)','Paan','Korean','Chinese','South Indian','Other'].map(cat => (
+                      <label key={cat} className="inline-flex items-center gap-1">
+                        <input
+                          type="checkbox"
+                          value={cat}
+                          checked={editForm.foodCategories?.includes(cat) || false}
+                          onChange={() => {
+                            setEditForm(prev => {
+                              const arr = prev.foodCategories?.includes(cat)
+                                ? prev.foodCategories.filter(c => c !== cat)
+                                : [...(prev.foodCategories || []), cat];
+                              return { ...prev, foodCategories: arr };
+                            });
+                          }}
+                        />
+                        {cat}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="mb-2">
+                  <label className="block font-semibold mb-1">Stall Type:</label>
+                  <div className="flex gap-4">
+                    <label className="inline-flex items-center gap-1">
+                      <input
+                        type="radio"
+                        name="stallType"
+                        value="fixed"
+                        checked={editForm.stallType === 'fixed'}
+                        onChange={() => setEditForm(prev => ({ ...prev, stallType: 'fixed' }))}
+                      /> Fixed
+                    </label>
+                    <label className="inline-flex items-center gap-1">
+                      <input
+                        type="radio"
+                        name="stallType"
+                        value="mobile"
+                        checked={editForm.stallType === 'mobile'}
+                        onChange={() => setEditForm(prev => ({ ...prev, stallType: 'mobile' }))}
+                      /> Mobile
+                    </label>
+                  </div>
+                </div>
+                <div className="mb-2">
+                  <label className="inline-flex items-center gap-2">
                     <input
                       type="checkbox"
-                      value={lang}
-                      checked={editForm.preferredLanguages?.includes(lang) || false}
-                      onChange={() => {
-                        setEditForm(prev => {
-                          const arr = prev.preferredLanguages?.includes(lang)
-                            ? prev.preferredLanguages.filter(l => l !== lang)
-                            : [...(prev.preferredLanguages || []), lang];
-                          return { ...prev, preferredLanguages: arr };
-                        });
-                      }}
+                      checked={editForm.whatsappConsent || false}
+                      onChange={() => setEditForm(prev => ({ ...prev, whatsappConsent: !prev.whatsappConsent }))}
                     />
-                    {lang}
+                    Consent to receive WhatsApp messages
                   </label>
-                ))}
-              </div>
-              <div>
-                <label>Category of Food:</label>
-                <select
-                  value={editForm.foodCategories?.join(', ') || ''}
-                  onChange={(e) => setEditForm(prev => ({ ...prev, foodCategories: e.target.value.split(', ') }))}
-                >
-                  <option value="">Select</option>
-                  <option>Chaat</option>
-                  <option>Juices</option>
-                  <option>Tea/coffee</option>
-                  <option>Snacks (Samosa, Vada Pav, etc.)</option>
-                  <option>Dessert</option>
-                  <option>Gujju Snacks</option>
-                  <option>PavBhaji</option>
-                  <option>Punjabi (Parathe, Lassi, etc)</option>
-                  <option>Paan</option>
-                  <option>Korean</option>
-                  <option>Chinese</option>
-                  <option>South Indian</option>
-                  <option>Other</option>
-                </select>
-              </div>
-              <div>
-                <label>Stall Type:</label>
-                <label>
+                </div>
+                <div className="mb-2">
+                  <label className="block font-semibold mb-1">Onboarding Type <span className="text-red-500">*</span>:</label>
+                  <div className="flex gap-4">
+                    {['on ground', 'manual entry', 'via website'].map(type => (
+                      <label key={type} className="inline-flex items-center gap-1">
+                        <input
+                          type="radio"
+                          name="onboardingType"
+                          value={type}
+                          checked={editForm.onboardingType === type}
+                          onChange={() => setEditForm(prev => ({ ...prev, onboardingType: type }))}
+                          required
+                        />
+                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="mb-2">
+                  <label className="block font-semibold mb-1">Aadhar Number (optional):</label>
                   <input
-                    type="radio"
-                    name="stallType"
-                    value="fixed"
-                    checked={editForm.stallType === 'fixed'}
-                    onChange={() => setEditForm(prev => ({ ...prev, stallType: 'fixed' }))}
-                  /> Fixed
-                </label>
-                <label>
-                  <input
-                    type="radio"
-                    name="stallType"
-                    value="mobile"
-                    checked={editForm.stallType === 'mobile'}
-                    onChange={() => setEditForm(prev => ({ ...prev, stallType: 'mobile' }))}
-                  /> Mobile
-                </label>
-              </div>
-              <div>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={editForm.whatsappConsent || false}
-                    onChange={() => setEditForm(prev => ({ ...prev, whatsappConsent: !prev.whatsappConsent }))}
+                    type="text"
+                    value={editForm.aadharNumber || ''}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, aadharNumber: e.target.value }))}
+                    className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    placeholder="Enter Aadhar Number"
                   />
-                  Consent to receive WhatsApp messages
-                </label>
+                </div>
+                <div className="mb-2">
+                  <label className="block font-semibold mb-1">Aadhar Photo (Front, optional):</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const formData = new FormData();
+                      formData.append('image', file);
+                      const res = await fetch(`${apiBaseUrl}/api/users/upload-images`, {
+                        method: 'POST',
+                        body: formData,
+                        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                      });
+                      const data = await res.json();
+                      setEditForm(prev => ({ ...prev, aadharFrontUrl: data.urls[0] }));
+                    }}
+                  />
+                  {editForm.aadharFrontUrl && <img src={editForm.aadharFrontUrl} alt="Aadhar Front" className="w-20 h-20 object-cover rounded border mt-2" />}
+                </div>
+                <div className="mb-2">
+                  <label className="block font-semibold mb-1">Aadhar Photo (Back, optional):</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const formData = new FormData();
+                      formData.append('image', file);
+                      const res = await fetch(`${apiBaseUrl}/api/users/upload-images`, {
+                        method: 'POST',
+                        body: formData,
+                        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                      });
+                      const data = await res.json();
+                      setEditForm(prev => ({ ...prev, aadharBackUrl: data.urls[0] }));
+                    }}
+                  />
+                  {editForm.aadharBackUrl && <img src={editForm.aadharBackUrl} alt="Aadhar Back" className="w-20 h-20 object-cover rounded border mt-2" />}
+                </div>
+                <div className="mb-2">
+                  <label className="block font-semibold mb-1">PAN Number (optional):</label>
+                  <input
+                    type="text"
+                    value={editForm.panNumber || ''}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, panNumber: e.target.value }))}
+                    className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    placeholder="Enter PAN Number"
+                  />
+                </div>
               </div>
-              <div>
+              <div className="space-y-2 border border-gray-200 rounded-lg p-4 my-4 bg-gray-50">
                 <label className="block text-sm font-medium text-gray-700">Operating Hours</label>
-                <div className="mt-1 grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="editOpenTime" className="block text-sm font-medium text-gray-700">Open Time</label>
                     <select
@@ -982,9 +1073,7 @@ export default function UserManagement() {
                     >
                       <option value="">Select Time</option>
                       {timeOptions.map((time) => (
-                        <option key={time} value={time}>
-                          {time}
-                        </option>
+                        <option key={time} value={time}>{time}</option>
                       ))}
                     </select>
                   </div>
@@ -999,98 +1088,136 @@ export default function UserManagement() {
                     >
                       <option value="">Select Time</option>
                       {timeOptions.map((time) => (
-                        <option key={time} value={time}>
-                          {time}
-                        </option>
+                        <option key={time} value={time}>{time}</option>
                       ))}
                     </select>
                   </div>
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Operating Days</label>
-                <div className="mt-1 grid grid-cols-2 gap-2">
-                  {allDays.map((day) => (
-                    <label key={day} className="inline-flex items-center">
+                <div className="mt-2">
+                  <label className="block text-sm font-medium text-gray-700">Operating Days</label>
+                  <div className="mb-2">
+                    <label className="inline-flex items-center">
                       <input
                         type="checkbox"
-                        name="days"
-                        value={day}
-                        checked={(editForm.operatingHours?.days || []).includes(day)}
-                        onChange={(e) => handleDayChange(e)}
-                        className="form-checkbox"
+                        checked={editForm.operatingHours?.days && editForm.operatingHours.days.length === allDays.length}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setEditForm(prev => ({
+                            ...prev,
+                            operatingHours: {
+                              days: checked ? [...allDays] : [],
+                              openTime: prev.operatingHours?.openTime || '',
+                              closeTime: prev.operatingHours?.closeTime || '',
+                            },
+                          }));
+                        }}
+                        className="form-checkbox h-5 w-5 text-blue-600"
                       />
-                      <span className="ml-2 text-sm text-gray-700">{day}</span>
+                      <span className="ml-2 text-sm font-semibold">Select All</span>
                     </label>
-                  ))}
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-1">
+                    {allDays.map((day) => (
+                      <label key={day} className="inline-flex items-center">
+                        <input
+                          type="checkbox"
+                          name="days"
+                          value={day}
+                          checked={editForm.operatingHours?.days?.includes(day) || false}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            const checked = e.target.checked;
+                            setEditForm(prev => {
+                              const days = prev.operatingHours?.days || [];
+                              const updatedDays = checked
+                                ? [...days, value]
+                                : days.filter((d) => d !== value);
+                              return {
+                                ...prev,
+                                operatingHours: {
+                                  days: updatedDays,
+                                  openTime: prev.operatingHours?.openTime || '',
+                                  closeTime: prev.operatingHours?.closeTime || '',
+                                },
+                              };
+                            });
+                          }}
+                          className="form-checkbox h-5 w-5 text-blue-600"
+                        />
+                        <span className="ml-2 text-sm text-gray-700">{day}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
               </div>
-              {/* Best Dishes (Menu) Fields for Edit */}
-              {[...Array(6)].map((_, index) => (
-                <div key={index} className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor={`editBestDishName${index + 1}`} className="block text-sm font-medium text-gray-700">Best Dish {index + 1}{index === 0 && ' (Required)'}</label>
-                    <input
-                      type="text"
-                      name={`bestDishName${index + 1}`}
-                      id={`editBestDishName${index + 1}`}
-                      value={editForm.bestDishes?.[index]?.name || ''}
-                      onChange={(e) => handleEditDishChange(index, 'name', e.target.value)}
-                      required={index === 0}
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                    />
+              <div className="space-y-2 border border-gray-200 rounded-lg p-4 my-4 bg-gray-50">
+                <label className="block text-sm font-medium text-gray-700">Best Dishes (at least 1 required)</label>
+                {[...Array(6)].map((_, index) => (
+                  <div key={index} className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor={`editBestDishName${index + 1}`} className="block text-sm font-medium text-gray-700">Best Dish {index + 1}{index === 0 && ' (Required)'}</label>
+                      <input
+                        type="text"
+                        name={`bestDishName${index + 1}`}
+                        id={`editBestDishName${index + 1}`}
+                        value={editForm.bestDishes?.[index]?.name || ''}
+                        onChange={(e) => handleEditDishChange(index, 'name', e.target.value)}
+                        required={index === 0}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor={`editBestDishPrice${index + 1}`} className="block text-sm font-medium text-gray-700">Price</label>
+                      <input
+                        type="number"
+                        name={`editBestDishPrice${index + 1}`}
+                        id={`editBestDishPrice${index + 1}`}
+                        value={editForm.bestDishes?.[index]?.price || ''}
+                        onChange={(e) => handleEditDishChange(index, 'price', e.target.value === '' ? '' : parseFloat(e.target.value))}
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label htmlFor={`editBestDishPrice${index + 1}`} className="block text-sm font-medium text-gray-700">Price</label>
-                    <input
-                      type="number"
-                      name={`editBestDishPrice${index + 1}`}
-                      id={`editBestDishPrice${index + 1}`}
-                      value={editForm.bestDishes?.[index]?.price || ''}
-                      onChange={(e) => handleEditDishChange(index, 'price', e.target.value === '' ? '' : parseFloat(e.target.value))}
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                    />
-                  </div>
+                ))}
+              </div>
+              <div className="space-y-2 border border-gray-200 rounded-lg p-4 my-4 bg-gray-50">
+                <div>
+                  <label htmlFor="editMenuLink" className="block text-sm font-medium text-gray-700">Menu Link</label>
+                  <input
+                    type="text"
+                    name="menuLink"
+                    id="editMenuLink"
+                    value={editForm.menuLink || ''}
+                    onChange={handleEditUserChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
                 </div>
-              ))}
-              <div>
-                <label htmlFor="editMenuLink" className="block text-sm font-medium text-gray-700">Menu Link</label>
-                <input
-                  type="text"
-                  name="menuLink"
-                  id="editMenuLink"
-                  value={editForm.menuLink || ''}
-                  onChange={handleEditUserChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
+                <div>
+                  <label htmlFor="editMapsLink" className="block text-sm font-medium text-gray-700">Maps Link</label>
+                  <input
+                    type="text"
+                    name="mapsLink"
+                    id="editMapsLink"
+                    value={editForm.mapsLink || ''}
+                    onChange={handleEditUserChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                </div>
               </div>
-              <div>
-                <label htmlFor="editMapsLink" className="block text-sm font-medium text-gray-700">Maps Link</label>
-                <input
-                  type="text"
-                  name="mapsLink"
-                  id="editMapsLink"
-                  value={editForm.mapsLink || ''}
-                  onChange={handleEditUserChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-              </div>
-              <div className="flex space-x-4">
-                <button
-                  type="submit"
-                  disabled={isUpdating}
-                  className={`bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  {isUpdating ? 'Updating...' : 'Update User'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditingUser(null)}
-                  className="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded"
-                >
-                  Cancel
-                </button>
-              </div>
+              <button
+                type="submit"
+                disabled={isUpdating}
+                className={`bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded ${isUpdating ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                {isUpdating ? 'Updating...' : 'Update User'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditingUser(null)}
+                className="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded"
+              >
+                Cancel
+              </button>
             </form>
           </div>
         )}
