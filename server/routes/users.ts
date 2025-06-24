@@ -48,18 +48,47 @@ const dayNameToNumber: Record<string, number> = {
   Friday: 5,
   Saturday: 6,
 };
+// Improved normalizeDays function to handle various input formats
 function normalizeDays(days: any): number[] {
   if (!days) return [];
 
-  const dayNames = JSON.stringify(days).match(/\b(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)\b/g);
+  let dayNames: string[] = [];
 
-  if (!dayNames) {
+  try {
+    // Handle different input formats
+    if (typeof days === 'string') {
+      // Try to parse as JSON first
+      try {
+        const parsed = JSON.parse(days);
+        if (Array.isArray(parsed)) {
+          dayNames = parsed.filter(day => typeof day === 'string');
+        } else {
+          // If it's a string but not valid JSON, extract day names with regex
+          const matches = days.match(/\b(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)\b/g);
+          dayNames = matches || [];
+        }
+      } catch {
+        // If JSON parsing fails, use regex to extract day names
+        const matches = days.match(/\b(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)\b/g);
+        dayNames = matches || [];
+      }
+    } else if (Array.isArray(days)) {
+      // If it's already an array, filter for strings
+      dayNames = days.filter(day => typeof day === 'string');
+    } else {
+      console.warn('Unexpected days format:', days);
+      return [];
+    }
+
+    // Convert day names to numbers
+    return dayNames
+      .map(dayName => dayNameToNumber[dayName as keyof typeof dayNameToNumber])
+      .filter((dayNum): dayNum is number => typeof dayNum === 'number');
+      
+  } catch (error) {
+    console.error('Error normalizing days:', error);
     return [];
   }
-
-  return dayNames
-    .map(d => dayNameToNumber[d as keyof typeof dayNameToNumber])
-    .filter((d): d is number => typeof d === 'number');
 }
 
 // GET all regular users
@@ -169,6 +198,7 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
 });
 
 // PUT update a user by ID
+// Alternative: More robust validation in the PUT route
 router.put('/:id', authenticateToken, async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
@@ -202,13 +232,26 @@ router.put('/:id', authenticateToken, async (req: Request, res: Response) => {
         if (!user.operatingHours) {
             user.operatingHours = { openTime: '', closeTime: '', days: [] };
         }
+        
         if (operatingHours) {
             if (operatingHours.openTime) user.operatingHours.openTime = operatingHours.openTime;
             if (operatingHours.closeTime) user.operatingHours.closeTime = operatingHours.closeTime;
-            if (operatingHours.days) {
-                user.operatingHours.days = normalizeDays(operatingHours.days);
+            if (operatingHours.days !== undefined) {
+                // Add validation and logging
+                console.log('Original operatingHours.days:', operatingHours.days);
+                console.log('Type of operatingHours.days:', typeof operatingHours.days);
+                
+                const normalizedDays = normalizeDays(operatingHours.days);
+                console.log('Normalized days:', normalizedDays);
+                
+                if (normalizedDays.length === 0 && operatingHours.days) {
+                    console.warn('Failed to normalize days, keeping existing:', user.operatingHours.days);
+                } else {
+                    user.operatingHours.days = normalizedDays;
+                }
             }
         }
+        
         // Handle legacy top-level openTime/closeTime for backward compatibility
         if (openTime) {
             user.operatingHours.openTime = openTime;
@@ -217,7 +260,7 @@ router.put('/:id', authenticateToken, async (req: Request, res: Response) => {
             user.operatingHours.closeTime = closeTime;
         }
         
-        // Do not set deprecated top-level openTime/closeTime fields
+        // Update other fields
         if (foodType) user.foodType = foodType;
         user.bestDishes = filteredBestDishes;
         if (menuLink) user.menuLink = menuLink;
