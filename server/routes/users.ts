@@ -125,16 +125,23 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
         // Send WhatsApp message to the new user based on preferred language
         try {
             if (client) {
-                let contentSid = 'HXda3c67f5aec058d4f6d8d66f360a8c82'; // Default to English
-                if (preferredLanguages && Array.isArray(preferredLanguages)) {
-                    if (preferredLanguages.includes('English')) {
-                        contentSid = 'HXda3c67f5aec058d4f6d8d66f360a8c82';
-                    } else if (preferredLanguages.includes('Hindi')) {
-                        contentSid = 'HX5c2c5ca61cd5880f46e88afd33363a8b';
-                    } else if (preferredLanguages.includes('Gujarati')) {
-                        contentSid = 'HX48a3862650a7569ec5f9f2d70b3a4da5';
+                const languageToContentSid: Record<string, string> = {
+                    English: 'HXda3c67f5aec058d4f6d8d66f360a8c82',
+                    Hindi: 'HX5c2c5ca61cd5880f46e88afd33363a8b',
+                    Gujarati: 'HX48a3862650a7569ec5f9f2d70b3a4da5',
+                };
+                
+                let contentSid = languageToContentSid['English']; // Default to English
+                
+                if (preferredLanguages && Array.isArray(preferredLanguages) && preferredLanguages.length > 0) {
+                    const firstLanguage = preferredLanguages.find(lang => languageToContentSid[lang]);
+                    if (firstLanguage) {
+                        contentSid = languageToContentSid[firstLanguage];
                     }
                 }
+                
+                console.log(`Attempting to send welcome message with template SID: ${contentSid} for languages: ${preferredLanguages}`);
+                
                 const msgPayload: any = {
                     from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
                     to: `whatsapp:${contactNumber}`,
@@ -157,58 +164,6 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
             }
         } catch (err: any) {
             console.error('Unexpected error in WhatsApp message send:', err?.message || err, err);
-        }
-
-        // Schedule WhatsApp message to vendor half hour before openTime
-        try {
-            if (client && operatingHours.openTime) {
-                // Parse openTime (e.g., '11:00') and schedule for half hour before
-                const [openHour, openMinute] = operatingHours.openTime.split(':').map(Number);
-                const now = new Date();
-                let scheduledTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), openHour, openMinute);
-                scheduledTime.setMinutes(scheduledTime.getMinutes() - 30);
-                if (scheduledTime < now) {
-                    // If the time is in the past, schedule for next day
-                    scheduledTime.setDate(scheduledTime.getDate() + 1);
-                }
-                schedule.scheduleJob(scheduledTime, async function () {
-                    // Extract coordinates from mapsLink or WhatsApp location
-                    let lat = null, lng = null;
-                    if (mapsLink) {
-                        // Try to extract from Google Maps link
-                        const atMatch = mapsLink.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
-                        if (atMatch) {
-                            lat = atMatch[1];
-                            lng = atMatch[2];
-                        } else {
-                            const qMatch = mapsLink.match(/[?&]q=([-?\d.]+),([-?\d.]+)/);
-                            if (qMatch) {
-                                lat = qMatch[1];
-                                lng = qMatch[2];
-                            }
-                        }
-                    }
-                    // If not found, expect WhatsApp location to be sent by vendor in reply
-                    if (client) {
-                        try {
-                            await client.messages.create({
-                                from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
-                                to: `whatsapp:${contactNumber}`,
-                                contentSid: 'HXca82cc02b7d0270c00e675d0ba7f341a',
-                                contentVariables: JSON.stringify({ lat, lng })
-                            });
-                        } catch (err: any) {
-                            if (err.code === 63038) {
-                                console.error('Twilio daily message limit reached (scheduled job). Skipping WhatsApp send.');
-                            } else {
-                                console.error('Failed to send scheduled WhatsApp message to vendor:', err?.message || err, err);
-                            }
-                        }
-                    }
-                });
-            }
-        } catch (err) {
-            console.error('Failed to schedule WhatsApp message to vendor:', err);
         }
 
         res.status(201).json({ message: 'User created successfully', user: newUser });
@@ -247,9 +202,27 @@ router.put('/:id', authenticateToken, async (req: Request, res: Response) => {
         if (contactNumber) user.contactNumber = contactNumber;
         if (name) user.name = name;
         if (status) user.status = status;
-        if (openTime) user.openTime = openTime;
-        if (closeTime) user.closeTime = closeTime;
-        if (operatingHours) user.operatingHours = operatingHours;
+
+        // Consolidate operating hours updates into user.operatingHours
+        if (!user.operatingHours) {
+            user.operatingHours = { openTime: '', closeTime: '', days: [] };
+        }
+        if (operatingHours) {
+            if (operatingHours.openTime) user.operatingHours.openTime = operatingHours.openTime;
+            if (operatingHours.closeTime) user.operatingHours.closeTime = operatingHours.closeTime;
+            if (operatingHours.days) {
+                user.operatingHours.days = normalizeDays(operatingHours.days);
+            }
+        }
+        // Handle legacy top-level openTime/closeTime for backward compatibility
+        if (openTime) {
+            user.operatingHours.openTime = openTime;
+        }
+        if (closeTime) {
+            user.operatingHours.closeTime = closeTime;
+        }
+        
+        // Do not set deprecated top-level openTime/closeTime fields
         if (foodType) user.foodType = foodType;
         user.bestDishes = filteredBestDishes;
         if (menuLink) user.menuLink = menuLink;
@@ -264,9 +237,7 @@ router.put('/:id', authenticateToken, async (req: Request, res: Response) => {
         if (aadharFrontUrl) user.aadharFrontUrl = aadharFrontUrl;
         if (aadharBackUrl) user.aadharBackUrl = aadharBackUrl;
         if (panNumber) user.panNumber = panNumber;
-        if (operatingHours && operatingHours.days) {
-            operatingHours.days = normalizeDays(operatingHours.days);
-        }
+        
         user.updatedAt = new Date();
 
         await user.save();

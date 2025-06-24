@@ -3,6 +3,7 @@ const router = express.Router();
 import moment from 'moment-timezone';
 import twilio from 'twilio';
 import Vendor from '../models/Vendor.js';
+import Message from '../models/Message.js';
 
 const accountSid = process.env.TWILIO_SID;
 const authToken = process.env.TWILIO_AUTH;
@@ -12,18 +13,40 @@ const client = twilio(accountSid, authToken);
 router.get('/check-vendor-reminders', async (req, res) => {
   try {
     const now = moment().tz('Asia/Kolkata');
-    const vendors = await Vendor.find();
+    const startOfToday = now.clone().startOf('day');
+
+    // Find vendors who have not received a reminder today
+    const vendors = await Vendor.find({
+      $or: [
+        { lastReminderSentAt: { $exists: false } },
+        { lastReminderSentAt: null },
+        { lastReminderSentAt: { $lt: startOfToday.toDate() } },
+      ],
+    });
+
     for (let vendor of vendors) {
       if (!vendor.operatingHours?.openTime) continue;
       const openTime = moment.tz(vendor.operatingHours.openTime, 'h:mm A', 'Asia/Kolkata');
       const timeDiff = openTime.diff(now, 'minutes');
       if (timeDiff >= 29 && timeDiff <= 31) {
+        const reminderBody = `🌞 नमस्ते ${vendor.name}! \nआपकी लारी ${vendor.operatingHours.openTime} बजे खुलती है।\n\nकृपया नीचे 'लोकेशन भेजें' बटन से अपनी लाइव लोकेशन शेयर करें ताकि ग्राहक आपको खोज सकें।\n\n👉 जैसे ही आप लोकेशन भेजेंगे, हम इसे नक्शे पर अपडेट कर देंगे।`;
         await client.messages.create({
           from: `whatsapp:${process.env.TWILIO_WHATSAPP}`,
           to: `whatsapp:${vendor.contactNumber}`,
-          body: `🌞 नमस्ते ${vendor.name}! \nआपकी लारी ${vendor.operatingHours.openTime} बजे खुलती है।\n\nकृपया नीचे 'लोकेशन भेजें' बटन से अपनी लाइव लोकेशन शेयर करें ताकि ग्राहक आपको खोज सकें।\n\n👉 जैसे ही आप लोकेशन भेजेंगे, हम इसे नक्शे पर अपडेट कर देंगे।`,
+          body: reminderBody,
           persistentAction: ['geo:0,0?q=Send+your+location'],
         });
+        // Save outbound message to MongoDB
+        await Message.create({
+          from: `whatsapp:${process.env.TWILIO_WHATSAPP}`,
+          to: `whatsapp:${vendor.contactNumber}`,
+          body: reminderBody,
+          direction: 'outbound',
+          timestamp: new Date(),
+        });
+        // Update the last reminder sent time to now
+        vendor.lastReminderSentAt = now.toDate();
+        await vendor.save();
       }
     }
     res.send('Reminder check complete');
