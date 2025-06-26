@@ -154,6 +154,7 @@ userSchema.on('index', function(err: any) {
 // Add isOpenNow method to userSchema
 userSchema.methods.isOpenNow = function() {
     if (!this.operatingHours || !this.operatingHours.openTime || !this.operatingHours.closeTime || !this.operatingHours.days) {
+        console.log('isOpenNow: Missing operatingHours data');
         return false;
     }
     const now = new Date();
@@ -171,21 +172,33 @@ userSchema.methods.isOpenNow = function() {
     const openMinutes = parseTime(this.operatingHours.openTime);
     const closeMinutes = parseTime(this.operatingHours.closeTime);
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const daysArr = this.operatingHours.days;
 
+    let result;
     if (openMinutes < closeMinutes) {
         // Normal case: open and close on same day
-        return this.operatingHours.days.includes(day) && nowMinutes >= openMinutes && nowMinutes < closeMinutes;
+        result = daysArr.includes(day) && nowMinutes >= openMinutes && nowMinutes < closeMinutes;
     } else {
         // Overnight case: openTime > closeTime
-        // If now is after openTime, check today; if before closeTime, check yesterday
         if (nowMinutes >= openMinutes) {
-            return this.operatingHours.days.includes(day);
+            result = daysArr.includes(day);
         } else if (nowMinutes < closeMinutes) {
-            return this.operatingHours.days.includes(yesterday);
+            result = daysArr.includes(yesterday);
         } else {
-            return false;
+            result = false;
         }
     }
+    console.log('[isOpenNow]', {
+        now: now.toString(),
+        day,
+        yesterday,
+        openMinutes,
+        closeMinutes,
+        nowMinutes,
+        daysArr,
+        result
+    });
+    return result;
 };
 
 // Create and export the model
