@@ -158,7 +158,7 @@ userSchema.methods.isOpenNow = function() {
     }
     const now = new Date();
     const day = now.getDay(); // 0=Sunday, 6=Saturday
-    if (!this.operatingHours.days.includes(day)) return false;
+    const yesterday = (day + 6) % 7;
 
     function parseTime(str: string) {
         // Expects format like '4:00 PM'
@@ -171,11 +171,20 @@ userSchema.methods.isOpenNow = function() {
     const openMinutes = parseTime(this.operatingHours.openTime);
     const closeMinutes = parseTime(this.operatingHours.closeTime);
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
     if (openMinutes < closeMinutes) {
-        return nowMinutes >= openMinutes && nowMinutes < closeMinutes;
+        // Normal case: open and close on same day
+        return this.operatingHours.days.includes(day) && nowMinutes >= openMinutes && nowMinutes < closeMinutes;
     } else {
-        // Overnight case
-        return nowMinutes >= openMinutes || nowMinutes < closeMinutes;
+        // Overnight case: openTime > closeTime
+        // If now is after openTime, check today; if before closeTime, check yesterday
+        if (nowMinutes >= openMinutes) {
+            return this.operatingHours.days.includes(day);
+        } else if (nowMinutes < closeMinutes) {
+            return this.operatingHours.days.includes(yesterday);
+        } else {
+            return false;
+        }
     }
 };
 
