@@ -101,7 +101,7 @@ export default function UserManagement() {
   const [isVerified, setIsVerified] = useState(false);
   const editFormRef = useRef<HTMLDivElement>(null);
 
-  const allDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const allDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   useEffect(() => {
     if (location.state?.phone && location.state?.verified) {
@@ -172,19 +172,6 @@ export default function UserManagement() {
     });
   };
 
-  const dayStringToNumber = (day: string) => {
-    switch (day) {
-      case 'Sunday': return 0;
-      case 'Monday': return 1;
-      case 'Tuesday': return 2;
-      case 'Wednesday': return 3;
-      case 'Thursday': return 4;
-      case 'Friday': return 5;
-      case 'Saturday': return 6;
-      default: return -1;
-    }
-  };
-
   const handleAddUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAddError(null);
@@ -217,8 +204,9 @@ export default function UserManagement() {
       name: newUser.name,
       mapsLink: newUser.mapsLink,
       operatingHours: {
-        ...newUser.operatingHours,
-        days: newUser.operatingHours.days.map(dayStringToNumber),
+        openTime: newUser.operatingHours.openTime,
+        closeTime: newUser.operatingHours.closeTime,
+        days: newUser.operatingHours.days,
       },
       bestDishes: newUser.bestDishes.filter(dish => dish.name && dish.name.trim()),
       foodType: newUser.foodType,
@@ -233,6 +221,7 @@ export default function UserManagement() {
       aadharFrontUrl: newUser.aadharFrontUrl,
       aadharBackUrl: newUser.aadharBackUrl,
       panNumber: newUser.panNumber,
+      mobile_verified: isVerified,
     };
 
     try {
@@ -1259,7 +1248,16 @@ export default function UserManagement() {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">{user.operatingHours.openTime || 'N/A'}</td>
                     <td className="px-4 py-3 whitespace-nowrap">{user.operatingHours.closeTime || 'N/A'}</td>
-                    <td className="px-4 py-3 whitespace-nowrap truncate max-w-[120px]">{(user.operatingHours.days && user.operatingHours.days.length > 0) ? user.operatingHours.days.join(', ') : 'N/A'}</td>
+                    <td className="px-4 py-3 whitespace-nowrap truncate max-w-[120px]">{
+                      (user.operatingHours.days && user.operatingHours.days.length > 0)
+                        ? user.operatingHours.days
+                            .map((d: any) => {
+                              const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                              return typeof d === 'number' && d >= 0 && d <= 6 ? dayNames[d] : d;
+                            })
+                            .join(', ')
+                        : 'N/A'
+                    }</td>
                     <td className="px-4 py-3 whitespace-nowrap">{user.foodType || 'N/A'}</td>
                     <td className="px-4 py-3 whitespace-nowrap truncate max-w-[180px]">
                       {(user.bestDishes && user.bestDishes.filter(dish => dish.name).length > 0) ?

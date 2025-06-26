@@ -6,6 +6,11 @@ const contactSchema = new Schema({
         required: true,
         trim: true,
     },
+    name: {
+        type: String,
+        trim: true,
+        default: '',
+    },
     lastSeen: {
         type: Date,
         required: true,
