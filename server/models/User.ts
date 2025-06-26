@@ -151,5 +151,33 @@ userSchema.on('index', function(err: any) {
     }
 });
 
+// Add isOpenNow method to userSchema
+userSchema.methods.isOpenNow = function() {
+    if (!this.operatingHours || !this.operatingHours.openTime || !this.operatingHours.closeTime || !this.operatingHours.days) {
+        return false;
+    }
+    const now = new Date();
+    const day = now.getDay(); // 0=Sunday, 6=Saturday
+    if (!this.operatingHours.days.includes(day)) return false;
+
+    function parseTime(str: string) {
+        // Expects format like '4:00 PM'
+        const [time, period] = str.split(' ');
+        let [h, m] = time.split(':').map(Number);
+        if (period === 'PM' && h !== 12) h += 12;
+        if (period === 'AM' && h === 12) h = 0;
+        return h * 60 + m;
+    }
+    const openMinutes = parseTime(this.operatingHours.openTime);
+    const closeMinutes = parseTime(this.operatingHours.closeTime);
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    if (openMinutes < closeMinutes) {
+        return nowMinutes >= openMinutes && nowMinutes < closeMinutes;
+    } else {
+        // Overnight case
+        return nowMinutes >= openMinutes || nowMinutes < closeMinutes;
+    }
+};
+
 // Create and export the model
 export default mongoose.model<IUser>('User', userSchema); 

@@ -96,7 +96,13 @@ function normalizeDays(days: any): number[] {
 router.get('/', authenticateToken, async (_req: Request, res: Response) => {
     try {
         const users = await User.find();
-        res.json(users);
+        const usersWithStatus = users.map(user => {
+            const obj = user.toObject();
+            // @ts-ignore
+            obj.isOpenNow = typeof (user as any).isOpenNow === 'function' ? (user as any).isOpenNow() : false;
+            return obj;
+        });
+        res.json(usersWithStatus);
     } catch (error) {
         console.error('Error fetching users:', error);
         res.status(500).json({ message: 'Internal server error' });
