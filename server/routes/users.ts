@@ -92,6 +92,11 @@ function normalizeDays(days: any): number[] {
   }
 }
 
+function isValidTimeFormat(time: string): boolean {
+    // Matches 'h:mm AM/PM' (12-hour) or 'HH:mm' (24-hour)
+    return /^([1-9]|1[0-2]):[0-5][0-9] (AM|PM)$/.test(time) || /^([01]?\d|2[0-3]):[0-5][0-9]$/.test(time);
+}
+
 // GET all regular users
 router.get('/', authenticateToken, async (_req: Request, res: Response) => {
     try {
@@ -132,6 +137,10 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
             res.status(400).json({ message: 'At least one best dish is required and must have a name' });
             return;
         }
+        if (!isValidTimeFormat(operatingHours.openTime) || !isValidTimeFormat(operatingHours.closeTime)) {
+            res.status(400).json({ message: 'Invalid time format. Use h:mm AM/PM or HH:mm.' });
+            return;
+        }
 
         // Check for duplicate contact number
         const existingUser = await User.findOne({ contactNumber });
@@ -143,6 +152,8 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
         // Normalize operating hours days
         if (operatingHours && operatingHours.days) {
             operatingHours.days = normalizeDays(operatingHours.days);
+            // Deduplicate days
+            operatingHours.days = Array.from(new Set(operatingHours.days.filter((d: number) => typeof d === 'number' && d >= 0 && d <= 6)));
         }
 
         // Create and save the user with all fields
@@ -266,7 +277,8 @@ router.put('/:id', authenticateToken, async (req: Request, res: Response) => {
                 const normalizedDays = normalizeDays(operatingHours.days);
                 console.log('Normalized days:', normalizedDays);
                 
-                currentOperatingHours.days = normalizedDays;
+                // Deduplicate days
+                currentOperatingHours.days = Array.from(new Set(normalizedDays.filter((d: number) => typeof d === 'number' && d >= 0 && d <= 6)));
             }
         }
 
@@ -293,6 +305,17 @@ router.put('/:id', authenticateToken, async (req: Request, res: Response) => {
         if (!updatedUser) {
             res.status(404).json({ message: 'User not found' });
             return;
+        }
+
+        if (operatingHours && (operatingHours.openTime || operatingHours.closeTime)) {
+            if (operatingHours.openTime && !isValidTimeFormat(operatingHours.openTime)) {
+                res.status(400).json({ message: 'Invalid openTime format. Use h:mm AM/PM or HH:mm.' });
+                return;
+            }
+            if (operatingHours.closeTime && !isValidTimeFormat(operatingHours.closeTime)) {
+                res.status(400).json({ message: 'Invalid closeTime format. Use h:mm AM/PM or HH:mm.' });
+                return;
+            }
         }
 
         res.json({ message: 'User updated successfully', user: updatedUser });
