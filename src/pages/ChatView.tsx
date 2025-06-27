@@ -149,10 +149,10 @@ export default function ChatView() {
                     : 'bg-blue-600 text-white rounded-br-none'
                   }`}
                 >
-                  <p className="text-sm mb-1">{msg.body}</p>
-                  {msg.location && (
-                    <div className="mt-2 text-xs text-blue-600">
-                      <a 
+                  {/* Show location pin if present */}
+                  {msg.location && msg.location.latitude && msg.location.longitude ? (
+                    <div>
+                      <a
                         href={`https://maps.google.com/?q=${msg.location.latitude},${msg.location.longitude}`}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -160,7 +160,15 @@ export default function ChatView() {
                       >
                         📍 View Location ({msg.location.latitude.toFixed(4)}, {msg.location.longitude.toFixed(4)})
                       </a>
+                      {/* Optionally, show a static map image */}
+                      {/* <img
+                        src={`https://maps.googleapis.com/maps/api/staticmap?center=${msg.location.latitude},${msg.location.longitude}&zoom=16&size=300x150&markers=color:red%7C${msg.location.latitude},${msg.location.longitude}&key=YOUR_GOOGLE_MAPS_API_KEY`}
+                        alt="Location"
+                        className="mt-1 rounded"
+                      /> */}
                     </div>
+                  ) : (
+                    <p className="text-sm mb-1">{msg.body}</p>
                   )}
                   <p className={`text-xs mt-1 ${msg.direction === 'inbound' ? 'text-gray-600' : 'text-blue-100'}`}>
                     {formatTimestamp(msg.timestamp)}

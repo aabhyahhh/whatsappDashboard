@@ -171,13 +171,19 @@ router.post('/', async (req: Request, res: Response) => {
             timestamp: new Date(),
         };
 
-        // Add location, address, and label if extracted
+        // Always add location, address, and label if extracted
         if (location) {
             messageData.location = location;
             if (address) messageData.address = address;
             if (label) messageData.label = label;
+        }
 
-            // Update User's location and mapsLink if possible
+        // Save message to MongoDB
+        const message = new Message(messageData);
+        await message.save();
+
+        // Update User's and Vendor's location and mapsLink if possible
+        if (location) {
             try {
                 // Remove 'whatsapp:' prefix if present
                 const phone = From.replace('whatsapp:', '');
@@ -188,7 +194,6 @@ router.post('/', async (req: Request, res: Response) => {
                         type: 'Point',
                         coordinates: [location.longitude, location.latitude],
                     };
-                    // Compose a Google Maps link
                     user.mapsLink = `https://maps.google.com/?q=${location.latitude},${location.longitude}`;
                     await user.save();
                     console.log(`✅ Updated user location for ${phone}`);
@@ -209,11 +214,6 @@ router.post('/', async (req: Request, res: Response) => {
                 console.error('❌ Failed to update user or vendor location:', err);
             }
         }
-
-        const message = new Message(messageData);
-
-        // Save message to MongoDB
-        await message.save();
         
         console.log('✅ Saved inbound message:', {
             from: message.from,
