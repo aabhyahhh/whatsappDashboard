@@ -78,11 +78,21 @@ function normalizeDays(days) {
         return [];
     }
 }
+function isValidTimeFormat(time) {
+    // Matches 'h:mm AM/PM' (12-hour) or 'HH:mm' (24-hour)
+    return /^([1-9]|1[0-2]):[0-5][0-9] (AM|PM)$/.test(time) || /^([01]?\d|2[0-3]):[0-5][0-9]$/.test(time);
+}
 // GET all regular users
 router.get('/', authenticateToken, async (_req, res) => {
     try {
         const users = await User.find();
-        res.json(users);
+        const usersWithStatus = users.map(user => {
+            const obj = user.toObject();
+            // @ts-ignore
+            obj.isOpenNow = typeof user.isOpenNow === 'function' ? user.isOpenNow() : false;
+            return obj;
+        });
+        res.json(usersWithStatus);
     }
     catch (error) {
         console.error('Error fetching users:', error);
@@ -93,7 +103,7 @@ router.get('/', authenticateToken, async (_req, res) => {
 router.post('/', authenticateToken, async (req, res) => {
     try {
         // Destructure all expected fields from req.body
-        const { contactNumber, name, status, mapsLink, operatingHours, foodType, bestDishes, menuLink, profilePictures, preferredLanguages, foodCategories, stallType, whatsappConsent, onboardingType, aadharNumber, aadharFrontUrl, aadharBackUrl, panNumber, mobile_verified } = req.body;
+        const { contactNumber, name, status, mapsLink, operatingHours, foodType, bestDishes, menuLink, profilePictures, preferredLanguages, foodCategories, stallType, whatsappConsent, onboardingType, aadharNumber, aadharFrontUrl, aadharBackUrl, panNumber, latitude, longitude } = req.body;
         // Basic validation
         if (!contactNumber || !name) {
             res.status(400).json({ message: 'Contact number and name are required' });
@@ -107,6 +117,10 @@ router.post('/', authenticateToken, async (req, res) => {
             res.status(400).json({ message: 'At least one best dish is required and must have a name' });
             return;
         }
+        if (!isValidTimeFormat(operatingHours.openTime) || !isValidTimeFormat(operatingHours.closeTime)) {
+            res.status(400).json({ message: 'Invalid time format. Use h:mm AM/PM or HH:mm.' });
+            return;
+        }
         // Check for duplicate contact number
         const existingUser = await User.findOne({ contactNumber });
         if (existingUser) {
@@ -116,13 +130,33 @@ router.post('/', authenticateToken, async (req, res) => {
         // Normalize operating hours days
         if (operatingHours && operatingHours.days) {
             operatingHours.days = normalizeDays(operatingHours.days);
+            // Deduplicate days
+            operatingHours.days = Array.from(new Set(operatingHours.days.filter((d) => typeof d === 'number' && d >= 0 && d <= 6)));
+        }
+        // Create location object from coordinates if provided
+        let location = undefined;
+        if (latitude && longitude) {
+            const lat = parseFloat(latitude);
+            const lng = parseFloat(longitude);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                location = {
+                    type: 'Point',
+                    coordinates: [lng, lat] // MongoDB expects [longitude, latitude]
+                };
+            }
         }
         // Create and save the user with all fields
         const newUser = new User({
-            contactNumber, name, status, mapsLink, operatingHours, foodType, bestDishes: bestDishes.filter((dish) => dish.name && dish.name.trim()), menuLink,
+            contactNumber, name, status, operatingHours, foodType, menuLink,
             profilePictures, preferredLanguages, foodCategories, stallType, whatsappConsent,
-            onboardingType, aadharNumber, aadharFrontUrl, aadharBackUrl, panNumber, mobile_verified
+            onboardingType, aadharNumber, aadharFrontUrl, aadharBackUrl, panNumber
         });
+        if (bestDishes)
+            newUser.bestDishes = bestDishes.filter((dish) => dish.name && dish.name.trim());
+        if (typeof mapsLink === 'string')
+            newUser.mapsLink = mapsLink;
+        if (location)
+            newUser.location = location;
         await newUser.save();
         // Send WhatsApp message to the new user based on preferred language
         try {
@@ -177,7 +211,7 @@ router.post('/', authenticateToken, async (req, res) => {
 router.put('/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
-        const { contactNumber, name, status, openTime, closeTime, operatingHours, foodType, bestDishes, menuLink, mapsLink, profilePictures, preferredLanguages, foodCategories, stallType, whatsappConsent, onboardingType, aadharNumber, aadharFrontUrl, aadharBackUrl, panNumber } = req.body;
+        const { contactNumber, name, status, openTime, closeTime, operatingHours, foodType, bestDishes, menuLink, mapsLink, profilePictures, preferredLanguages, foodCategories, stallType, whatsappConsent, onboardingType, aadharNumber, aadharFrontUrl, aadharBackUrl, panNumber, latitude, longitude } = req.body;
         // Basic validation for updates
         if (bestDishes) {
             if (bestDishes.length < 1 || !bestDishes[0].name || !bestDishes[0].name.trim()) {
@@ -201,7 +235,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
             updateFields.bestDishes = filteredBestDishes;
         if (menuLink)
             updateFields.menuLink = menuLink;
-        if (mapsLink)
+        if (typeof mapsLink === 'string')
             updateFields.mapsLink = mapsLink;
         if (profilePictures)
             updateFields.profilePictures = profilePictures;
@@ -242,7 +276,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
                 console.log('Type of operatingHours.days:', typeof operatingHours.days);
                 const normalizedDays = normalizeDays(operatingHours.days);
                 console.log('Normalized days:', normalizedDays);
-                currentOperatingHours.days = normalizedDays;
+                // Deduplicate days
+                currentOperatingHours.days = Array.from(new Set(normalizedDays.filter((d) => typeof d === 'number' && d >= 0 && d <= 6)));
             }
         }
         // Handle legacy fields
@@ -253,6 +288,17 @@ router.put('/:id', authenticateToken, async (req, res) => {
         // Set the complete operating hours object
         updateFields.operatingHours = currentOperatingHours;
         updateFields.updatedAt = new Date();
+        // Handle location coordinates if provided
+        if (latitude && longitude) {
+            const lat = parseFloat(latitude);
+            const lng = parseFloat(longitude);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                updateFields.location = {
+                    type: 'Point',
+                    coordinates: [lng, lat] // MongoDB expects [longitude, latitude]
+                };
+            }
+        }
         // Use findByIdAndUpdate with { new: true, runValidators: true }
         // This bypasses the existing document validation issues
         const updatedUser = await User.findByIdAndUpdate(id, { $set: updateFields }, {
@@ -263,6 +309,16 @@ router.put('/:id', authenticateToken, async (req, res) => {
         if (!updatedUser) {
             res.status(404).json({ message: 'User not found' });
             return;
+        }
+        if (operatingHours && (operatingHours.openTime || operatingHours.closeTime)) {
+            if (operatingHours.openTime && !isValidTimeFormat(operatingHours.openTime)) {
+                res.status(400).json({ message: 'Invalid openTime format. Use h:mm AM/PM or HH:mm.' });
+                return;
+            }
+            if (operatingHours.closeTime && !isValidTimeFormat(operatingHours.closeTime)) {
+                res.status(400).json({ message: 'Invalid closeTime format. Use h:mm AM/PM or HH:mm.' });
+                return;
+            }
         }
         res.json({ message: 'User updated successfully', user: updatedUser });
     }

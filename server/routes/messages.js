@@ -7,10 +7,6 @@ const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
 const fromNumber = process.env.TWILIO_PHONE_NUMBER;
 const twilioClient = twilio(accountSid, authToken);
-// Helper function to escape special regex characters
-function escapeRegExp(string) {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the matched substring
-}
 // POST /api/send - Send WhatsApp message via Twilio
 router.post('/send', async (req, res, next) => {
     try {
@@ -92,13 +88,17 @@ router.use((_err, _req, res, _next) => {
 router.get('/:phone', async (req, res) => {
     try {
         const { phone } = req.params;
-        const escapedPhone = escapeRegExp(phone); // Escape the phone number
-        // Find messages where 'from' or 'to' matches the phone number
+        const normalizedPhone = phone.replace(/^whatsapp:/, '');
+        const phoneVariants = [
+            phone,
+            `whatsapp:${normalizedPhone}`
+        ];
+        // Find messages where 'from' or 'to' matches any variant of the phone number
         // Sort by timestamp in ascending order to show chronological chat
         const messages = await Message.find({
             $or: [
-                { from: new RegExp(escapedPhone, 'i') }, // Case-insensitive match for 'from'
-                { to: new RegExp(escapedPhone, 'i') } // Case-insensitive match for 'to'
+                { from: { $in: phoneVariants } },
+                { to: { $in: phoneVariants } }
             ]
         }).sort({ timestamp: 1 });
         if (!messages.length) {

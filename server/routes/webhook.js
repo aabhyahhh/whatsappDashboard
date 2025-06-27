@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { Message } from '../models/Message.js';
 import { Contact } from '../models/Contact.js';
 import { client } from '../twilio.js';
+import User from '../models/User.js';
 const router = Router();
 const twilioNumber = process.env.TWILIO_PHONE_NUMBER;
 // Helper function to extract coordinates from Google Maps URL
@@ -155,6 +156,26 @@ router.post('/', async (req, res) => {
                 messageData.address = address;
             if (label)
                 messageData.label = label;
+            // Update User's location and mapsLink if possible
+            try {
+                // Remove 'whatsapp:' prefix if present
+                const phone = From.replace('whatsapp:', '');
+                // Find user by contactNumber
+                const user = await User.findOne({ contactNumber: phone });
+                if (user) {
+                    user.location = {
+                        type: 'Point',
+                        coordinates: [location.longitude, location.latitude],
+                    };
+                    // Compose a Google Maps link
+                    user.mapsLink = `https://maps.google.com/?q=${location.latitude},${location.longitude}`;
+                    await user.save();
+                    console.log(`✅ Updated user location for ${phone}`);
+                }
+            }
+            catch (err) {
+                console.error('❌ Failed to update user location:', err);
+            }
         }
         const message = new Message(messageData);
         // Save message to MongoDB
@@ -170,7 +191,7 @@ router.post('/', async (req, res) => {
         });
         // If the inbound message is exactly 'hi' (case-insensitive), send the template message
         if (hasBody && typeof Body === 'string' && Body.trim().toLowerCase() === 'hi') {
-            console.log('Preparing to send template message in response to "hi"...');
+            console.log('Attempting to send template message in response to "hi"');
             if (client) {
                 try {
                     const msgPayload = {
@@ -182,9 +203,8 @@ router.post('/', async (req, res) => {
                     if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
                         msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
                     }
-                    console.log('Sending template message via Twilio...');
                     const twilioResp = await client.messages.create(msgPayload);
-                    console.log('Template message sent, preparing to save to DB... Twilio response:', twilioResp);
+                    console.log('✅ Triggered outbound template message HX55104a6392c8cc079970a6116671ec51 in response to "hi". Twilio response:', twilioResp);
                     // Save the outbound template message to MongoDB for chat display
                     try {
                         await Message.create({
@@ -195,7 +215,8 @@ router.post('/', async (req, res) => {
                             timestamp: new Date(),
                         });
                         console.log('✅ Outbound template message saved to DB:', msgPayload.to);
-                    } catch (err) {
+                    }
+                    catch (err) {
                         console.error('❌ Failed to save outbound template message:', err);
                     }
                 }
