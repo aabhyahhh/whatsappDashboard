@@ -208,6 +208,15 @@ router.post('/', async (req: Request, res: Response) => {
                     }
                     const twilioResp = await client.messages.create(msgPayload);
                     console.log('✅ Triggered outbound template message HX55104a6392c8cc079970a6116671ec51 in response to "hi". Twilio response:', twilioResp);
+
+                    // Save the outbound template message to MongoDB for chat display
+                    await Message.create({
+                        from: msgPayload.from,
+                        to: msgPayload.to,
+                        body: "Namaste from Laari Khojo!\n\nThanks for reaching out!\nWe help you get discovered by more customers by showing your live location and updates on our platform.\n\nTo get started, please reply with:\n📍 Your current location – so we can mark you active for today.\n\nLet's grow your laari together! 🚀",
+                        direction: 'outbound',
+                        timestamp: new Date(),
+                    });
                 } catch (err) {
                     console.error('❌ Failed to send outbound template message:', (err as Error)?.message || err, err);
                 }
