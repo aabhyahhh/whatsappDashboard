@@ -11,6 +11,7 @@ import webhookRoutes from './routes/webhook.js';
 import contactsRoutes from './routes/contacts.js';
 import messagesRoutes from './routes/messages.js';
 import verifyRoutes from './routes/verify.js';
+import vendorRoutes from './routes/vendor.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -44,6 +45,9 @@ app.use('/api/contacts', contactsRoutes);
 
 // Use messages routes
 app.use('/api/messages', messagesRoutes);
+
+// Use vendor routes
+app.use('/api/vendor', vendorRoutes);
 
 // Health check endpoint
 app.get('/api/health', (_req, res) => {
