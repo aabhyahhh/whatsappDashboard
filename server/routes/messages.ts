@@ -12,11 +12,6 @@ const fromNumber = process.env.TWILIO_PHONE_NUMBER;
 
 const twilioClient = twilio(accountSid, authToken);
 
-// Helper function to escape special regex characters
-function escapeRegExp(string: string) {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the matched substring
-}
-
 // POST /api/send - Send WhatsApp message via Twilio
 router.post('/send', async (req: Request, res: Response, next: NextFunction) => {
     try {
