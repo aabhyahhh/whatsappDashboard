@@ -193,8 +193,20 @@ router.post('/', async (req: Request, res: Response) => {
                     await user.save();
                     console.log(`✅ Updated user location for ${phone}`);
                 }
+                // Also update Vendor location if a vendor with this contactNumber exists
+                // @ts-ignore
+                const vendor = await (await import('../models/Vendor.js')).default.findOne({ contactNumber: phone });
+                if (vendor) {
+                    vendor.location = {
+                        type: 'Point',
+                        coordinates: [location.longitude, location.latitude],
+                    };
+                    vendor.mapsLink = `https://maps.google.com/?q=${location.latitude},${location.longitude}`;
+                    await vendor.save();
+                    console.log(`✅ Updated vendor location for ${phone}`);
+                }
             } catch (err) {
-                console.error('❌ Failed to update user location:', err);
+                console.error('❌ Failed to update user or vendor location:', err);
             }
         }
 
