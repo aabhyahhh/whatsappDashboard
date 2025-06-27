@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import { Message } from '../models/Message.js';
 import { Contact } from '../models/Contact.js';
 import { client } from '../twilio.js';
+import User from '../models/User.js';
 
 const router = Router();
 
@@ -175,6 +176,26 @@ router.post('/', async (req: Request, res: Response) => {
             messageData.location = location;
             if (address) messageData.address = address;
             if (label) messageData.label = label;
+
+            // Update User's location and mapsLink if possible
+            try {
+                // Remove 'whatsapp:' prefix if present
+                const phone = From.replace('whatsapp:', '');
+                // Find user by contactNumber
+                const user = await User.findOne({ contactNumber: phone });
+                if (user) {
+                    user.location = {
+                        type: 'Point',
+                        coordinates: [location.longitude, location.latitude],
+                    };
+                    // Compose a Google Maps link
+                    user.mapsLink = `https://maps.google.com/?q=${location.latitude},${location.longitude}`;
+                    await user.save();
+                    console.log(`✅ Updated user location for ${phone}`);
+                }
+            } catch (err) {
+                console.error('❌ Failed to update user location:', err);
+            }
         }
 
         const message = new Message(messageData);

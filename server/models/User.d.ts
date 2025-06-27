@@ -6,7 +6,11 @@ interface IDish {
 export interface IUser extends Document {
     name: string;
     contactNumber: string;
-    mapsLink: string;
+    mapsLink?: string;
+    location?: {
+        type: string;
+        coordinates: number[];
+    };
     operatingHours: {
         openTime: string;
         closeTime: string;
