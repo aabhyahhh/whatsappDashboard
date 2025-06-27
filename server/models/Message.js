@@ -59,4 +59,4 @@ messageSchema.index({ from: 1, to: 1 }); // For finding conversations between tw
 messageSchema.index({ timestamp: -1 }); // For sorting messages by time
 messageSchema.index({ direction: 1 }); // For filtering by message direction
 // Create and export the model
-export const Message = mongoose.model('Message', messageSchema);
+export const Message = mongoose.models.Message || mongoose.model('Message', messageSchema);

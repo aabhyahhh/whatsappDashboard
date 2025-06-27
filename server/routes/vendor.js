@@ -1,7 +1,7 @@
 import express from 'express';
 const router = express.Router();
 import Vendor from '../models/Vendor.js';
-import Message from '../models/Message.js';
+import { Message } from '../models/Message.js';
 import { checkAndSendReminders } from '../vendorRemindersCron.js';
 
 // GET /api/vendor/check-vendor-reminders
