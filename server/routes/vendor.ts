@@ -1,9 +1,11 @@
-import { Router, Request, Response } from 'express';
+import express from 'express';
+import type { Request, Response } from 'express';
+// @ts-ignore
 import Vendor from '../models/Vendor.js';
-import { Message } from '../models/Message.js';
+// @ts-ignore
 import { checkAndSendReminders } from '../vendorRemindersCron.js';
 
-const router = Router();
+const router = express.Router();
 
 // GET /api/vendor/check-vendor-reminders
 router.get('/check-vendor-reminders', async (_req: Request, res: Response) => {
