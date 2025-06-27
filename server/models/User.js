@@ -35,7 +35,7 @@ const userSchema = new mongoose.Schema({
     },
     mapsLink: {
         type: String,
-        required: true
+        required: false
     },
     operatingHours: {
         type: operatingHoursSchema,
@@ -98,6 +98,19 @@ const userSchema = new mongoose.Schema({
     panNumber: {
         type: String,
         required: false
+    },
+    location: {
+        type: {
+            type: String,
+            enum: ['Point'],
+            default: 'Point',
+            required: false
+        },
+        coordinates: {
+            type: [Number],
+            default: [0, 0],
+            required: false
+        }
     }
 }, { timestamps: true });
 // Update `updatedAt` field on save

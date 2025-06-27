@@ -171,10 +171,13 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
 
         // Create and save the user with all fields
         const newUser = new User({
-            contactNumber, name, status, mapsLink, operatingHours, foodType, bestDishes: bestDishes.filter((dish: any) => dish.name && dish.name.trim()), menuLink,
+            contactNumber, name, status, operatingHours, foodType, menuLink,
             profilePictures, preferredLanguages, foodCategories, stallType, whatsappConsent,
-            onboardingType, aadharNumber, aadharFrontUrl, aadharBackUrl, panNumber, location
+            onboardingType, aadharNumber, aadharFrontUrl, aadharBackUrl, panNumber
         });
+        if (bestDishes) newUser.bestDishes = bestDishes.filter((dish: any) => dish.name && dish.name.trim());
+        if (typeof mapsLink === 'string') newUser.mapsLink = mapsLink;
+        if (location) newUser.location = location;
         await newUser.save();
 
         // Send WhatsApp message to the new user based on preferred language
@@ -257,7 +260,7 @@ router.put('/:id', authenticateToken, async (req: Request, res: Response) => {
         if (foodType) updateFields.foodType = foodType;
         if (filteredBestDishes) updateFields.bestDishes = filteredBestDishes;
         if (menuLink) updateFields.menuLink = menuLink;
-        if (mapsLink) updateFields.mapsLink = mapsLink;
+        if (typeof mapsLink === 'string') updateFields.mapsLink = mapsLink;
         if (profilePictures) updateFields.profilePictures = profilePictures;
         if (preferredLanguages) updateFields.preferredLanguages = preferredLanguages;
         if (foodCategories) updateFields.foodCategories = foodCategories;

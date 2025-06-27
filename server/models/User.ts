@@ -11,7 +11,7 @@ interface IDish {
 export interface IUser extends Document {
     name: string;
     contactNumber: string;
-    mapsLink: string;
+    mapsLink?: string;
     operatingHours: {
         openTime: string;
         closeTime: string;
@@ -73,7 +73,7 @@ const userSchema = new mongoose.Schema({
     },
     mapsLink: {
         type: String,
-        required: true
+        required: false
     },
     operatingHours: {
         type: operatingHoursSchema,
@@ -141,11 +141,13 @@ const userSchema = new mongoose.Schema({
         type: {
             type: String,
             enum: ['Point'],
-            default: 'Point'
+            default: 'Point',
+            required: false
         },
         coordinates: {
             type: [Number],
-            default: [0, 0] // [lng, lat]
+            default: [0, 0],
+            required: false
         }
     }
 }, { timestamps: true });
