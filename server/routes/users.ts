@@ -121,7 +121,7 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
         const {
             contactNumber, name, status, mapsLink, operatingHours, foodType, bestDishes, menuLink,
             profilePictures, preferredLanguages, foodCategories, stallType, whatsappConsent,
-            onboardingType, aadharNumber, aadharFrontUrl, aadharBackUrl, panNumber
+            onboardingType, aadharNumber, aadharFrontUrl, aadharBackUrl, panNumber, latitude, longitude
         } = req.body;
 
         // Basic validation
@@ -156,11 +156,24 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
             operatingHours.days = Array.from(new Set(operatingHours.days.filter((d: number) => typeof d === 'number' && d >= 0 && d <= 6)));
         }
 
+        // Create location object from coordinates if provided
+        let location = undefined;
+        if (latitude && longitude) {
+            const lat = parseFloat(latitude);
+            const lng = parseFloat(longitude);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                location = {
+                    type: 'Point',
+                    coordinates: [lng, lat] // MongoDB expects [longitude, latitude]
+                };
+            }
+        }
+
         // Create and save the user with all fields
         const newUser = new User({
             contactNumber, name, status, mapsLink, operatingHours, foodType, bestDishes: bestDishes.filter((dish: any) => dish.name && dish.name.trim()), menuLink,
             profilePictures, preferredLanguages, foodCategories, stallType, whatsappConsent,
-            onboardingType, aadharNumber, aadharFrontUrl, aadharBackUrl, panNumber
+            onboardingType, aadharNumber, aadharFrontUrl, aadharBackUrl, panNumber, location
         });
         await newUser.save();
 
@@ -221,7 +234,7 @@ router.put('/:id', authenticateToken, async (req: Request, res: Response) => {
         const { id } = req.params;
         const {
             contactNumber, name, status, openTime, closeTime, operatingHours, foodType, bestDishes, menuLink, mapsLink,
-            profilePictures, preferredLanguages, foodCategories, stallType, whatsappConsent, onboardingType, aadharNumber, aadharFrontUrl, aadharBackUrl, panNumber
+            profilePictures, preferredLanguages, foodCategories, stallType, whatsappConsent, onboardingType, aadharNumber, aadharFrontUrl, aadharBackUrl, panNumber, latitude, longitude
         } = req.body;
 
         // Basic validation for updates
@@ -289,6 +302,18 @@ router.put('/:id', authenticateToken, async (req: Request, res: Response) => {
         // Set the complete operating hours object
         updateFields.operatingHours = currentOperatingHours;
         updateFields.updatedAt = new Date();
+
+        // Handle location coordinates if provided
+        if (latitude && longitude) {
+            const lat = parseFloat(latitude);
+            const lng = parseFloat(longitude);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                updateFields.location = {
+                    type: 'Point',
+                    coordinates: [lng, lat] // MongoDB expects [longitude, latitude]
+                };
+            }
+        }
 
         // Use findByIdAndUpdate with { new: true, runValidators: true }
         // This bypasses the existing document validation issues

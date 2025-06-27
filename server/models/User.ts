@@ -35,6 +35,10 @@ export interface IUser extends Document {
     aadharFrontUrl?: string;
     aadharBackUrl?: string;
     panNumber?: string;
+    location?: {
+        type: string;
+        coordinates: number[]; // [lng, lat]
+    };
 }
 
 // Define the dish schema
@@ -132,6 +136,17 @@ const userSchema = new mongoose.Schema({
     panNumber: {
         type: String,
         required: false
+    },
+    location: {
+        type: {
+            type: String,
+            enum: ['Point'],
+            default: 'Point'
+        },
+        coordinates: {
+            type: [Number],
+            default: [0, 0] // [lng, lat]
+        }
     }
 }, { timestamps: true });
 
@@ -142,6 +157,7 @@ userSchema.pre('save', function(next) {
 });
 
 userSchema.index({ updatedAt: -1 });
+userSchema.index({ location: '2dsphere' });
 
 userSchema.on('index', function(err: any) {
     if (err) {
@@ -202,4 +218,4 @@ userSchema.methods.isOpenNow = function() {
 };
 
 // Create and export the model
-export default mongoose.model<IUser>('User', userSchema); 
+export default mongoose.model<IUser>('User', userSchema);
