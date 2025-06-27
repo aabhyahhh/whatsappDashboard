@@ -3,7 +3,7 @@ import type { Request, Response } from 'express';
 import { Message } from '../models/Message.js';
 import { Contact } from '../models/Contact.js';
 import { client } from '../twilio.js';
-import User from '../models/User.js';
+import { User } from '../models/User.js';
 
 const router = Router();
 
