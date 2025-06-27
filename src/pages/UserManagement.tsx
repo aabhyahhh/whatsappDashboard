@@ -35,6 +35,37 @@ interface User {
   aadharFrontUrl?: string;
   aadharBackUrl?: string;
   panNumber?: string;
+  location?: {
+    type: string;
+    coordinates: number[]; // [lng, lat]
+  };
+}
+
+interface UserFormData {
+  contactNumber: string;
+  name: string;
+  status: 'active' | 'inactive' | 'suspended';
+  profilePictures: string[];
+  foodType: 'veg' | 'Nonveg' | 'Swaminarayan' | 'Jain';
+  bestDishes: Dish[];
+  menuLink: string;
+  mapsLink: string;
+  latitude: string;
+  longitude: string;
+  operatingHours: {
+    openTime: string;
+    closeTime: string;
+    days: string[];
+  };
+  preferredLanguages: string[];
+  foodCategories: string[];
+  stallType: '' | 'fixed' | 'mobile';
+  whatsappConsent: boolean;
+  onboardingType: string;
+  aadharNumber: string;
+  aadharFrontUrl: string;
+  aadharBackUrl: string;
+  panNumber: string;
 }
 
 export default function UserManagement() {
@@ -42,7 +73,7 @@ export default function UserManagement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newUser, setNewUser] = useState({
+  const [newUser, setNewUser] = useState<UserFormData>({
     contactNumber: '+91',
     name: '',
     status: 'active',
@@ -51,6 +82,8 @@ export default function UserManagement() {
     bestDishes: Array(6).fill({ name: '', price: '' }) as Dish[],
     menuLink: '',
     mapsLink: '',
+    latitude: '',
+    longitude: '',
     operatingHours: {
       openTime: '',
       closeTime: '',
@@ -69,7 +102,7 @@ export default function UserManagement() {
   const [addError, setAddError] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [editForm, setEditForm] = useState<Partial<User>>({
+  const [editForm, setEditForm] = useState<Partial<UserFormData>>({
     contactNumber: '+91',
     name: '',
     status: 'active',
@@ -82,6 +115,8 @@ export default function UserManagement() {
     bestDishes: Array(6).fill({ name: '', price: '' }) as Dish[],
     menuLink: '',
     mapsLink: '',
+    latitude: '',
+    longitude: '',
     profilePictures: [],
     preferredLanguages: [],
     foodCategories: [],
@@ -222,6 +257,8 @@ export default function UserManagement() {
       aadharBackUrl: newUser.aadharBackUrl,
       panNumber: newUser.panNumber,
       mobile_verified: isVerified,
+      latitude: newUser.latitude,
+      longitude: newUser.longitude,
     };
 
     try {
@@ -239,7 +276,7 @@ export default function UserManagement() {
         throw new Error(errorData.message || 'Failed to add user');
       }
 
-      setNewUser({ contactNumber: '+91', name: '', status: 'active', profilePictures: [], foodType: 'veg', bestDishes: Array(6).fill({ name: '', price: '' }) as Dish[], menuLink: '', mapsLink: '', operatingHours: { openTime: '', closeTime: '', days: [] }, preferredLanguages: [], foodCategories: [], stallType: '', whatsappConsent: false, onboardingType: '', aadharNumber: '', aadharFrontUrl: '', aadharBackUrl: '', panNumber: '' });
+      setNewUser({ contactNumber: '+91', name: '', status: 'active', profilePictures: [], foodType: 'veg', bestDishes: Array(6).fill({ name: '', price: '' }) as Dish[], menuLink: '', mapsLink: '', latitude: '', longitude: '', operatingHours: { openTime: '', closeTime: '', days: [] }, preferredLanguages: [], foodCategories: [], stallType: '', whatsappConsent: false, onboardingType: '', aadharNumber: '', aadharFrontUrl: '', aadharBackUrl: '', panNumber: '' });
       setShowAddForm(false);
       fetchUsers(); // Refresh the list
       alert('User added successfully!');
@@ -265,6 +302,8 @@ export default function UserManagement() {
       bestDishes: user.bestDishes ? [...user.bestDishes] : Array(6).fill({ name: '', price: '' }),
       menuLink: user.menuLink,
       mapsLink: user.mapsLink,
+      latitude: user.location?.coordinates?.[1]?.toString() || '',
+      longitude: user.location?.coordinates?.[0]?.toString() || '',
       profilePictures: user.profilePictures || [],
       preferredLanguages: user.preferredLanguages || [],
       foodCategories: user.foodCategories || [],
@@ -795,7 +834,35 @@ export default function UserManagement() {
                   onChange={handleAddUserChange}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="newLatitude" className="block text-sm font-medium text-gray-700">Latitude</label>
+                  <input
+                    type="number"
+                    step="any"
+                    name="latitude"
+                    id="newLatitude"
+                    value={newUser.latitude}
+                    onChange={handleAddUserChange}
+                    placeholder="e.g., 19.0760"
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
                 </div>
+                <div>
+                  <label htmlFor="newLongitude" className="block text-sm font-medium text-gray-700">Longitude</label>
+                  <input
+                    type="number"
+                    step="any"
+                    name="longitude"
+                    id="newLongitude"
+                    value={newUser.longitude}
+                    onChange={handleAddUserChange}
+                    placeholder="e.g., 72.8777"
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                </div>
+              </div>
               </div>
               <button
                 type="submit"
@@ -1191,6 +1258,34 @@ export default function UserManagement() {
                     onChange={handleEditUserChange}
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="editLatitude" className="block text-sm font-medium text-gray-700">Latitude</label>
+                    <input
+                      type="number"
+                      step="any"
+                      name="latitude"
+                      id="editLatitude"
+                      value={editForm.latitude || ''}
+                      onChange={handleEditUserChange}
+                      placeholder="e.g., 19.0760"
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="editLongitude" className="block text-sm font-medium text-gray-700">Longitude</label>
+                    <input
+                      type="number"
+                      step="any"
+                      name="longitude"
+                      id="editLongitude"
+                      value={editForm.longitude || ''}
+                      onChange={handleEditUserChange}
+                      placeholder="e.g., 72.8777"
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    />
+                  </div>
                 </div>
               </div>
               <button

@@ -170,7 +170,7 @@ router.post('/', async (req, res) => {
         });
         // If the inbound message is exactly 'hi' (case-insensitive), send the template message
         if (hasBody && typeof Body === 'string' && Body.trim().toLowerCase() === 'hi') {
-            console.log('Attempting to send template message in response to "hi"');
+            console.log('Preparing to send template message in response to "hi"...');
             if (client) {
                 try {
                     const msgPayload = {
@@ -182,8 +182,22 @@ router.post('/', async (req, res) => {
                     if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
                         msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
                     }
+                    console.log('Sending template message via Twilio...');
                     const twilioResp = await client.messages.create(msgPayload);
-                    console.log('✅ Triggered outbound template message HX55104a6392c8cc079970a6116671ec51 in response to "hi". Twilio response:', twilioResp);
+                    console.log('Template message sent, preparing to save to DB... Twilio response:', twilioResp);
+                    // Save the outbound template message to MongoDB for chat display
+                    try {
+                        await Message.create({
+                            from: msgPayload.from,
+                            to: msgPayload.to,
+                            body: "Namaste from Laari Khojo!\n\nThanks for reaching out!\nWe help you get discovered by more customers by showing your live location and updates on our platform.\n\nTo get started, please reply with:\n📍 Your current location – so we can mark you active for today.\n\nLet's grow your laari together! 🚀",
+                            direction: 'outbound',
+                            timestamp: new Date(),
+                        });
+                        console.log('✅ Outbound template message saved to DB:', msgPayload.to);
+                    } catch (err) {
+                        console.error('❌ Failed to save outbound template message:', err);
+                    }
                 }
                 catch (err) {
                     console.error('❌ Failed to send outbound template message:', err?.message || err, err);

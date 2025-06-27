@@ -20,7 +20,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 connectDB().catch(console.error);
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: ['http://localhost:5173', 'https://whatsappdashboard-1.onrender.com'],
+  credentials: true,
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

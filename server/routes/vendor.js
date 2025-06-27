@@ -101,4 +101,14 @@ router.post('/update-location', async (req, res) => {
   }
 });
 
+// GET /api/vendor - Get all vendors
+router.get('/', async (req, res) => {
+  try {
+    const vendors = await Vendor.find({});
+    res.json(vendors);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router; 
