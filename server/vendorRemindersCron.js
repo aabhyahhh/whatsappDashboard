@@ -1,7 +1,7 @@
 import cron from 'node-cron';
 import moment from 'moment-timezone';
+import { Message } from './models/Message.js';
 import User from './models/User.js';
-import Message from './models/Message.js';
 import { client } from './twilio.js';
 
 const TEMPLATE_SID = 'HXa36006480cdbfe35897764a05983bc77';

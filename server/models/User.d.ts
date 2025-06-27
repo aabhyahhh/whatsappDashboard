@@ -7,10 +7,6 @@ export interface IUser extends Document {
     name: string;
     contactNumber: string;
     mapsLink?: string;
-    location?: {
-        type: string;
-        coordinates: number[];
-    };
     operatingHours: {
         openTime: string;
         closeTime: string;
@@ -34,6 +30,10 @@ export interface IUser extends Document {
     aadharFrontUrl?: string;
     aadharBackUrl?: string;
     panNumber?: string;
+    location?: {
+        type: string;
+        coordinates: number[];
+    };
 }
 declare const _default: mongoose.Model<IUser, {}, {}, {}, mongoose.Document<unknown, {}, IUser, {}> & IUser & Required<{
     _id: unknown;

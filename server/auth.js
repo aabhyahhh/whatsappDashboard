@@ -11,8 +11,6 @@ import contactsRoutes from './routes/contacts.js';
 import messagesRoutes from './routes/messages.js';
 import verifyRoutes from './routes/verify.js';
 import vendorRoutes from './routes/vendor.js';
-import './vendorRemindersCron.js';
-
 const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -20,8 +18,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 connectDB().catch(console.error);
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:5173', 'https://whatsappdashboard-1.onrender.com'],
-  credentials: true,
+    origin: ['http://localhost:5173', 'https://whatsappdashboard-1.onrender.com'],
+    credentials: true,
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
