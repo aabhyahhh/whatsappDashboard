@@ -218,15 +218,20 @@ export default function UserManagement() {
       return;
     }
 
+    const dataToSubmit = { ...newUser };
+    if (!dataToSubmit.mapsLink && dataToSubmit.latitude && dataToSubmit.longitude) {
+      dataToSubmit.mapsLink = `https://www.google.com/maps?q=${dataToSubmit.latitude},${dataToSubmit.longitude}`;
+    }
+
     // Validate required fields
     if (
-      !newUser.contactNumber ||
-      !newUser.name ||
-      !newUser.mapsLink ||
-      !newUser.operatingHours.openTime ||
-      !newUser.operatingHours.closeTime ||
-      !newUser.operatingHours.days.length ||
-      !newUser.bestDishes[0] || !newUser.bestDishes[0].name || !newUser.bestDishes[0].name.trim()
+      !dataToSubmit.contactNumber ||
+      !dataToSubmit.name ||
+      !dataToSubmit.mapsLink ||
+      !dataToSubmit.operatingHours.openTime ||
+      !dataToSubmit.operatingHours.closeTime ||
+      !dataToSubmit.operatingHours.days.length ||
+      !dataToSubmit.bestDishes[0] || !dataToSubmit.bestDishes[0].name || !dataToSubmit.bestDishes[0].name.trim()
     ) {
       setAddError('Please fill all required fields and at least 1 best dish.');
       setIsAdding(false);
@@ -235,30 +240,30 @@ export default function UserManagement() {
 
     // Build payload for backend
     const payload = {
-      contactNumber: newUser.contactNumber,
-      name: newUser.name,
-      mapsLink: newUser.mapsLink,
+      contactNumber: dataToSubmit.contactNumber,
+      name: dataToSubmit.name,
+      mapsLink: dataToSubmit.mapsLink,
       operatingHours: {
-        openTime: newUser.operatingHours.openTime,
-        closeTime: newUser.operatingHours.closeTime,
-        days: newUser.operatingHours.days,
+        openTime: dataToSubmit.operatingHours.openTime,
+        closeTime: dataToSubmit.operatingHours.closeTime,
+        days: dataToSubmit.operatingHours.days,
       },
-      bestDishes: newUser.bestDishes.filter(dish => dish.name && dish.name.trim()),
-      foodType: newUser.foodType,
-      profilePictures: newUser.profilePictures,
-      preferredLanguages: newUser.preferredLanguages,
-      foodCategories: newUser.foodCategories,
-      stallType: newUser.stallType,
-      whatsappConsent: newUser.whatsappConsent,
-      menuLink: newUser.menuLink,
-      onboardingType: newUser.onboardingType,
-      aadharNumber: newUser.aadharNumber,
-      aadharFrontUrl: newUser.aadharFrontUrl,
-      aadharBackUrl: newUser.aadharBackUrl,
-      panNumber: newUser.panNumber,
+      bestDishes: dataToSubmit.bestDishes.filter(dish => dish.name && dish.name.trim()),
+      foodType: dataToSubmit.foodType,
+      profilePictures: dataToSubmit.profilePictures,
+      preferredLanguages: dataToSubmit.preferredLanguages,
+      foodCategories: dataToSubmit.foodCategories,
+      stallType: dataToSubmit.stallType,
+      whatsappConsent: dataToSubmit.whatsappConsent,
+      menuLink: dataToSubmit.menuLink,
+      onboardingType: dataToSubmit.onboardingType,
+      aadharNumber: dataToSubmit.aadharNumber,
+      aadharFrontUrl: dataToSubmit.aadharFrontUrl,
+      aadharBackUrl: dataToSubmit.aadharBackUrl,
+      panNumber: dataToSubmit.panNumber,
       mobile_verified: isVerified,
-      latitude: newUser.latitude,
-      longitude: newUser.longitude,
+      latitude: dataToSubmit.latitude,
+      longitude: dataToSubmit.longitude,
     };
 
     try {
