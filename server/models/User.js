@@ -177,4 +177,4 @@ userSchema.methods.isOpenNow = function () {
     return result;
 };
 // Create and export the model
-export default mongoose.model('User', userSchema);
+export const User = mongoose.models.User || mongoose.model('User', userSchema);
