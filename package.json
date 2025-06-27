@@ -30,6 +30,8 @@
     "moment-timezone": "^0.6.0",
     "mongoose": "^8.16.0",
     "multer": "^2.0.1",
+    "node-cron": "^4.1.1",
+    "node-fetch": "^3.3.2",
     "node-schedule": "^2.1.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
