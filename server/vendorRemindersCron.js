@@ -4,7 +4,7 @@ import { Message } from './models/Message.js';
 import { User } from './models/User.js';
 import { client } from './twilio.js';
 
-const TEMPLATE_SID = 'HXa36006480cdbfe35897764a05983bc77';
+const TEMPLATE_SID = 'HXbdb716843483717790c45c951b71701e';
 
 // Helper: Check if a location was received from user today
 async function hasLocationToday(contactNumber) {
@@ -43,8 +43,9 @@ const checkAndSendReminders = async () => {
             date: now.date(),
           });
           const diff = openTime.diff(now, 'minutes');
-          // 30 minutes before openTime
-          if (diff === 30) {
+          console.log(`User: ${user.contactNumber}, Now: ${now.format()}, OpenTime: ${openTime.format()}, Diff: ${diff}`);
+          // 30 minutes before openTime (allowing a 2-min window)
+          if (diff >= 29 && diff <= 31) {
             if (!(await hasReminderSentToday(user.contactNumber, 30))) {
               await client.messages.create({
                 from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
@@ -63,8 +64,8 @@ const checkAndSendReminders = async () => {
               console.log(`Sent 30-min reminder to ${user.contactNumber}`);
             }
           }
-          // 15 minutes before openTime, if no location received
-          if (diff === 15) {
+          // 15 minutes before openTime, if no location received (allowing a 2-min window)
+          if (diff >= 14 && diff <= 16) {
             if (!(await hasLocationToday(user.contactNumber)) && !(await hasReminderSentToday(user.contactNumber, 15))) {
               await client.messages.create({
                 from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,

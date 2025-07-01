@@ -149,23 +149,17 @@ export default function ChatView() {
                     : 'bg-blue-600 text-white rounded-br-none'
                   }`}
                 >
-                  {/* Show location pin if present */}
-                  {msg.location && msg.location.latitude && msg.location.longitude ? (
+                  {/* Show location pin for inbound messages with location */}
+                  {msg.direction === 'inbound' && msg.location && msg.location.latitude && msg.location.longitude ? (
                     <div>
                       <a
                         href={`https://maps.google.com/?q=${msg.location.latitude},${msg.location.longitude}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="underline hover:text-blue-800"
+                        className="underline hover:text-blue-800 flex items-center gap-2"
                       >
-                        📍 View Location ({msg.location.latitude.toFixed(4)}, {msg.location.longitude.toFixed(4)})
+                        <span className="text-green-600">✔️</span> <span>Current location sent</span>
                       </a>
-                      {/* Optionally, show a static map image */}
-                      {/* <img
-                        src={`https://maps.googleapis.com/maps/api/staticmap?center=${msg.location.latitude},${msg.location.longitude}&zoom=16&size=300x150&markers=color:red%7C${msg.location.latitude},${msg.location.longitude}&key=YOUR_GOOGLE_MAPS_API_KEY`}
-                        alt="Location"
-                        className="mt-1 rounded"
-                      /> */}
                     </div>
                   ) : (
                     <p className="text-sm mb-1">{msg.body}</p>

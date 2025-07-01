@@ -113,3 +113,4 @@ process.on('SIGINT', function () { return __awaiter(void 0, void 0, void 0, func
         }
     });
 }); });
+connectDB(); // Ensure DB connection is established when this file is loaded
