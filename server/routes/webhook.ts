@@ -236,14 +236,14 @@ router.post('/', async (req: Request, res: Response) => {
                         const msgPayload: any = {
                             from: `whatsapp:${To.replace('whatsapp:', '')}`,
                             to: From,
-                            contentSid: 'HX55104a6392c8cc079970a6116671ec51',
+                            contentSid: 'HX6b8e51dd6b11dd2db65fe9c78546803e',
                             contentVariables: JSON.stringify({})
                         };
                         if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
                             msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
                         }
                         const twilioResp = await client.messages.create(msgPayload);
-                        console.log('✅ Triggered outbound template message HX55104a6392c8cc079970a6116671ec51 in response to greeting. Twilio response:', twilioResp);
+                        console.log('✅ Triggered outbound template message HX6b8e51dd6b11dd2db65fe9c78546803e in response to greeting. Twilio response:', twilioResp);
 
                         // Save the outbound template message to MongoDB for chat display
                         try {
