@@ -49,7 +49,7 @@ interface UserFormData {
   foodType: 'veg' | 'Nonveg' | 'Swaminarayan' | 'Jain';
   bestDishes: Dish[];
   menuLink: string;
-  mapsLink: string;
+  mapsLink?: string;
   latitude: string;
   longitude: string;
   operatingHours: {
@@ -227,13 +227,17 @@ export default function UserManagement() {
     if (
       !dataToSubmit.contactNumber ||
       !dataToSubmit.name ||
-      !dataToSubmit.mapsLink ||
       !dataToSubmit.operatingHours.openTime ||
       !dataToSubmit.operatingHours.closeTime ||
       !dataToSubmit.operatingHours.days.length ||
       !dataToSubmit.bestDishes[0] || !dataToSubmit.bestDishes[0].name || !dataToSubmit.bestDishes[0].name.trim()
     ) {
       setAddError('Please fill all required fields and at least 1 best dish.');
+      setIsAdding(false);
+      return;
+    }
+    if (dataToSubmit.stallType !== 'fixed' && dataToSubmit.stallType !== 'mobile') {
+      setAddError('Stall Type is required');
       setIsAdding(false);
       return;
     }

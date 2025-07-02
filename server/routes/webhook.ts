@@ -225,41 +225,45 @@ router.post('/', async (req: Request, res: Response) => {
             label: message.get('label') || undefined,
         });
 
-        // If the inbound message is exactly 'hi' (case-insensitive), send the template message
-        if (hasBody && typeof Body === 'string' && Body.trim().toLowerCase() === 'hi') {
-            console.log('Attempting to send template message in response to "hi"');
-            if (client) {
-                try {
-                    const msgPayload: any = {
-                        from: `whatsapp:${To.replace('whatsapp:', '')}`,
-                        to: From,
-                        contentSid: 'HX55104a6392c8cc079970a6116671ec51',
-                        contentVariables: JSON.stringify({})
-                    };
-                    if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
-                        msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
-                    }
-                    const twilioResp = await client.messages.create(msgPayload);
-                    console.log('✅ Triggered outbound template message HX55104a6392c8cc079970a6116671ec51 in response to "hi". Twilio response:', twilioResp);
-
-                    // Save the outbound template message to MongoDB for chat display
+        // If the inbound message is a greeting (hi, hello, hey, etc.), send the template message
+        if (hasBody && typeof Body === 'string') {
+            const normalized = Body.trim().toLowerCase();
+            // Match greetings: hi, hello, hey, heyy, heyyy, etc.
+            if (/^(hi+|hello+|hey+)$/.test(normalized)) {
+                console.log('Attempting to send template message in response to greeting');
+                if (client) {
                     try {
-                        await Message.create({
-                            from: msgPayload.from,
-                            to: msgPayload.to,
-                            body: "Namaste from Laari Khojo!\n\nThanks for reaching out!\nWe help you get discovered by more customers by showing your live location and updates on our platform.\n\nTo get started, please reply with:\n📍 Your current location – so we can mark you active for today.\n\nLet's grow your laari together! 🚀",
-                            direction: 'outbound',
-                            timestamp: new Date(),
-                        });
-                        console.log('✅ Outbound template message saved to DB:', msgPayload.to);
+                        const msgPayload: any = {
+                            from: `whatsapp:${To.replace('whatsapp:', '')}`,
+                            to: From,
+                            contentSid: 'HX55104a6392c8cc079970a6116671ec51',
+                            contentVariables: JSON.stringify({})
+                        };
+                        if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
+                            msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+                        }
+                        const twilioResp = await client.messages.create(msgPayload);
+                        console.log('✅ Triggered outbound template message HX55104a6392c8cc079970a6116671ec51 in response to greeting. Twilio response:', twilioResp);
+
+                        // Save the outbound template message to MongoDB for chat display
+                        try {
+                            await Message.create({
+                                from: msgPayload.from,
+                                to: msgPayload.to,
+                                body: "Namaste from Laari Khojo!\n\nThanks for reaching out!\nWe help you get discovered by more customers by showing your live location and updates on our platform.\n\nTo get started, please reply with:\n📍 Your current location – so we can mark you active for today.\n\nLet's grow your laari together! 🚀",
+                                direction: 'outbound',
+                                timestamp: new Date(),
+                            });
+                            console.log('✅ Outbound template message saved to DB:', msgPayload.to);
+                        } catch (err) {
+                            console.error('❌ Failed to save outbound template message:', err);
+                        }
                     } catch (err) {
-                        console.error('❌ Failed to save outbound template message:', err);
+                        console.error('❌ Failed to send outbound template message:', (err as Error)?.message || err, err);
                     }
-                } catch (err) {
-                    console.error('❌ Failed to send outbound template message:', (err as Error)?.message || err, err);
+                } else {
+                    console.warn('⚠️ Twilio client not initialized, cannot send outbound template message.');
                 }
-            } else {
-                console.warn('⚠️ Twilio client not initialized, cannot send outbound template message.');
             }
         }
 
