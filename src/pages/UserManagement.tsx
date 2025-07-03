@@ -464,6 +464,46 @@ export default function UserManagement() {
 
   const timeOptions = generateTimeOptions();
 
+  const handleGetCurrentLocationAdd = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setNewUser((prev) => ({
+            ...prev,
+            latitude: position.coords.latitude.toString(),
+            longitude: position.coords.longitude.toString(),
+          }));
+        },
+        (error) => {
+          console.error(error);
+          alert("Unable to retrieve your location");
+        }
+      );
+    } else {
+      alert("Geolocation is not supported by this browser.");
+    }
+  };
+
+  const handleGetCurrentLocationEdit = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setEditForm((prev) => ({
+            ...prev,
+            latitude: position.coords.latitude.toString(),
+            longitude: position.coords.longitude.toString(),
+          }));
+        },
+        (error) => {
+          console.error(error);
+          alert("Unable to retrieve your location");
+        }
+      );
+    } else {
+      alert("Geolocation is not supported by this browser.");
+    }
+  };
+
   if (loading) {
     return <div className="text-center py-10">Loading users...</div>;
   }
@@ -871,6 +911,15 @@ export default function UserManagement() {
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   />
                 </div>
+              </div>
+              <div className="col-span-2 flex justify-end mt-2">
+                <button
+                  type="button"
+                  onClick={handleGetCurrentLocationAdd}
+                  className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1 px-3 rounded shadow"
+                >
+                  Get Current Location
+                </button>
               </div>
               </div>
               <button
@@ -1295,6 +1344,15 @@ export default function UserManagement() {
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     />
                   </div>
+                </div>
+                <div className="col-span-2 flex justify-end mt-2">
+                  <button
+                    type="button"
+                    onClick={handleGetCurrentLocationEdit}
+                    className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1 px-3 rounded shadow"
+                  >
+                    Get Current Location
+                  </button>
                 </div>
               </div>
               <button
