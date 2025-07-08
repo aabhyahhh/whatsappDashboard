@@ -107,6 +107,24 @@ const userSchema = new mongoose.Schema({
             default: [0, 0],
             required: false
         }
+    },
+    vendorIndex: {
+        type: String,
+        required: false,
+        index: true
+    },
+    primaryLanguage: {
+        type: String,
+        required: false
+    },
+    entryType: {
+        type: String,
+        enum: ['O', 'M', 'W'],
+        required: false
+    },
+    addedBy: {
+        type: String,
+        required: false
     }
 }, { timestamps: true });
 // Update `updatedAt` field on save
