@@ -1478,53 +1478,60 @@ export default function UserManagement() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredUsers.map((user) => (
-                  <tr key={user._id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 whitespace-nowrap">{user.vendorIndex || 'N/A'}</td>
-                    <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900 truncate max-w-[140px]">{user.contactNumber}</td>
-                    <td className="px-4 py-3 whitespace-nowrap truncate max-w-[180px]">{user.name}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">{user.status}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">{new Date(user.lastActive).toLocaleDateString()}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {user.profilePictures && user.profilePictures.length > 0 && (
-                        <img src={user.profilePictures[0]} alt="Profile" className="h-8 w-8 rounded-full object-cover" />
-                      )}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">{user.operatingHours.openTime || 'N/A'}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">{user.operatingHours.closeTime || 'N/A'}</td>
-                    <td className="px-4 py-3 whitespace-nowrap truncate max-w-[120px]">{
-                      (user.operatingHours.days && user.operatingHours.days.length > 0)
-                        ? user.operatingHours.days
-                            .map((d: any) => {
-                              const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                              return typeof d === 'number' && d >= 0 && d <= 6 ? dayNames[d] : d;
-                            })
-                            .join(', ')
-                        : 'N/A'
-                    }</td>
-                    <td className="px-4 py-3 whitespace-nowrap">{user.foodType || 'N/A'}</td>
-                    <td className="px-4 py-3 whitespace-nowrap truncate max-w-[180px]">
-                      {(user.bestDishes && user.bestDishes.filter(dish => dish.name).length > 0) ?
-                        user.bestDishes.filter(dish => dish.name).map(dish => `${dish.name} (${dish.price || 'N/A'})`).join(', ') : 'N/A'}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap truncate max-w-[100px]"><a href={user.menuLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{user.menuLink ? 'Link' : 'N/A'}</a></td>
-                    <td className="px-4 py-3 whitespace-nowrap truncate max-w-[120px]"><a href={user.mapsLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{user.mapsLink || 'N/A'}</a></td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <button 
-                        onClick={() => handleEditClick(user)}
-                        className="font-medium text-blue-600 hover:underline mr-3">
-                          Edit
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteUser(user._id)}
-                        disabled={isDeleting}
-                        className={`font-medium text-red-600 hover:underline ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      >
-                        {isDeleting ? 'Deleting...' : 'Delete'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {filteredUsers.map((user, idx) => {
+                  // Build custom index string
+                  const lang = (user.primaryLanguage || 'EN').substring(0,2).toUpperCase();
+                  const entryType = user.entryType || 'O';
+                  const adminName = user.addedBy || 'admin';
+                  const customIndex = `${idx + 1}_${lang}_${entryType}_${adminName}`;
+                  return (
+                    <tr key={user._id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 whitespace-nowrap">{customIndex}</td>
+                      <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900 truncate max-w-[140px]">{user.contactNumber}</td>
+                      <td className="px-4 py-3 whitespace-nowrap truncate max-w-[180px]">{user.name}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">{user.status}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">{new Date(user.lastActive).toLocaleDateString()}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {user.profilePictures && user.profilePictures.length > 0 && (
+                          <img src={user.profilePictures[0]} alt="Profile" className="h-8 w-8 rounded-full object-cover" />
+                        )}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">{user.operatingHours.openTime || 'N/A'}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">{user.operatingHours.closeTime || 'N/A'}</td>
+                      <td className="px-4 py-3 whitespace-nowrap truncate max-w-[120px]">{
+                        (user.operatingHours.days && user.operatingHours.days.length > 0)
+                          ? user.operatingHours.days
+                              .map((d: any) => {
+                                const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                                return typeof d === 'number' && d >= 0 && d <= 6 ? dayNames[d] : d;
+                              })
+                              .join(', ')
+                          : 'N/A'
+                      }</td>
+                      <td className="px-4 py-3 whitespace-nowrap">{user.foodType || 'N/A'}</td>
+                      <td className="px-4 py-3 whitespace-nowrap truncate max-w-[180px]">
+                        {(user.bestDishes && user.bestDishes.filter(dish => dish.name).length > 0) ?
+                          user.bestDishes.filter(dish => dish.name).map(dish => `${dish.name} (${dish.price || 'N/A'})`).join(', ') : 'N/A'}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap truncate max-w-[100px]"><a href={user.menuLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{user.menuLink ? 'Link' : 'N/A'}</a></td>
+                      <td className="px-4 py-3 whitespace-nowrap truncate max-w-[120px]"><a href={user.mapsLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{user.mapsLink || 'N/A'}</a></td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <button 
+                          onClick={() => handleEditClick(user)}
+                          className="font-medium text-blue-600 hover:underline mr-3">
+                            Edit
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteUser(user._id)}
+                          disabled={isDeleting}
+                          className={`font-medium text-red-600 hover:underline ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                          {isDeleting ? 'Deleting...' : 'Delete'}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

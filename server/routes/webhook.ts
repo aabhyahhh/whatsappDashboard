@@ -141,17 +141,12 @@ router.post('/', async (req: Request, res: Response) => {
             return res.status(200).send('OK');
         }
 
-        // Extract location data if present in Body (existing logic)
         let location: { latitude: number; longitude: number } | null = null;
         let address = undefined;
         let label = undefined;
 
-        if (hasBody) {
-            location = extractLocationFromMessage(Body);
-        }
-
-        // If not found in Body, check for native WhatsApp location fields from Twilio
-        if (!location && hasCoordinates) {
+        // 1. Prefer Twilio's native location fields
+        if (hasCoordinates) {
             const lat = parseFloat(Latitude);
             const lng = parseFloat(Longitude);
             if (!isNaN(lat) && !isNaN(lng)) {
@@ -160,6 +155,11 @@ router.post('/', async (req: Request, res: Response) => {
                 label = Label;
                 console.log('📍 Extracted coordinates from Twilio location fields:', location);
             }
+        }
+
+        // 2. If not present, try to extract from message body
+        if (!location && hasBody) {
+            location = extractLocationFromMessage(Body);
         }
 
         // Create new message document
