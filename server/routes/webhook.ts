@@ -166,7 +166,7 @@ router.post('/', async (req: Request, res: Response) => {
         const messageData: any = {
             from: From,
             to: To,
-            body: Body || '', // Ensure body is never undefined
+            body: Body || '[location message]', // Use a placeholder if Body is empty
             direction: 'inbound',
             timestamp: new Date(),
         };
@@ -178,6 +178,7 @@ router.post('/', async (req: Request, res: Response) => {
             if (label) messageData.label = label;
         }
 
+        console.log('Saving message with data:', messageData);
         // Save message to MongoDB
         const message = new Message(messageData);
         await message.save();
@@ -187,8 +188,24 @@ router.post('/', async (req: Request, res: Response) => {
             try {
                 // Remove 'whatsapp:' prefix if present
                 const phone = From.replace('whatsapp:', '');
-                // Find user by contactNumber
-                const user = await User.findOne({ contactNumber: phone });
+                console.log('Looking up user with contactNumber:', phone);
+                let user = await User.findOne({ contactNumber: phone });
+                if (!user && phone.startsWith('+91')) {
+                  // Try without the plus
+                  user = await User.findOne({ contactNumber: phone.replace('+91', '91') });
+                  console.log('Fallback lookup (91):', !!user);
+                }
+                if (!user && phone.startsWith('+')) {
+                  // Try without the plus
+                  user = await User.findOne({ contactNumber: phone.substring(1) });
+                  console.log('Fallback lookup (no plus):', !!user);
+                }
+                if (!user) {
+                  // Try last 10 digits (Indian numbers)
+                  user = await User.findOne({ contactNumber: phone.slice(-10) });
+                  console.log('Fallback lookup (last 10 digits):', !!user);
+                }
+                console.log('User found:', !!user);
                 if (user) {
                     user.location = {
                         type: 'Point',

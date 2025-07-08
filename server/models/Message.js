@@ -13,8 +13,9 @@ const messageSchema = new Schema({
     },
     body: {
         type: String,
-        required: true,
+        required: false,
         trim: true,
+        default: '[location message]',
     },
     direction: {
         type: String,
