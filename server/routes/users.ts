@@ -456,7 +456,7 @@ router.post('/upload-images', authenticateToken, upload.array('images', 10), asy
 });
 
 // Add this endpoint to apply vendor indexing to all existing users
-router.post('/apply-indexing', authenticateToken, async (req, res) => {
+router.post('/apply-indexing', authenticateToken, async (_req, res) => {
   try {
     const users = await User.find({});
     let updatedCount = 0;

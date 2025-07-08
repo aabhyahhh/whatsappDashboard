@@ -80,14 +80,6 @@ interface UserFormData {
   addedBy?: string;
 }
 
-// Filter interface for searching vendors
-interface VendorFilter {
-  language?: string;
-  entryType?: 'O' | 'M' | 'W';
-  addedBy?: string;
-  indexRange?: { start: number; end: number };
-}
-
 export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -168,8 +160,6 @@ export default function UserManagement() {
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [currentAdminName, setCurrentAdminName] = useState<string>('');
   // Filter states
-  const [filters, setFilters] = useState<VendorFilter>({});
-  const [showFilters, setShowFilters] = useState(false);
 
   const allDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -216,7 +206,7 @@ export default function UserManagement() {
 
   useEffect(() => {
     applyFilters(users);
-  }, [filters, users]);
+  }, [users]);
 
   // Generate vendor index
   const generateVendorIndex = (count: number, language: string, entryType: 'O' | 'M' | 'W', adminName: string): string => {
@@ -224,50 +214,9 @@ export default function UserManagement() {
     return `${count}*${languageCode}*${entryType}*${adminName}`;
   };
 
-  // Parse vendor index
-  const parseVendorIndex = (index: string) => {
-    const parts = index.split('*');
-    if (parts.length === 4) {
-      return {
-        number: parseInt(parts[0]),
-        language: parts[1],
-        entryType: parts[2] as 'O' | 'M' | 'W',
-        adminName: parts[3]
-      };
-    }
-    return null;
-  };
-
   // Filter users based on current filters
   const applyFilters = (userList: User[]) => {
-    let filtered = [...userList];
-
-    if (filters.language) {
-      filtered = filtered.filter(user => 
-        user.primaryLanguage?.toLowerCase().includes(filters.language!.toLowerCase())
-      );
-    }
-
-    if (filters.entryType) {
-      filtered = filtered.filter(user => user.entryType === filters.entryType);
-    }
-
-    if (filters.addedBy) {
-      filtered = filtered.filter(user => 
-        user.addedBy?.toLowerCase().includes(filters.addedBy!.toLowerCase())
-      );
-    }
-
-    if (filters.indexRange) {
-      filtered = filtered.filter(user => {
-        if (!user.vendorIndex) return false;
-        const parsed = parseVendorIndex(user.vendorIndex);
-        if (!parsed) return false;
-        return parsed.number >= filters.indexRange!.start && parsed.number <= filters.indexRange!.end;
-      });
-    }
-
-    setFilteredUsers(filtered);
+    setFilteredUsers([...userList]);
   };
 
   // Get current admin name from token or localStorage
@@ -615,17 +564,6 @@ export default function UserManagement() {
     } else {
       alert("Geolocation is not supported by this browser.");
     }
-  };
-
-  const handleFilterChange = (key: keyof VendorFilter, value: any) => {
-    setFilters(prev => ({
-      ...prev,
-      [key]: value
-    }));
-  };
-
-  const clearFilters = () => {
-    setFilters({});
   };
 
   if (loading) {
