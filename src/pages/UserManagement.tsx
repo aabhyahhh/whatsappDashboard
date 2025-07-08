@@ -39,6 +39,12 @@ interface User {
     type: string;
     coordinates: number[]; // [lng, lat]
   };
+  comments?: string;
+  // New indexing fields
+  vendorIndex?: string; // Format: {number}*{language}*{O/M/W}*{admin_name}
+  addedBy?: string; // Admin who added this vendor
+  primaryLanguage?: string; // Primary language from preferredLanguages
+  entryType?: 'O' | 'M' | 'W'; // Onground, Manual, Website
 }
 
 interface UserFormData {
@@ -66,6 +72,12 @@ interface UserFormData {
   aadharFrontUrl: string;
   aadharBackUrl: string;
   panNumber: string;
+  comments?: string;
+  // New indexing fields
+  primaryLanguage: string;
+  entryType: 'O' | 'M' | 'W';
+  vendorIndex?: string;
+  addedBy?: string;
 }
 
 export default function UserManagement() {
@@ -98,6 +110,11 @@ export default function UserManagement() {
     aadharFrontUrl: '',
     aadharBackUrl: '',
     panNumber: '',
+    comments: '',
+    primaryLanguage: 'English',
+    entryType: 'O',
+    vendorIndex: '',
+    addedBy: '',
   });
   const [addError, setAddError] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
@@ -127,6 +144,11 @@ export default function UserManagement() {
     aadharFrontUrl: '',
     aadharBackUrl: '',
     panNumber: '',
+    comments: '',
+    primaryLanguage: 'English',
+    entryType: 'O',
+    vendorIndex: '',
+    addedBy: '',
   });
   const [editError, setEditError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -135,6 +157,9 @@ export default function UserManagement() {
   const location = useLocation();
   const [isVerified, setIsVerified] = useState(false);
   const editFormRef = useRef<HTMLDivElement>(null);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [currentAdminName, setCurrentAdminName] = useState<string>('');
+  // Filter states
 
   const allDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -178,6 +203,33 @@ export default function UserManagement() {
   useEffect(() => {
     fetchUsers();
   }, [navigate]);
+
+  useEffect(() => {
+    applyFilters(users);
+  }, [users]);
+
+  // Generate vendor index
+  const generateVendorIndex = (count: number, language: string, entryType: 'O' | 'M' | 'W', adminName: string): string => {
+    const languageCode = language.substring(0, 2).toUpperCase();
+    return `${count}*${languageCode}*${entryType}*${adminName}`;
+  };
+
+  // Filter users based on current filters
+  const applyFilters = (userList: User[]) => {
+    setFilteredUsers([...userList]);
+  };
+
+  // Get current admin name from token or localStorage
+  const getCurrentAdminName = () => {
+    // You might want to decode JWT token or get from user profile
+    // For now, using a simple approach
+    const adminName = localStorage.getItem('adminName') || 'Admin';
+    setCurrentAdminName(adminName);
+  };
+
+  useEffect(() => {
+    getCurrentAdminName();
+  }, []);
 
   const handleAddUserChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -268,6 +320,11 @@ export default function UserManagement() {
       mobile_verified: isVerified,
       latitude: dataToSubmit.latitude,
       longitude: dataToSubmit.longitude,
+      comments: dataToSubmit.comments,
+      vendorIndex: generateVendorIndex(users.length + 1, dataToSubmit.primaryLanguage, dataToSubmit.entryType, currentAdminName),
+      addedBy: currentAdminName,
+      primaryLanguage: dataToSubmit.primaryLanguage,
+      entryType: dataToSubmit.entryType,
     };
 
     try {
@@ -285,7 +342,7 @@ export default function UserManagement() {
         throw new Error(errorData.message || 'Failed to add user');
       }
 
-      setNewUser({ contactNumber: '+91', name: '', status: 'active', profilePictures: [], foodType: 'veg', bestDishes: Array(6).fill({ name: '', price: '' }) as Dish[], menuLink: '', mapsLink: '', latitude: '', longitude: '', operatingHours: { openTime: '', closeTime: '', days: [] }, preferredLanguages: [], foodCategories: [], stallType: '', whatsappConsent: false, onboardingType: '', aadharNumber: '', aadharFrontUrl: '', aadharBackUrl: '', panNumber: '' });
+      setNewUser({ contactNumber: '+91', name: '', status: 'active', profilePictures: [], foodType: 'veg', bestDishes: Array(6).fill({ name: '', price: '' }) as Dish[], menuLink: '', mapsLink: '', latitude: '', longitude: '', operatingHours: { openTime: '', closeTime: '', days: [] }, preferredLanguages: [], foodCategories: [], stallType: '', whatsappConsent: false, onboardingType: '', aadharNumber: '', aadharFrontUrl: '', aadharBackUrl: '', panNumber: '', primaryLanguage: 'English', entryType: 'O', vendorIndex: '', addedBy: '' });
       setShowAddForm(false);
       fetchUsers(); // Refresh the list
       alert('User added successfully!');
@@ -323,6 +380,11 @@ export default function UserManagement() {
       aadharFrontUrl: user.aadharFrontUrl || '',
       aadharBackUrl: user.aadharBackUrl || '',
       panNumber: user.panNumber || '',
+      comments: user.comments,
+      vendorIndex: user.vendorIndex,
+      addedBy: user.addedBy,
+      primaryLanguage: user.primaryLanguage,
+      entryType: user.entryType,
     });
     setShowAddForm(false);
     setTimeout(() => {
@@ -633,7 +695,7 @@ export default function UserManagement() {
                 <div className="mb-2">
                   <label className="block font-semibold mb-1">Category of Food:</label>
                   <div className="flex flex-wrap gap-4">
-                    {['Chaat','Juices','Tea/coffee','Snacks (Samosa, Vada Pav, etc.)','Dessert','Gujju Snacks','PavBhaji','Punjabi (Parathe, Lassi, etc)','Paan','Korean','Chinese','South Indian','Other'].map(cat => (
+                    {['Chaat','Juices','Tea/coffee','Snacks (Samosa, Vada Pav, etc.)','Dessert','Gujju Snacks','PavBhaji','Punjabi (Parathe, Lassi, etc)','Pani Puri','Korean','Chinese','South Indian','Other'].map(cat => (
                       <label key={cat} className="inline-flex items-center gap-1">
                         <input
                           type="checkbox"
@@ -764,6 +826,15 @@ export default function UserManagement() {
                     onChange={(e) => setNewUser(prev => ({ ...prev, panNumber: e.target.value }))}
                     className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     placeholder="Enter PAN Number"
+                  />
+                </div>
+                <div className="mb-2">
+                  <label className="block font-semibold mb-1">Comments (optional):</label>
+                  <textarea
+                    value={newUser.comments || ''}
+                    onChange={(e) => setNewUser(prev => ({ ...prev, comments: e.target.value }))}
+                    className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    rows={3}
                   />
                 </div>
               </div>
@@ -1039,7 +1110,7 @@ export default function UserManagement() {
                 <div className="mb-2">
                   <label className="block font-semibold mb-1">Category of Food:</label>
                   <div className="flex flex-wrap gap-4">
-                    {['Chaat','Juices','Tea/coffee','Snacks (Samosa, Vada Pav, etc.)','Dessert','Gujju Snacks','PavBhaji','Punjabi (Parathe, Lassi, etc)','Paan','Korean','Chinese','South Indian','Other'].map(cat => (
+                    {['Chaat','Juices','Tea/coffee','Snacks (Samosa, Vada Pav, etc.)','Dessert','Gujju Snacks','PavBhaji','Punjabi (Parathe, Lassi, etc)','Pani Puri','Korean','Chinese','South Indian','Other'].map(cat => (
                       <label key={cat} className="inline-flex items-center gap-1">
                         <input
                           type="checkbox"
@@ -1170,6 +1241,15 @@ export default function UserManagement() {
                     onChange={(e) => setEditForm(prev => ({ ...prev, panNumber: e.target.value }))}
                     className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     placeholder="Enter PAN Number"
+                  />
+                </div>
+                <div className="mb-2">
+                  <label className="block font-semibold mb-1">Comments (optional):</label>
+                  <textarea
+                    value={editForm.comments || ''}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, comments: e.target.value }))}
+                    className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    rows={3}
                   />
                 </div>
               </div>
@@ -1381,6 +1461,7 @@ export default function UserManagement() {
             <table className="w-full divide-y divide-gray-200 text-sm text-left">
               <thead className="bg-gray-50">
                 <tr>
+                  <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Index</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Contact Number</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Name</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Status</th>
@@ -1397,52 +1478,60 @@ export default function UserManagement() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {users.map((user) => (
-                  <tr key={user._id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900 truncate max-w-[140px]">{user.contactNumber}</td>
-                    <td className="px-4 py-3 whitespace-nowrap truncate max-w-[180px]">{user.name}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">{user.status}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">{new Date(user.lastActive).toLocaleDateString()}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {user.profilePictures && user.profilePictures.length > 0 && (
-                        <img src={user.profilePictures[0]} alt="Profile" className="h-8 w-8 rounded-full object-cover" />
-                      )}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">{user.operatingHours.openTime || 'N/A'}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">{user.operatingHours.closeTime || 'N/A'}</td>
-                    <td className="px-4 py-3 whitespace-nowrap truncate max-w-[120px]">{
-                      (user.operatingHours.days && user.operatingHours.days.length > 0)
-                        ? user.operatingHours.days
-                            .map((d: any) => {
-                              const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                              return typeof d === 'number' && d >= 0 && d <= 6 ? dayNames[d] : d;
-                            })
-                            .join(', ')
-                        : 'N/A'
-                    }</td>
-                    <td className="px-4 py-3 whitespace-nowrap">{user.foodType || 'N/A'}</td>
-                    <td className="px-4 py-3 whitespace-nowrap truncate max-w-[180px]">
-                      {(user.bestDishes && user.bestDishes.filter(dish => dish.name).length > 0) ?
-                        user.bestDishes.filter(dish => dish.name).map(dish => `${dish.name} (${dish.price || 'N/A'})`).join(', ') : 'N/A'}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap truncate max-w-[100px]"><a href={user.menuLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{user.menuLink ? 'Link' : 'N/A'}</a></td>
-                    <td className="px-4 py-3 whitespace-nowrap truncate max-w-[120px]"><a href={user.mapsLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{user.mapsLink || 'N/A'}</a></td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <button 
-                        onClick={() => handleEditClick(user)}
-                        className="font-medium text-blue-600 hover:underline mr-3">
-                          Edit
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteUser(user._id)}
-                        disabled={isDeleting}
-                        className={`font-medium text-red-600 hover:underline ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      >
-                        {isDeleting ? 'Deleting...' : 'Delete'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {filteredUsers.map((user, idx) => {
+                  // Build custom index string
+                  const lang = (user.primaryLanguage || 'EN').substring(0,2).toUpperCase();
+                  const entryType = user.entryType || 'O';
+                  const adminName = user.addedBy || 'admin';
+                  const customIndex = `${idx + 1}_${lang}_${entryType}_${adminName}`;
+                  return (
+                    <tr key={user._id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 whitespace-nowrap">{customIndex}</td>
+                      <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900 truncate max-w-[140px]">{user.contactNumber}</td>
+                      <td className="px-4 py-3 whitespace-nowrap truncate max-w-[180px]">{user.name}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">{user.status}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">{new Date(user.lastActive).toLocaleDateString()}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {user.profilePictures && user.profilePictures.length > 0 && (
+                          <img src={user.profilePictures[0]} alt="Profile" className="h-8 w-8 rounded-full object-cover" />
+                        )}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">{user.operatingHours.openTime || 'N/A'}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">{user.operatingHours.closeTime || 'N/A'}</td>
+                      <td className="px-4 py-3 whitespace-nowrap truncate max-w-[120px]">{
+                        (user.operatingHours.days && user.operatingHours.days.length > 0)
+                          ? user.operatingHours.days
+                              .map((d: any) => {
+                                const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                                return typeof d === 'number' && d >= 0 && d <= 6 ? dayNames[d] : d;
+                              })
+                              .join(', ')
+                          : 'N/A'
+                      }</td>
+                      <td className="px-4 py-3 whitespace-nowrap">{user.foodType || 'N/A'}</td>
+                      <td className="px-4 py-3 whitespace-nowrap truncate max-w-[180px]">
+                        {(user.bestDishes && user.bestDishes.filter(dish => dish.name).length > 0) ?
+                          user.bestDishes.filter(dish => dish.name).map(dish => `${dish.name} (${dish.price || 'N/A'})`).join(', ') : 'N/A'}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap truncate max-w-[100px]"><a href={user.menuLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{user.menuLink ? 'Link' : 'N/A'}</a></td>
+                      <td className="px-4 py-3 whitespace-nowrap truncate max-w-[120px]"><a href={user.mapsLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{user.mapsLink || 'N/A'}</a></td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <button 
+                          onClick={() => handleEditClick(user)}
+                          className="font-medium text-blue-600 hover:underline mr-3">
+                            Edit
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteUser(user._id)}
+                          disabled={isDeleting}
+                          className={`font-medium text-red-600 hover:underline ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                          {isDeleting ? 'Deleting...' : 'Delete'}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

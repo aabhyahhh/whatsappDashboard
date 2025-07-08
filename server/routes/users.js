@@ -412,6 +412,53 @@ router.post('/upload-images', authenticateToken, upload.array('images', 10), asy
     const urls = files.map(file => `/uploads/${file.filename}`);
     res.json({ urls });
 });
+// Add this endpoint to apply vendor indexing to all existing users
+router.post('/apply-indexing', authenticateToken, async (_req, res) => {
+    try {
+        const users = await User.find({});
+        let updatedCount = 0;
+        const entryTypeMap = {
+            'on ground': 'O',
+            'manual entry': 'M',
+            'via website': 'W',
+            'O': 'O',
+            'M': 'M',
+            'W': 'W',
+        };
+        for (let i = 0; i < users.length; i++) {
+            const user = users[i];
+            // Determine primaryLanguage
+            let primaryLanguage = Array.isArray(user.preferredLanguages) && user.preferredLanguages.length > 0
+                ? user.preferredLanguages[0]
+                : 'English';
+            // Determine entryType
+            let entryType = 'M';
+            if (user.onboardingType && entryTypeMap[user.onboardingType]) {
+                entryType = entryTypeMap[user.onboardingType];
+            }
+            // Determine addedBy
+            let addedBy = user.addedBy || 'System';
+            // Generate vendorIndex
+            const languageCode = primaryLanguage.substring(0, 2).toUpperCase();
+            const vendorIndex = `${i + 1}*${languageCode}*${entryType}*${addedBy}`;
+            // Update user
+            await User.findByIdAndUpdate(user._id, {
+                $set: {
+                    primaryLanguage,
+                    entryType,
+                    addedBy,
+                    vendorIndex
+                }
+            });
+            updatedCount++;
+        }
+        res.json({ message: `Indexing applied to ${updatedCount} users.` });
+    }
+    catch (error) {
+        console.error('Error applying vendor indexing:', error);
+        res.status(500).json({ message: 'Failed to apply vendor indexing.' });
+    }
+});
 // Schedule for sending opening reminders
 schedule.scheduleJob('*/10 * * * *', async () => {
     // ... existing code ...
