@@ -683,7 +683,11 @@ export default function UserManagement() {
                               const arr = prev.preferredLanguages.includes(lang)
                                 ? prev.preferredLanguages.filter(l => l !== lang)
                                 : [...prev.preferredLanguages, lang];
-                              return { ...prev, preferredLanguages: arr };
+                              return {
+                                ...prev,
+                                preferredLanguages: arr,
+                                primaryLanguage: arr.length > 0 ? arr[0] : 'English',
+                              };
                             });
                           }}
                         />
@@ -1098,7 +1102,11 @@ export default function UserManagement() {
                               const arr = prev.preferredLanguages?.includes(lang)
                                 ? prev.preferredLanguages.filter(l => l !== lang)
                                 : [...(prev.preferredLanguages || []), lang];
-                              return { ...prev, preferredLanguages: arr };
+                              return {
+                                ...prev,
+                                preferredLanguages: arr,
+                                primaryLanguage: arr.length > 0 ? arr[0] : 'English',
+                              };
                             });
                           }}
                         />

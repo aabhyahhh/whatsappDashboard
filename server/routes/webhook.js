@@ -170,8 +170,10 @@ router.post('/', async (req, res) => {
                 // Remove all findOne lookups for user and vendor by contactNumber, use find to get all matches
                 // Find all users with this contactNumber (in all fallback forms)
                 const userNumbers = [phone];
-                if (phone.startsWith('+91')) userNumbers.push(phone.replace('+91', '91'));
-                if (phone.startsWith('+')) userNumbers.push(phone.substring(1));
+                if (phone.startsWith('+91'))
+                    userNumbers.push(phone.replace('+91', '91'));
+                if (phone.startsWith('+'))
+                    userNumbers.push(phone.substring(1));
                 userNumbers.push(phone.slice(-10));
                 const users = await User.find({ contactNumber: { $in: userNumbers } });
                 console.log('Users found:', users.length);
