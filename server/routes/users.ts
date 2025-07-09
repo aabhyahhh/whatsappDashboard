@@ -142,13 +142,6 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
             return;
         }
 
-        // Check for duplicate contact number
-        const existingUser = await User.findOne({ contactNumber });
-        if (existingUser) {
-            res.status(409).json({ message: 'User with that contact number already exists' });
-            return;
-        }
-
         // Normalize operating hours days
         if (operatingHours && operatingHours.days) {
             operatingHours.days = normalizeDays(operatingHours.days);
@@ -183,23 +176,9 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
         // Send WhatsApp message to the new user based on preferred language
         try {
             if (client) {
-                const languageToContentSid: Record<string, string> = {
-                    English: 'HXda3c67f5aec058d4f6d8d66f360a8c82',
-                    Hindi: 'HX5c2c5ca61cd5880f46e88afd33363a8b',
-                    Gujarati: 'HX48a3862650a7569ec5f9f2d70b3a4da5',
-                };
-                
-                let contentSid = languageToContentSid['English']; // Default to English
-                
-                if (preferredLanguages && Array.isArray(preferredLanguages) && preferredLanguages.length > 0) {
-                    const firstLanguage = preferredLanguages.find(lang => languageToContentSid[lang]);
-                    if (firstLanguage) {
-                        contentSid = languageToContentSid[firstLanguage];
-                    }
-                }
-                
-                console.log(`Attempting to send welcome message with template SID: ${contentSid} for languages: ${preferredLanguages}`);
-                
+                // Always use the common message SID for all vendors
+                const contentSid = 'HXc2e10711c3a3cbb31203854bccc39d2d';
+                console.log(`Attempting to send welcome message with template SID: ${contentSid} to vendor: ${contactNumber}`);
                 const msgPayload: any = {
                     from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
                     to: `whatsapp:${contactNumber}`,

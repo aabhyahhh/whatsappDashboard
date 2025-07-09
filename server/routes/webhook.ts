@@ -189,43 +189,34 @@ router.post('/', async (req: Request, res: Response) => {
                 // Remove 'whatsapp:' prefix if present
                 const phone = From.replace('whatsapp:', '');
                 console.log('Looking up user with contactNumber:', phone);
-                let user = await User.findOne({ contactNumber: phone });
-                if (!user && phone.startsWith('+91')) {
-                  // Try without the plus
-                  user = await User.findOne({ contactNumber: phone.replace('+91', '91') });
-                  console.log('Fallback lookup (91):', !!user);
-                }
-                if (!user && phone.startsWith('+')) {
-                  // Try without the plus
-                  user = await User.findOne({ contactNumber: phone.substring(1) });
-                  console.log('Fallback lookup (no plus):', !!user);
-                }
-                if (!user) {
-                  // Try last 10 digits (Indian numbers)
-                  user = await User.findOne({ contactNumber: phone.slice(-10) });
-                  console.log('Fallback lookup (last 10 digits):', !!user);
-                }
-                console.log('User found:', !!user);
-                if (user) {
+                // Remove all findOne lookups for user and vendor by contactNumber, use find to get all matches
+                // Find all users with this contactNumber (in all fallback forms)
+                const userNumbers = [phone];
+                if (phone.startsWith('+91')) userNumbers.push(phone.replace('+91', '91'));
+                if (phone.startsWith('+')) userNumbers.push(phone.substring(1));
+                userNumbers.push(phone.slice(-10));
+                const users = await User.find({ contactNumber: { $in: userNumbers } });
+                console.log('Users found:', users.length);
+                for (const user of users) {
                     user.location = {
                         type: 'Point',
                         coordinates: [location.longitude, location.latitude],
                     };
                     user.mapsLink = `https://maps.google.com/?q=${location.latitude},${location.longitude}`;
                     await user.save();
-                    console.log(`✅ Updated user location for ${phone}`);
+                    console.log(`✅ Updated user location for ${user.contactNumber}`);
                 }
                 // Also update Vendor location if a vendor with this contactNumber exists
-                // @ts-ignore
-                const vendor = await (await import('../models/Vendor.js')).default.findOne({ contactNumber: phone });
-                if (vendor) {
+                const VendorModel = (await import('../models/Vendor.js')).default;
+                const vendors = await VendorModel.find({ contactNumber: { $in: userNumbers } });
+                for (const vendor of vendors) {
                     vendor.location = {
                         type: 'Point',
                         coordinates: [location.longitude, location.latitude],
                     };
                     vendor.mapsLink = `https://maps.google.com/?q=${location.latitude},${location.longitude}`;
                     await vendor.save();
-                    console.log(`✅ Updated vendor location for ${phone}`);
+                    console.log(`✅ Updated vendor location for ${vendor.contactNumber}`);
                 }
             } catch (err) {
                 console.error('❌ Failed to update user or vendor location:', err);

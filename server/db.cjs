@@ -92,25 +92,3 @@ mongoose_1.default.connection.on('disconnected', function () {
     console.log('MongoDB disconnected');
 });
 // Handle process termination
-process.on('SIGINT', function () { return __awaiter(void 0, void 0, void 0, function () {
-    var err_1;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0:
-                _a.trys.push([0, 2, , 3]);
-                return [4 /*yield*/, mongoose_1.default.connection.close()];
-            case 1:
-                _a.sent();
-                console.log('MongoDB connection closed through app termination');
-                process.exit(0);
-                return [3 /*break*/, 3];
-            case 2:
-                err_1 = _a.sent();
-                console.error('Error during MongoDB disconnection:', err_1);
-                process.exit(1);
-                return [3 /*break*/, 3];
-            case 3: return [2 /*return*/];
-        }
-    });
-}); });
-connectDB(); // Ensure DB connection is established when this file is loaded

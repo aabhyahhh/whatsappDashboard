@@ -121,12 +121,6 @@ router.post('/', authenticateToken, async (req, res) => {
             res.status(400).json({ message: 'Invalid time format. Use h:mm AM/PM or HH:mm.' });
             return;
         }
-        // Check for duplicate contact number
-        const existingUser = await User.findOne({ contactNumber });
-        if (existingUser) {
-            res.status(409).json({ message: 'User with that contact number already exists' });
-            return;
-        }
         // Normalize operating hours days
         if (operatingHours && operatingHours.days) {
             operatingHours.days = normalizeDays(operatingHours.days);
@@ -442,14 +436,20 @@ router.post('/apply-indexing', authenticateToken, async (_req, res) => {
             const languageCode = primaryLanguage.substring(0, 2).toUpperCase();
             const vendorIndex = `${i + 1}*${languageCode}*${entryType}*${addedBy}`;
             // Update user
-            await User.findByIdAndUpdate(user._id, {
-                $set: {
-                    primaryLanguage,
-                    entryType,
-                    addedBy,
-                    vendorIndex
-                }
-            });
+            try {
+                await User.findByIdAndUpdate(user._id, {
+                    $set: {
+                        primaryLanguage,
+                        entryType,
+                        addedBy,
+                        vendorIndex
+                    }
+                });
+                console.log(`Updated user ${user._id} with vendorIndex: ${vendorIndex}`);
+            }
+            catch (err) {
+                console.error(`Failed to update user ${user._id}:`, err);
+            }
             updatedCount++;
         }
         res.json({ message: `Indexing applied to ${updatedCount} users.` });
