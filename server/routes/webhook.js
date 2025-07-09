@@ -123,15 +123,11 @@ router.post('/', async (req, res) => {
             console.log('Skipping saving message from own Twilio number as inbound.');
             return res.status(200).send('OK');
         }
-        // Extract location data if present in Body (existing logic)
         let location = null;
         let address = undefined;
         let label = undefined;
-        if (hasBody) {
-            location = extractLocationFromMessage(Body);
-        }
-        // If not found in Body, check for native WhatsApp location fields from Twilio
-        if (!location && hasCoordinates) {
+        // 1. Prefer Twilio's native location fields
+        if (hasCoordinates) {
             const lat = parseFloat(Latitude);
             const lng = parseFloat(Longitude);
             if (!isNaN(lat) && !isNaN(lng)) {
@@ -141,11 +137,15 @@ router.post('/', async (req, res) => {
                 console.log('📍 Extracted coordinates from Twilio location fields:', location);
             }
         }
+        // 2. If not present, try to extract from message body
+        if (!location && hasBody) {
+            location = extractLocationFromMessage(Body);
+        }
         // Create new message document
         const messageData = {
             from: From,
             to: To,
-            body: Body || '', // Ensure body is never undefined
+            body: Body || '[location message]', // Use a placeholder if Body is empty
             direction: 'inbound',
             timestamp: new Date(),
         };
@@ -157,6 +157,7 @@ router.post('/', async (req, res) => {
             if (label)
                 messageData.label = label;
         }
+        console.log('Saving message with data:', messageData);
         // Save message to MongoDB
         const message = new Message(messageData);
         await message.save();
@@ -165,28 +166,35 @@ router.post('/', async (req, res) => {
             try {
                 // Remove 'whatsapp:' prefix if present
                 const phone = From.replace('whatsapp:', '');
-                // Find user by contactNumber
-                const user = await User.findOne({ contactNumber: phone });
-                if (user) {
+                console.log('Looking up user with contactNumber:', phone);
+                // Remove all findOne lookups for user and vendor by contactNumber, use find to get all matches
+                // Find all users with this contactNumber (in all fallback forms)
+                const userNumbers = [phone];
+                if (phone.startsWith('+91')) userNumbers.push(phone.replace('+91', '91'));
+                if (phone.startsWith('+')) userNumbers.push(phone.substring(1));
+                userNumbers.push(phone.slice(-10));
+                const users = await User.find({ contactNumber: { $in: userNumbers } });
+                console.log('Users found:', users.length);
+                for (const user of users) {
                     user.location = {
                         type: 'Point',
                         coordinates: [location.longitude, location.latitude],
                     };
                     user.mapsLink = `https://maps.google.com/?q=${location.latitude},${location.longitude}`;
                     await user.save();
-                    console.log(`✅ Updated user location for ${phone}`);
+                    console.log(`✅ Updated user location for ${user.contactNumber}`);
                 }
                 // Also update Vendor location if a vendor with this contactNumber exists
-                // @ts-ignore
-                const vendor = await (await import('../models/Vendor.js')).default.findOne({ contactNumber: phone });
-                if (vendor) {
+                const VendorModel = (await import('../models/Vendor.js')).default;
+                const vendors = await VendorModel.find({ contactNumber: { $in: userNumbers } });
+                for (const vendor of vendors) {
                     vendor.location = {
                         type: 'Point',
                         coordinates: [location.longitude, location.latitude],
                     };
                     vendor.mapsLink = `https://maps.google.com/?q=${location.latitude},${location.longitude}`;
                     await vendor.save();
-                    console.log(`✅ Updated vendor location for ${phone}`);
+                    console.log(`✅ Updated vendor location for ${vendor.contactNumber}`);
                 }
             }
             catch (err) {

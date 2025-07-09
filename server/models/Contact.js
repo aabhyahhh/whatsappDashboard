@@ -31,7 +31,7 @@ contactSchema.pre('save', function (next) {
     next();
 });
 // Create indexes for common queries
-contactSchema.index({ phone: 1 }, { unique: true }); // For finding contacts by phone
+contactSchema.index({ phone: 1 }); // For finding contacts by phone
 contactSchema.index({ lastSeen: -1 }); // For sorting contacts by last activity
 // Create and export the model
 export const Contact = mongoose.model('Contact', contactSchema);
