@@ -91,7 +91,7 @@ const checkAndSendReminders = async () => {
 };
 
 // Schedule the cron job to run every minute
-cron.schedule('* * * * *', checkAndSendReminders);
+// cron.schedule('* * * * *', checkAndSendReminders);
 
 console.log('Vendor reminder cron job started.');
 
