@@ -115,7 +115,12 @@ router.get('/', authenticateToken, async (_req: Request, res: Response) => {
 });
 
 // POST create a new regular user
-router.post('/', authenticateToken, async (req: Request, res: Response) => {
+router.post('/', authenticateToken, (req: Request, res: Response, next: NextFunction) => {
+    if (!['admin', 'super_admin', 'onground'].includes(req.user?.role || '')) {
+        return res.status(403).json({ message: 'Access denied: Requires admin, super_admin, or onground role' });
+    }
+    next();
+}, async (req: Request, res: Response) => {
     try {
         // Destructure all expected fields from req.body
         const {
@@ -211,7 +216,12 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
 });
 
 // PUT update a user by ID - FIXED VERSION
-router.put('/:id', authenticateToken, async (req: Request, res: Response) => {
+router.put('/:id', authenticateToken, (req: Request, res: Response, next: NextFunction) => {
+    if (!['admin', 'super_admin', 'onground'].includes(req.user?.role || '')) {
+        return res.status(403).json({ message: 'Access denied: Requires admin, super_admin, or onground role' });
+    }
+    next();
+}, async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const {
@@ -333,7 +343,12 @@ router.put('/:id', authenticateToken, async (req: Request, res: Response) => {
 });
 
 // DELETE a user by ID
-router.delete('/:id', authenticateToken, async (req: Request, res: Response) => {
+router.delete('/:id', authenticateToken, (req: Request, res: Response, next: NextFunction) => {
+    if (!['admin', 'super_admin'].includes(req.user?.role || '')) {
+        return res.status(403).json({ message: 'Access denied: Requires admin or super_admin role' });
+    }
+    next();
+}, async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
 

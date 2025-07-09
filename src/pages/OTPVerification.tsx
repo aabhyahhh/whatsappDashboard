@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import AdminLayout from '../components/AdminLayout';
 import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { jwtDecode } from 'jwt-decode';
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
 interface OTPResponse {
@@ -18,6 +20,23 @@ export default function OTPVerification() {
   const [showVerification, setShowVerification] = useState(false);
   const [sentOTP, setSentOTP] = useState('');
   const navigate = useNavigate();
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const decodedToken: any = jwtDecode(token);
+        setUserRole(decodedToken.role);
+      } catch (error) {
+        setUserRole(null);
+      }
+    }
+  }, []);
+
+  if (userRole && !['admin','super_admin','onground'].includes(userRole)) {
+    return <div className="text-center py-10 text-red-600">Access Denied</div>;
+  }
 
   const handleSendOTP = async () => {
     if (!phone) {

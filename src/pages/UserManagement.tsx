@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
+import { jwtDecode } from 'jwt-decode';
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
 interface Dish {
@@ -159,6 +160,7 @@ export default function UserManagement() {
   const editFormRef = useRef<HTMLDivElement>(null);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [currentAdminName, setCurrentAdminName] = useState<string>('');
+  const [userRole, setUserRole] = useState<string | null>(null);
   // Filter states
 
   const allDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -170,6 +172,18 @@ export default function UserManagement() {
       setIsVerified(true);
     }
   }, [location.state]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const decodedToken: any = jwtDecode(token);
+        setUserRole(decodedToken.role);
+      } catch (error) {
+        setUserRole(null);
+      }
+    }
+  }, []);
 
   const fetchUsers = async () => {
     const token = localStorage.getItem('token');
@@ -581,12 +595,13 @@ export default function UserManagement() {
 
         <button
           onClick={() => setShowAddForm(!showAddForm)}
-          className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mb-4 self-start"
+          className={`bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mb-4 self-start ${!['admin','super_admin','onground'].includes(userRole || '') ? 'opacity-50 cursor-not-allowed' : ''}`}
+          disabled={!['admin','super_admin','onground'].includes(userRole || '')}
         >
           {showAddForm ? 'Hide Add User Form' : 'Add New User'}
         </button>
 
-        {showAddForm && (
+        {showAddForm && ['admin','super_admin','onground'].includes(userRole || '') && (
           <div className="bg-white p-6 rounded-lg shadow-md mb-4 w-full max-w-2xl mx-auto border border-gray-200">
             <h2 className="text-2xl font-bold mb-6">Add New User</h2>
             {addError && <div className="text-red-600 mb-4">Error: {addError}</div>}
@@ -1008,7 +1023,7 @@ export default function UserManagement() {
           </div>
         )}
 
-        {editingUser && (
+        {editingUser && ['admin','super_admin','onground'].includes(userRole || '') && (
           <div ref={editFormRef} className="bg-white p-6 rounded-lg shadow-md mb-4 w-full max-w-2xl mx-auto border border-gray-200">
             <h2 className="text-2xl font-bold mb-6">Edit User</h2>
             {editError && <div className="text-red-600 mb-4">Error: {editError}</div>}
@@ -1472,15 +1487,11 @@ export default function UserManagement() {
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Index</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Contact Number</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Name</th>
-                  <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Status</th>
-                  <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Last Active</th>
-                  <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Profile</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Open</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Close</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Days</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Food</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Best Dishes</th>
-                  <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Menu</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Maps</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Actions</th>
                 </tr>
@@ -1497,13 +1508,6 @@ export default function UserManagement() {
                       <td className="px-4 py-3 whitespace-nowrap">{customIndex}</td>
                       <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900 truncate max-w-[140px]">{user.contactNumber}</td>
                       <td className="px-4 py-3 whitespace-nowrap truncate max-w-[180px]">{user.name}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">{user.status}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">{new Date(user.lastActive).toLocaleDateString()}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        {user.profilePictures && user.profilePictures.length > 0 && (
-                          <img src={user.profilePictures[0]} alt="Profile" className="h-8 w-8 rounded-full object-cover" />
-                        )}
-                      </td>
                       <td className="px-4 py-3 whitespace-nowrap">{user.operatingHours.openTime || 'N/A'}</td>
                       <td className="px-4 py-3 whitespace-nowrap">{user.operatingHours.closeTime || 'N/A'}</td>
                       <td className="px-4 py-3 whitespace-nowrap truncate max-w-[120px]">{
@@ -1521,7 +1525,6 @@ export default function UserManagement() {
                         {(user.bestDishes && user.bestDishes.filter(dish => dish.name).length > 0) ?
                           user.bestDishes.filter(dish => dish.name).map(dish => `${dish.name} (${dish.price || 'N/A'})`).join(', ') : 'N/A'}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap truncate max-w-[100px]"><a href={user.menuLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{user.menuLink ? 'Link' : 'N/A'}</a></td>
                       <td className="px-4 py-3 whitespace-nowrap truncate max-w-[120px]"><a href={user.mapsLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{user.mapsLink || 'N/A'}</a></td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <button 
@@ -1529,13 +1532,15 @@ export default function UserManagement() {
                           className="font-medium text-blue-600 hover:underline mr-3">
                             Edit
                         </button>
-                        <button 
-                          onClick={() => handleDeleteUser(user._id)}
-                          disabled={isDeleting}
-                          className={`font-medium text-red-600 hover:underline ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        >
-                          {isDeleting ? 'Deleting...' : 'Delete'}
-                        </button>
+                        {['admin','super_admin'].includes(userRole || '') && (
+                          <button 
+                            onClick={() => handleDeleteUser(user._id)}
+                            disabled={isDeleting}
+                            className={`font-medium text-red-600 hover:underline ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          >
+                            {isDeleting ? 'Deleting...' : 'Delete'}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );

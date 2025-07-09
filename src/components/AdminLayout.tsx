@@ -101,13 +101,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       name: 'OTP Verification',
       path: '/dashboard/otp',
       icon: '🔐',
-      show: true
+      show: userRole === 'admin' || userRole === 'super_admin' || userRole === 'onground'
     },
     {
       name: 'User Management',
       path: '/users',
       icon: '👤',
-      show: true
+      show: userRole === 'admin' || userRole === 'super_admin' || userRole === 'onground'
     },
     {
       name: 'Admin Management',
@@ -127,12 +127,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       )}
       {/* Sidebar */}
       <div
-        className={`bg-white shadow-lg flex flex-col md:h-screen w-64 transition-all duration-300 ease-in-out z-40
-          fixed top-0 left-0 h-full
+        className={`bg-white shadow-lg flex flex-col w-64 transition-all duration-300 ease-in-out z-40
+          fixed top-0 left-0 h-screen
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-          md:static md:translate-x-0
+          md:translate-x-0
         `}
-        style={{ minWidth: '256px' }}
+        style={{ minWidth: '256px', height: '100vh' }}
       >
         {/* Sidebar Header */}
         <div className="p-4 border-b border-gray-200 flex-shrink-0 h-16 flex items-center justify-between md:block">
@@ -170,7 +170,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </ul>
         </nav>
         {/* Contacts Section (hide on mobile) */}
-        <div className="mt-6 border-t border-gray-200 pt-4 hidden md:block">
+        <div className="mt-6 border-t border-gray-200 pt-4 hidden md:block flex-1 min-h-0 flex flex-col" style={{overflow: 'hidden'}}>
           <div className="px-4 mb-3">
             <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">
               Recent Contacts
@@ -196,7 +196,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               <p className="text-xs text-gray-500">No contacts yet</p>
             </div>
           ) : (
-            <div className="max-h-64 overflow-y-auto">
+            <div className="overflow-y-auto flex-1">
               {contacts.slice(0, 10).map((contact) => (
                 <button
                   key={contact._id}
@@ -231,8 +231,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             </div>
           )}
         </div>
-        {/* Sidebar Footer (hide on mobile) */}
-        <div className="mt-auto p-4 border-t border-gray-200 hidden md:block">
+        {/* Sidebar Footer (Logout) */}
+        <div className="p-4 border-t border-gray-200 hidden md:block">
           <button
             onClick={handleLogout}
             className={`w-full flex items-center px-4 py-3 text-left text-red-600 hover:bg-red-50 transition-colors duration-200 ${
@@ -245,7 +245,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </div>
       </div>
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col md:ml-64">
         {/* Mobile Topbar */}
         <header className="bg-white shadow-sm border-b border-gray-200 px-4 py-3 flex md:hidden items-center justify-between sticky top-0 z-10">
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-lg hover:bg-gray-100">
@@ -255,7 +255,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             {navItems.find(item => isActiveRoute(item.path))?.name || 'Dashboard'}
           </h2>
           <span className="text-sm text-gray-600">
-            {userRole === 'super_admin' ? 'Super Admin' : 'Admin'}
+            {userRole === 'super_admin' ? 'Super Admin' : userRole === 'onground' ? 'Onground' : 'Admin'}
           </span>
         </header>
         {/* Desktop Topbar */}
@@ -265,7 +265,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           </h2>
           <div className="flex items-center space-x-4">
             <span className="text-sm text-gray-600">
-              Welcome, {userRole === 'super_admin' ? 'Super Admin' : 'Admin'}
+              Welcome, {userRole === 'super_admin' ? 'Super Admin' : userRole === 'onground' ? 'Onground' : 'Admin'}
             </span>
           </div>
         </header>
