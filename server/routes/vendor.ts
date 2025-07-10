@@ -1,7 +1,7 @@
 import express from 'express';
 import type { Request, Response } from 'express';
 // @ts-ignore
-import Vendor from '../models/Vendor.js';
+import { User } from '../models/User.js';
 // @ts-ignore
 import { checkAndSendReminders } from '../vendorRemindersCron.js';
 
@@ -54,7 +54,7 @@ router.post('/update-location', async (req: Request, res: Response) => {
         coordinates: [parseFloat(longitude), parseFloat(latitude)],
       };
     }
-    const vendor = await Vendor.findOneAndUpdate(
+    const vendor = await User.findOneAndUpdate(
       { contactNumber },
       updateObj,
       { new: true }
@@ -66,27 +66,26 @@ router.post('/update-location', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/vendor - Get all vendors
+// GET /api/vendor - Get all vendors (now users)
 router.get('/', async (_req: Request, res: Response) => {
   try {
-    const vendors = await Vendor.find({});
-    res.json(vendors);
+    const users = await User.find({});
+    res.json(users);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// GET /api/vendor/open-count - Get count of open vendors right now
+// GET /api/vendor/open-count - Get count of open vendors (now users)
 router.get('/open-count', async (_req: Request, res: Response) => {
   try {
-    const vendors = await Vendor.find({});
-    // Helper to check if a vendor is open now
-    function isOpenNow(vendor: any): boolean {
-      if (!vendor.operatingHours || !vendor.operatingHours.openTime || !vendor.operatingHours.closeTime || !vendor.operatingHours.days) {
+    const users = await User.find({});
+    function isOpenNow(user: any): boolean {
+      if (!user.operatingHours || !user.operatingHours.openTime || !user.operatingHours.closeTime || !user.operatingHours.days) {
         return false;
       }
       const now = new Date();
-      const day = now.getDay(); // 0=Sunday, 6=Saturday
+      const day = now.getDay();
       const yesterday = (day + 6) % 7;
       function parseTime(str: string): number {
         const [time, period] = str.split(' ');
@@ -95,10 +94,10 @@ router.get('/open-count', async (_req: Request, res: Response) => {
         if (period === 'AM' && h === 12) h = 0;
         return h * 60 + m;
       }
-      const openMinutes = parseTime(vendor.operatingHours.openTime);
-      const closeMinutes = parseTime(vendor.operatingHours.closeTime);
+      const openMinutes = parseTime(user.operatingHours.openTime);
+      const closeMinutes = parseTime(user.operatingHours.closeTime);
       const nowMinutes = now.getHours() * 60 + now.getMinutes();
-      const daysArr = vendor.operatingHours.days;
+      const daysArr = user.operatingHours.days;
       let result;
       if (openMinutes < closeMinutes) {
         result = daysArr.includes(day) && nowMinutes >= openMinutes && nowMinutes < closeMinutes;
@@ -113,7 +112,7 @@ router.get('/open-count', async (_req: Request, res: Response) => {
       }
       return result;
     }
-    const openCount = vendors.filter(isOpenNow).length;
+    const openCount = users.filter(isOpenNow).length;
     res.json({ count: openCount });
   } catch (err) {
     console.error('Error counting open vendors:', err);
