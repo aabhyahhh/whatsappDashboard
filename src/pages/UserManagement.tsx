@@ -81,6 +81,44 @@ interface UserFormData {
   addedBy?: string;
 }
 
+// Add this utility function at the top (after imports):
+const getDayName = (dayNumber: string | number) => {
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  return days[Number(dayNumber)] || dayNumber;
+};
+
+// Add this utility for onboarding icon:
+const getOnboardingIcon = (entryType: string | undefined) => {
+  switch (entryType) {
+    case 'O': return '🧍'; // Onground
+    case 'M': return '✍️'; // Manual
+    case 'W': return '🌐'; // Website
+    default: return '';
+  }
+};
+
+// Add a utility for food type symbol:
+const getFoodTypeSymbol = (foodType: string | undefined) => {
+  switch ((foodType || '').toLowerCase()) {
+    case 'veg': return { symbol: '🟢', label: 'Veg' };
+    case 'nonveg': return { symbol: '🟤', label: 'Nonveg' };
+    case 'jain': return { symbol: '🟡', label: 'Jain' };
+    case 'swaminarayan': return { symbol: '🟣', label: 'Swaminarayan' };
+    default: return { symbol: '', label: '' };
+  }
+};
+
+// Update the food type utility to return color and label:
+const getFoodTypeDisplay = (foodType: string | undefined) => {
+  switch ((foodType || '').toLowerCase()) {
+    case 'veg': return { label: 'Veg', color: '#22c55e' }; // green
+    case 'nonveg': return { label: 'Nonveg', color: '#ef4444' }; // red
+    case 'jain': return { label: 'Jain', color: '#f59e42' }; // orange
+    case 'swaminarayan': return { label: 'Swaminarayan', color: '#a855f7' }; // purple
+    default: return { label: '', color: '#374151' };
+  }
+};
+
 export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -580,6 +618,123 @@ export default function UserManagement() {
     }
   };
 
+  const [selectedVendor, setSelectedVendor] = useState<User | null>(null);
+  const [showVendorModal, setShowVendorModal] = useState(false);
+  const [modalEditForm, setModalEditForm] = useState<Partial<UserFormData>>({});
+  const [modalEditMode, setModalEditMode] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
+  const [modalIsUpdating, setModalIsUpdating] = useState(false);
+  const [modalIsDeleting, setModalIsDeleting] = useState(false);
+  // Add a state for 24 hours open in Add User, Edit User, and modal edit forms:
+  const [is24HoursOpen, setIs24HoursOpen] = useState(false);
+  const [modalIs24HoursOpen, setModalIs24HoursOpen] = useState(false);
+  const [editIs24HoursOpen, setEditIs24HoursOpen] = useState(false);
+
+  const handleVendorRowClick = (user: User) => {
+    setSelectedVendor(user);
+    setModalEditForm({
+      contactNumber: user.contactNumber,
+      name: user.name,
+      status: user.status,
+      operatingHours: {
+        openTime: user.operatingHours.openTime,
+        closeTime: user.operatingHours.closeTime,
+        days: user.operatingHours.days,
+      },
+      foodType: user.foodType,
+      bestDishes: user.bestDishes ? [...user.bestDishes] : Array(6).fill({ name: '', price: '' }),
+      menuLink: user.menuLink,
+      mapsLink: user.mapsLink,
+      latitude: user.location?.coordinates?.[1]?.toString() || '',
+      longitude: user.location?.coordinates?.[0]?.toString() || '',
+      profilePictures: user.profilePictures || [],
+      preferredLanguages: user.preferredLanguages || [],
+      foodCategories: user.foodCategories || [],
+      stallType: user.stallType || '',
+      whatsappConsent: user.whatsappConsent || false,
+      onboardingType: user.onboardingType || '',
+      aadharNumber: user.aadharNumber || '',
+      aadharFrontUrl: user.aadharFrontUrl || '',
+      aadharBackUrl: user.aadharBackUrl || '',
+      panNumber: user.panNumber || '',
+      comments: user.comments,
+      vendorIndex: user.vendorIndex,
+      addedBy: user.addedBy,
+      primaryLanguage: user.primaryLanguage,
+      entryType: user.entryType,
+    });
+    setModalEditMode(false);
+    setShowVendorModal(true);
+  };
+
+  const handleModalEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setModalEditForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleModalUpdate = async () => {
+    if (!selectedVendor) return;
+    setModalIsUpdating(true);
+    setModalError(null);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setModalError('Not authenticated');
+      setModalIsUpdating(false);
+      return;
+    }
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/users/${selectedVendor._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(modalEditForm),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update user');
+      }
+      fetchUsers();
+      setShowVendorModal(false);
+    } catch (err) {
+      setModalError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setModalIsUpdating(false);
+    }
+  };
+
+  const handleModalDelete = async () => {
+    if (!selectedVendor) return;
+    if (!window.confirm('Are you sure you want to delete this user?')) return;
+    setModalIsDeleting(true);
+    setModalError(null);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setModalError('Not authenticated');
+      setModalIsDeleting(false);
+      return;
+    }
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/users/${selectedVendor._id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete user');
+      }
+      fetchUsers();
+      setShowVendorModal(false);
+    } catch (err) {
+      setModalError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setModalIsDeleting(false);
+    }
+  };
+
   if (loading) {
     return <div className="text-center py-10">Loading users...</div>;
   }
@@ -868,6 +1023,7 @@ export default function UserManagement() {
                       value={newUser.operatingHours.openTime}
                       onChange={handleAddUserChange}
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      disabled={is24HoursOpen}
                     >
                       <option value="">Select Time</option>
                       {timeOptions.map((time) => (
@@ -883,6 +1039,7 @@ export default function UserManagement() {
                       value={newUser.operatingHours.closeTime}
                       onChange={handleAddUserChange}
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      disabled={is24HoursOpen}
                     >
                       <option value="">Select Time</option>
                       {timeOptions.map((time) => (
@@ -1287,6 +1444,7 @@ export default function UserManagement() {
                       value={editForm.operatingHours?.openTime || ''}
                       onChange={handleEditUserChange}
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      disabled={editIs24HoursOpen}
                     >
                       <option value="">Select Time</option>
                       {timeOptions.map((time) => (
@@ -1302,6 +1460,7 @@ export default function UserManagement() {
                       value={editForm.operatingHours?.closeTime || ''}
                       onChange={handleEditUserChange}
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      disabled={editIs24HoursOpen}
                     >
                       <option value="">Select Time</option>
                       {timeOptions.map((time) => (
@@ -1458,6 +1617,27 @@ export default function UserManagement() {
                   </button>
                 </div>
               </div>
+              <div className="mb-2">
+                <label className="inline-flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={editIs24HoursOpen}
+                    onChange={e => {
+                      setEditIs24HoursOpen(e.target.checked);
+                      setEditForm(prev => ({
+                        ...prev,
+                        operatingHours: {
+                          ...prev.operatingHours,
+                          openTime: e.target.checked ? '12:00 AM' : '',
+                          closeTime: e.target.checked ? '11:59 PM' : '',
+                          days: prev.operatingHours?.days || [],
+                        },
+                      }));
+                    }}
+                  />
+                  24 hours open
+                </label>
+              </div>
               <button
                 type="submit"
                 disabled={isUpdating}
@@ -1504,7 +1684,7 @@ export default function UserManagement() {
                   const adminName = user.addedBy || 'admin';
                   const customIndex = `${idx + 1}_${lang}_${entryType}_${adminName}`;
                   return (
-                    <tr key={user._id} className="hover:bg-gray-50">
+                    <tr key={user._id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleVendorRowClick(user)}>
                       <td className="px-4 py-3 whitespace-nowrap">{customIndex}</td>
                       <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900 truncate max-w-[140px]">{user.contactNumber}</td>
                       <td className="px-4 py-3 whitespace-nowrap truncate max-w-[180px]">{user.name}</td>
@@ -1528,13 +1708,13 @@ export default function UserManagement() {
                       <td className="px-4 py-3 whitespace-nowrap truncate max-w-[120px]"><a href={user.mapsLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{user.mapsLink || 'N/A'}</a></td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <button 
-                          onClick={() => handleEditClick(user)}
+                          onClick={(e) => { e.stopPropagation(); handleEditClick(user); }}
                           className="font-medium text-blue-600 hover:underline mr-3">
                             Edit
                         </button>
                         {['admin','super_admin'].includes(userRole || '') && (
                           <button 
-                            onClick={() => handleDeleteUser(user._id)}
+                            onClick={(e) => { e.stopPropagation(); handleDeleteUser(user._id); }}
                             disabled={isDeleting}
                             className={`font-medium text-red-600 hover:underline ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
                           >
@@ -1550,6 +1730,464 @@ export default function UserManagement() {
           </div>
         )}
       </div>
+      {showVendorModal && selectedVendor && (
+        <div className="modal-container" onClick={(e) => e.target === e.currentTarget && setShowVendorModal(false)}>
+          <div className="modal-content">
+            <div className="modal-header" style={{ padding: '20px', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 22, fontWeight: 700 }}>{selectedVendor.name}</span>
+                <span style={{ fontSize: 16, color: '#374151', marginTop: 2 }}>{selectedVendor.contactNumber}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                {getFoodTypeDisplay(selectedVendor.foodType).label && (
+                  <span style={{ fontSize: 18, fontWeight: 600, color: getFoodTypeDisplay(selectedVendor.foodType).color }}>
+                    {getFoodTypeDisplay(selectedVendor.foodType).label}
+                  </span>
+                )}
+                <span title={selectedVendor.entryType === 'O' ? 'Onground' : selectedVendor.entryType === 'M' ? 'Manual Entry' : 'Self'} style={{ fontSize: 28, marginLeft: 8 }}>{getOnboardingIcon(selectedVendor.entryType)}</span>
+              </div>
+            </div>
+            <div className="modal-body" style={{ padding: '20px' }}>
+              {!modalEditMode ? (
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label className="form-label">Name</label>
+                    <div>{selectedVendor.name}</div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Contact Number</label>
+                    <div>{selectedVendor.contactNumber}</div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Open Time</label>
+                    <div>{selectedVendor.operatingHours.openTime || 'N/A'}</div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Close Time</label>
+                    <div>{selectedVendor.operatingHours.closeTime || 'N/A'}</div>
+                  </div>
+                  <div className="form-group full-width">
+                    <label className="form-label">Operating Days</label>
+                    <div>{selectedVendor.operatingHours.days?.map(day => getDayName(day)).join(', ') || 'Not specified'}</div>
+                  </div>
+                  <div className="form-group full-width">
+                    <label className="form-label">Best Dishes</label>
+                    <ul style={{ margin: 0, paddingLeft: 18 }}>
+                      {(selectedVendor.bestDishes && selectedVendor.bestDishes.length > 0 && selectedVendor.bestDishes[0].name) ?
+                        selectedVendor.bestDishes.map((dish, i) => dish.name && <li key={i}>{dish.name}{dish.price ? ` (₹${dish.price})` : ''}</li>) :
+                        <li>N/A</li>
+                      }
+                    </ul>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Maps Link</label>
+                    {selectedVendor.mapsLink ? (
+                      <a
+                        href={selectedVendor.mapsLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline"
+                        style={{
+                          display: 'inline-block',
+                          maxWidth: 320,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          verticalAlign: 'middle',
+                        }}
+                        title={selectedVendor.mapsLink}
+                      >
+                        {selectedVendor.mapsLink}
+                      </a>
+                    ) : (selectedVendor.location?.coordinates ? (
+                      <span>Lat: {selectedVendor.location.coordinates[1]}, Lng: {selectedVendor.location.coordinates[0]}</span>
+                    ) : 'N/A')}
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Preferred Language</label>
+                    <div>{selectedVendor.preferredLanguages?.join(', ') || selectedVendor.primaryLanguage || 'N/A'}</div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Food Category</label>
+                    <div>{selectedVendor.foodCategories?.join(', ') || 'N/A'}</div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">WhatsApp Consent</label>
+                    <span style={{ fontSize: 22 }}>{selectedVendor.whatsappConsent ? '✅' : '❌'}</span>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Comments</label>
+                    <div>{selectedVendor.comments || 'N/A'}</div>
+                  </div>
+                </div>
+              ) : (
+                // Edit mode: reuse the add/edit user form fields, but for modalEditForm
+                <form className="space-y-6" onSubmit={e => { e.preventDefault(); handleModalUpdate(); }}>
+                  {/* Name */}
+                  <div className="form-group">
+                    <label className="form-label">Name</label>
+                    <input type="text" name="name" value={modalEditForm.name || ''} onChange={handleModalEditChange} className="form-input" required />
+                  </div>
+                  {/* Contact Number */}
+                  <div className="form-group">
+                    <label className="form-label">Contact Number</label>
+                    <input type="text" name="contactNumber" value={modalEditForm.contactNumber || ''} onChange={handleModalEditChange} className="form-input" required />
+                  </div>
+                  {/* Profile Pictures (show thumbnails, allow upload) */}
+                  <div className="form-group full-width">
+                    <label className="form-label">Business Images</label>
+                    <input type="file" accept="image/*" multiple onChange={async (e) => {
+                      const files = Array.from(e.target.files || []);
+                      if (files.length > 10) { alert('You can upload a maximum of 10 images.'); return; }
+                      const formData = new FormData();
+                      files.forEach(file => formData.append('images', file));
+                      const res = await fetch(`${apiBaseUrl}/api/users/upload-images`, {
+                        method: 'POST',
+                        body: formData,
+                        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                      });
+                      const data = await res.json();
+                      setModalEditForm(prev => ({ ...prev, profilePictures: data.urls }));
+                    }} />
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {modalEditForm.profilePictures && modalEditForm.profilePictures.map((url, i) => (
+                        <img key={url + i} src={url} alt="Business" className="w-20 h-20 object-cover rounded border" />
+                      ))}
+                    </div>
+                  </div>
+                  {/* Preferred Languages */}
+                  <div className="form-group full-width">
+                    <label className="form-label">Preferred Language</label>
+                    <div className="flex gap-4">
+                      {['Hindi', 'English', 'Gujarati'].map(lang => (
+                        <label key={lang} className="inline-flex items-center gap-1">
+                          <input
+                            type="checkbox"
+                            value={lang}
+                            checked={modalEditForm.preferredLanguages?.includes(lang) || false}
+                            onChange={() => {
+                              setModalEditForm(prev => {
+                                const arr = prev.preferredLanguages?.includes(lang)
+                                  ? prev.preferredLanguages.filter(l => l !== lang)
+                                  : [...(prev.preferredLanguages || []), lang];
+                                return {
+                                  ...prev,
+                                  preferredLanguages: arr,
+                                  primaryLanguage: arr.length > 0 ? arr[0] : 'English',
+                                };
+                              });
+                            }}
+                          />
+                          {lang}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Food Categories */}
+                  <div className="form-group full-width">
+                    <label className="form-label">Category of Food</label>
+                    <div className="flex flex-wrap gap-4">
+                      {['Chaat','Juices','Tea/coffee','Snacks (Samosa, Vada Pav, etc.)','Dessert','Gujju Snacks','PavBhaji','Punjabi (Parathe, Lassi, etc)','Pani Puri','Korean','Chinese','South Indian','Other'].map(cat => (
+                        <label key={cat} className="inline-flex items-center gap-1">
+                          <input
+                            type="checkbox"
+                            value={cat}
+                            checked={modalEditForm.foodCategories?.includes(cat) || false}
+                            onChange={() => {
+                              setModalEditForm(prev => {
+                                const arr = prev.foodCategories?.includes(cat)
+                                  ? prev.foodCategories.filter(c => c !== cat)
+                                  : [...(prev.foodCategories || []), cat];
+                                return { ...prev, foodCategories: arr };
+                              });
+                            }}
+                          />
+                          {cat}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Stall Type */}
+                  <div className="form-group full-width">
+                    <label className="form-label">Stall Type</label>
+                    <div className="flex gap-4">
+                      <label className="inline-flex items-center gap-1">
+                        <input type="radio" name="stallType" value="fixed" checked={modalEditForm.stallType === 'fixed'} onChange={() => setModalEditForm(prev => ({ ...prev, stallType: 'fixed' }))} /> Fixed
+                      </label>
+                      <label className="inline-flex items-center gap-1">
+                        <input type="radio" name="stallType" value="mobile" checked={modalEditForm.stallType === 'mobile'} onChange={() => setModalEditForm(prev => ({ ...prev, stallType: 'mobile' }))} /> Mobile
+                      </label>
+                    </div>
+                  </div>
+                  {/* WhatsApp Consent */}
+                  <div className="form-group full-width">
+                    <label className="form-label">WhatsApp Consent</label>
+                    <input type="checkbox" checked={modalEditForm.whatsappConsent || false} onChange={() => setModalEditForm(prev => ({ ...prev, whatsappConsent: !prev.whatsappConsent }))} />
+                  </div>
+                  {/* Onboarding Type */}
+                  <div className="form-group full-width">
+                    <label className="form-label">Onboarding Type</label>
+                    <div className="flex gap-4">
+                      {['O', 'M', 'W'].map(type => (
+                        <label key={type} className="inline-flex items-center gap-1">
+                          <input
+                            type="radio"
+                            name="entryType"
+                            value={type}
+                            checked={modalEditForm.entryType === type}
+                            onChange={() => setModalEditForm(prev => ({ ...prev, entryType: type as 'O' | 'M' | 'W' }))}
+                          />
+                          {getOnboardingIcon(type)}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Aadhar Number */}
+                  <div className="form-group full-width">
+                    <label className="form-label">Aadhar Number</label>
+                    <input type="text" name="aadharNumber" value={modalEditForm.aadharNumber || ''} onChange={handleModalEditChange} className="form-input" placeholder="Enter Aadhar Number" />
+                  </div>
+                  {/* Aadhar Photos */}
+                  <div className="form-group full-width">
+                    <label className="form-label">Aadhar Photo (Front)</label>
+                    <input type="file" accept="image/*" onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const formData = new FormData();
+                      formData.append('image', file);
+                      const res = await fetch(`${apiBaseUrl}/api/users/upload-images`, {
+                        method: 'POST',
+                        body: formData,
+                        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                      });
+                      const data = await res.json();
+                      setModalEditForm(prev => ({ ...prev, aadharFrontUrl: data.urls[0] }));
+                    }} />
+                    {modalEditForm.aadharFrontUrl && <img src={modalEditForm.aadharFrontUrl} alt="Aadhar Front" className="w-20 h-20 object-cover rounded border mt-2" />}
+                  </div>
+                  <div className="form-group full-width">
+                    <label className="form-label">Aadhar Photo (Back)</label>
+                    <input type="file" accept="image/*" onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const formData = new FormData();
+                      formData.append('image', file);
+                      const res = await fetch(`${apiBaseUrl}/api/users/upload-images`, {
+                        method: 'POST',
+                        body: formData,
+                        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                      });
+                      const data = await res.json();
+                      setModalEditForm(prev => ({ ...prev, aadharBackUrl: data.urls[0] }));
+                    }} />
+                    {modalEditForm.aadharBackUrl && <img src={modalEditForm.aadharBackUrl} alt="Aadhar Back" className="w-20 h-20 object-cover rounded border mt-2" />}
+                  </div>
+                  {/* PAN Number */}
+                  <div className="form-group full-width">
+                    <label className="form-label">PAN Number</label>
+                    <input type="text" name="panNumber" value={modalEditForm.panNumber || ''} onChange={handleModalEditChange} className="form-input" placeholder="Enter PAN Number" />
+                  </div>
+                  {/* Comments */}
+                  <div className="form-group full-width">
+                    <label className="form-label">Comments</label>
+                    <textarea name="comments" value={modalEditForm.comments || ''} onChange={handleModalEditChange} className="form-input" rows={3} />
+                  </div>
+                  {/* Operating Hours */}
+                  <div className="form-group full-width">
+                    <label className="form-label">Operating Hours</label>
+                    <div className="mb-2">
+                      <label className="inline-flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={modalIs24HoursOpen}
+                          onChange={e => {
+                            setModalIs24HoursOpen(e.target.checked);
+                            setModalEditForm(prev => ({
+                              ...prev,
+                              operatingHours: {
+                                openTime: e.target.checked ? '12:00 AM' : (prev.operatingHours?.openTime || ''),
+                                closeTime: e.target.checked ? '11:59 PM' : (prev.operatingHours?.closeTime || ''),
+                                days: prev.operatingHours?.days ?? [],
+                              },
+                            }));
+                          }}
+                        />
+                        24 hours open
+                      </label>
+                    </div>
+                    <div className="operating-hours-grid">
+                      <div>
+                        <label className="form-label-small">Open Time</label>
+                        <input
+                          type="time"
+                          name="openTime"
+                          value={modalEditForm.operatingHours?.openTime || ''}
+                          onChange={e => setModalEditForm(prev => ({
+                            ...prev,
+                            operatingHours: {
+                              openTime: e.target.value,
+                              closeTime: prev.operatingHours?.closeTime || '',
+                              days: prev.operatingHours?.days || [],
+                            },
+                          }))}
+                          className="form-input"
+                          disabled={modalIs24HoursOpen}
+                        />
+                      </div>
+                      <div>
+                        <label className="form-label-small">Close Time</label>
+                        <input
+                          type="time"
+                          name="closeTime"
+                          value={modalEditForm.operatingHours?.closeTime || ''}
+                          onChange={e => setModalEditForm(prev => ({
+                            ...prev,
+                            operatingHours: {
+                              openTime: prev.operatingHours?.openTime || '',
+                              closeTime: e.target.value,
+                              days: prev.operatingHours?.days || [],
+                            },
+                          }))}
+                          className="form-input"
+                          disabled={modalIs24HoursOpen}
+                        />
+                      </div>
+                    </div>
+                    <div className="days-display" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                      <span className="form-label-small">Days: </span>
+                      <div style={{ marginBottom: 8 }}>
+                        <label style={{ fontWeight: 500 }}>
+                          <input
+                            type="checkbox"
+                            checked={modalEditForm.operatingHours?.days?.length === 7}
+                            onChange={e => {
+                              const checked = e.target.checked;
+                              setModalEditForm(prev => ({
+                                ...prev,
+                                operatingHours: {
+                                  openTime: prev.operatingHours?.openTime || '',
+                                  closeTime: prev.operatingHours?.closeTime || '',
+                                  days: checked ? ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] : [],
+                                },
+                              }));
+                            }}
+                            style={{ marginRight: 6 }}
+                          />
+                          Select All
+                        </label>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '4px' }}>
+                        {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(day => (
+                          <label key={day} style={{ marginRight: 8, display: 'flex', alignItems: 'center' }}>
+                            <input
+                              type="checkbox"
+                              checked={modalEditForm.operatingHours?.days?.includes(day) || false}
+                              onChange={e => {
+                                const checked = e.target.checked;
+                                setModalEditForm(prev => {
+                                  const days = prev.operatingHours?.days || [];
+                                  const updatedDays = checked
+                                    ? [...days, day]
+                                    : days.filter(d => d !== day);
+                                  return {
+                                    ...prev,
+                                    operatingHours: {
+                                      openTime: prev.operatingHours?.openTime || '',
+                                      closeTime: prev.operatingHours?.closeTime || '',
+                                      days: updatedDays,
+                                    },
+                                  };
+                                });
+                              }}
+                              style={{ marginRight: 4 }}
+                            />
+                            {day}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  {/* Best Dishes */}
+                  <div className="form-group full-width">
+                    <label className="form-label">Best Dishes (at least 1 required)</label>
+                    {[...Array(6)].map((_, index) => (
+                      <div key={index} className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="form-label-small">Best Dish {index + 1}{index === 0 && ' (Required)'}</label>
+                          <input
+                            type="text"
+                            name={`bestDishName${index + 1}`}
+                            value={modalEditForm.bestDishes?.[index]?.name || ''}
+                            onChange={e => {
+                              const value = e.target.value;
+                              setModalEditForm(prev => {
+                                const updated = [...(prev.bestDishes || Array(6).fill({ name: '', price: '' }))];
+                                updated[index] = { ...updated[index], name: value };
+                                return { ...prev, bestDishes: updated };
+                              });
+                            }}
+                            required={index === 0}
+                            className="form-input"
+                          />
+                        </div>
+                        <div>
+                          <label className="form-label-small">Price</label>
+                          <input
+                            type="number"
+                            name={`bestDishPrice${index + 1}`}
+                            value={modalEditForm.bestDishes?.[index]?.price || ''}
+                            onChange={e => {
+                              const value = e.target.value === '' ? '' : parseFloat(e.target.value);
+                              setModalEditForm(prev => {
+                                const updated = [...(prev.bestDishes || Array(6).fill({ name: '', price: '' }))];
+                                updated[index] = { ...updated[index], price: value };
+                                return { ...prev, bestDishes: updated };
+                              });
+                            }}
+                            className="form-input"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Menu Link, Maps Link, Lat/Lng */}
+                  <div className="form-group full-width">
+                    <label className="form-label">Menu Link</label>
+                    <input type="text" name="menuLink" value={modalEditForm.menuLink || ''} onChange={handleModalEditChange} className="form-input" />
+                  </div>
+                  <div className="form-group full-width">
+                    <label className="form-label">Maps Link</label>
+                    <input type="text" name="mapsLink" value={modalEditForm.mapsLink || ''} onChange={handleModalEditChange} className="form-input" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Latitude</label>
+                    <input type="number" step="any" name="latitude" value={modalEditForm.latitude || ''} onChange={handleModalEditChange} className="form-input" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Longitude</label>
+                    <input type="number" step="any" name="longitude" value={modalEditForm.longitude || ''} onChange={handleModalEditChange} className="form-input" />
+                  </div>
+                  <div className="col-span-2 flex justify-end mt-2">
+                    <button type="button" className="btn btn-secondary" onClick={handleGetCurrentLocationEdit}>Get Current Location</button>
+                  </div>
+                  <div className="modal-actions">
+                    <button type="button" className="btn btn-secondary" onClick={() => setModalEditMode(false)}>Cancel</button>
+                    <button type="submit" className="btn btn-primary" disabled={modalIsUpdating}>{modalIsUpdating ? 'Updating...' : 'Update'}</button>
+                    <button type="button" className="btn btn-danger" onClick={handleModalDelete} disabled={modalIsDeleting}>{modalIsDeleting ? 'Deleting...' : 'Delete'}</button>
+                  </div>
+                </form>
+              )}
+            </div>
+            {!modalEditMode && (
+              <div className="modal-actions">
+                <button className="btn btn-secondary" onClick={() => setShowVendorModal(false)}>Close</button>
+                <button className="btn btn-primary" onClick={() => setModalEditMode(true)}>Edit</button>
+                <button className="btn btn-danger" onClick={handleModalDelete} disabled={modalIsDeleting}>{modalIsDeleting ? 'Deleting...' : 'Delete'}</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 } 
