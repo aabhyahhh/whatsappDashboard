@@ -84,6 +84,19 @@ router.use((_err, _req, res, _next) => {
         res.status(500).json({ error: 'Internal server error', details: _err?.message || _err });
     }
 });
+
+// GET /api/messages/inbound-count - Get count of inbound messages
+router.get('/inbound-count', async (_req, res) => {
+    try {
+        const count = await Message.countDocuments({ direction: 'inbound' });
+        res.json({ count });
+    }
+    catch (error) {
+        console.error('Error counting inbound messages:', error);
+        res.status(500).json({ error: 'Failed to count inbound messages' });
+    }
+});
+
 // GET /api/messages/:phone - Fetch messages for a specific phone number
 router.get('/:phone', async (req, res) => {
     try {
@@ -111,15 +124,5 @@ router.get('/:phone', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch messages' });
     }
 });
-// GET /api/messages/inbound-count - Get count of inbound messages
-router.get('/inbound-count', async (_req, res) => {
-    try {
-        const count = await Message.countDocuments({ direction: 'inbound' });
-        res.json({ count });
-    }
-    catch (error) {
-        console.error('Error counting inbound messages:', error);
-        res.status(500).json({ error: 'Failed to count inbound messages' });
-    }
-});
+
 export default router;
