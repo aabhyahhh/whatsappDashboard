@@ -3,7 +3,7 @@ export interface IAdmin extends Document {
     username: string;
     password: string;
     email: string;
-    role: 'admin' | 'super_admin';
+    role: 'admin' | 'super_admin' | 'onground';
     createdAt: Date;
     lastLogin?: Date;
     comparePassword(candidatePassword: string): Promise<boolean>;

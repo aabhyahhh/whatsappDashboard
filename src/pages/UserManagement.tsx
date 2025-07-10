@@ -97,17 +97,6 @@ const getOnboardingIcon = (entryType: string | undefined) => {
   }
 };
 
-// Add a utility for food type symbol:
-const getFoodTypeSymbol = (foodType: string | undefined) => {
-  switch ((foodType || '').toLowerCase()) {
-    case 'veg': return { symbol: '🟢', label: 'Veg' };
-    case 'nonveg': return { symbol: '🟤', label: 'Nonveg' };
-    case 'jain': return { symbol: '🟡', label: 'Jain' };
-    case 'swaminarayan': return { symbol: '🟣', label: 'Swaminarayan' };
-    default: return { symbol: '', label: '' };
-  }
-};
-
 // Update the food type utility to return color and label:
 const getFoodTypeDisplay = (foodType: string | undefined) => {
   switch ((foodType || '').toLowerCase()) {
@@ -622,11 +611,9 @@ export default function UserManagement() {
   const [showVendorModal, setShowVendorModal] = useState(false);
   const [modalEditForm, setModalEditForm] = useState<Partial<UserFormData>>({});
   const [modalEditMode, setModalEditMode] = useState(false);
-  const [modalError, setModalError] = useState<string | null>(null);
   const [modalIsUpdating, setModalIsUpdating] = useState(false);
   const [modalIsDeleting, setModalIsDeleting] = useState(false);
   // Add a state for 24 hours open in Add User, Edit User, and modal edit forms:
-  const [is24HoursOpen, setIs24HoursOpen] = useState(false);
   const [modalIs24HoursOpen, setModalIs24HoursOpen] = useState(false);
   const [editIs24HoursOpen, setEditIs24HoursOpen] = useState(false);
 
@@ -675,10 +662,8 @@ export default function UserManagement() {
   const handleModalUpdate = async () => {
     if (!selectedVendor) return;
     setModalIsUpdating(true);
-    setModalError(null);
     const token = localStorage.getItem('token');
     if (!token) {
-      setModalError('Not authenticated');
       setModalIsUpdating(false);
       return;
     }
@@ -692,13 +677,12 @@ export default function UserManagement() {
         body: JSON.stringify(modalEditForm),
       });
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update user');
+        throw new Error(response.statusText);
       }
       fetchUsers();
       setShowVendorModal(false);
     } catch (err) {
-      setModalError(err instanceof Error ? err.message : 'An error occurred');
+      console.error('Error updating user:', err);
     } finally {
       setModalIsUpdating(false);
     }
@@ -708,10 +692,8 @@ export default function UserManagement() {
     if (!selectedVendor) return;
     if (!window.confirm('Are you sure you want to delete this user?')) return;
     setModalIsDeleting(true);
-    setModalError(null);
     const token = localStorage.getItem('token');
     if (!token) {
-      setModalError('Not authenticated');
       setModalIsDeleting(false);
       return;
     }
@@ -723,13 +705,12 @@ export default function UserManagement() {
         },
       });
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete user');
+        throw new Error(response.statusText);
       }
       fetchUsers();
       setShowVendorModal(false);
     } catch (err) {
-      setModalError(err instanceof Error ? err.message : 'An error occurred');
+      console.error('Error deleting user:', err);
     } finally {
       setModalIsDeleting(false);
     }
@@ -1023,7 +1004,7 @@ export default function UserManagement() {
                       value={newUser.operatingHours.openTime}
                       onChange={handleAddUserChange}
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                      disabled={is24HoursOpen}
+                      disabled={modalIs24HoursOpen}
                     >
                       <option value="">Select Time</option>
                       {timeOptions.map((time) => (
@@ -1039,7 +1020,7 @@ export default function UserManagement() {
                       value={newUser.operatingHours.closeTime}
                       onChange={handleAddUserChange}
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                      disabled={is24HoursOpen}
+                      disabled={modalIs24HoursOpen}
                     >
                       <option value="">Select Time</option>
                       {timeOptions.map((time) => (

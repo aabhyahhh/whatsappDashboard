@@ -100,7 +100,12 @@ router.get('/', authenticateToken, async (_req, res) => {
     }
 });
 // POST create a new regular user
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, (req, res, next) => {
+    if (!['admin', 'super_admin', 'onground'].includes(req.user?.role || '')) {
+        return res.status(403).json({ message: 'Access denied: Requires admin, super_admin, or onground role' });
+    }
+    next();
+}, async (req, res) => {
     try {
         // Destructure all expected fields from req.body
         const { contactNumber, name, status, mapsLink, operatingHours, foodType, bestDishes, menuLink, profilePictures, preferredLanguages, foodCategories, stallType, whatsappConsent, onboardingType, aadharNumber, aadharFrontUrl, aadharBackUrl, panNumber, latitude, longitude } = req.body;
@@ -192,7 +197,12 @@ router.post('/', authenticateToken, async (req, res) => {
     }
 });
 // PUT update a user by ID - FIXED VERSION
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', authenticateToken, (req, res, next) => {
+    if (!['admin', 'super_admin', 'onground'].includes(req.user?.role || '')) {
+        return res.status(403).json({ message: 'Access denied: Requires admin, super_admin, or onground role' });
+    }
+    next();
+}, async (req, res) => {
     try {
         const { id } = req.params;
         const { contactNumber, name, status, openTime, closeTime, operatingHours, foodType, bestDishes, menuLink, mapsLink, profilePictures, preferredLanguages, foodCategories, stallType, whatsappConsent, onboardingType, aadharNumber, aadharFrontUrl, aadharBackUrl, panNumber, latitude, longitude } = req.body;
@@ -312,7 +322,12 @@ router.put('/:id', authenticateToken, async (req, res) => {
     }
 });
 // DELETE a user by ID
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authenticateToken, (req, res, next) => {
+    if (!['admin', 'super_admin'].includes(req.user?.role || '')) {
+        return res.status(403).json({ message: 'Access denied: Requires admin or super_admin role' });
+    }
+    next();
+}, async (req, res) => {
     try {
         const { id } = req.params;
         const result = await User.findByIdAndDelete(id);

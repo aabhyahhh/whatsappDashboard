@@ -12,6 +12,7 @@
     "allowImportingTsExtensions": false,
     "verbatimModuleSyntax": true,
     "noEmit": false,
+    "outDir": "./dist",
 
     /* Linting */
     "strict": true,
@@ -19,5 +20,11 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["server/**/*.ts", "vite.config.ts"]
+  "include": [
+    "server/**/*.ts",
+    "vite.config.ts",
+    "server/models/User.ts",
+    "server/models/Vendor.ts",
+    "server/models/Message.ts"
+  ]
 }

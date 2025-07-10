@@ -72,4 +72,54 @@ router.get('/', async (_req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+// GET /api/vendor/open-count - Get count of open vendors right now
+router.get('/open-count', async (_req, res) => {
+    try {
+        const vendors = await Vendor.find({});
+        // Helper to check if a vendor is open now
+        function isOpenNow(vendor) {
+            if (!vendor.operatingHours || !vendor.operatingHours.openTime || !vendor.operatingHours.closeTime || !vendor.operatingHours.days) {
+                return false;
+            }
+            const now = new Date();
+            const day = now.getDay(); // 0=Sunday, 6=Saturday
+            const yesterday = (day + 6) % 7;
+            function parseTime(str) {
+                const [time, period] = str.split(' ');
+                let [h, m] = time.split(':').map(Number);
+                if (period === 'PM' && h !== 12)
+                    h += 12;
+                if (period === 'AM' && h === 12)
+                    h = 0;
+                return h * 60 + m;
+            }
+            const openMinutes = parseTime(vendor.operatingHours.openTime);
+            const closeMinutes = parseTime(vendor.operatingHours.closeTime);
+            const nowMinutes = now.getHours() * 60 + now.getMinutes();
+            const daysArr = vendor.operatingHours.days;
+            let result;
+            if (openMinutes < closeMinutes) {
+                result = daysArr.includes(day) && nowMinutes >= openMinutes && nowMinutes < closeMinutes;
+            }
+            else {
+                if (nowMinutes >= openMinutes) {
+                    result = daysArr.includes(day);
+                }
+                else if (nowMinutes < closeMinutes) {
+                    result = daysArr.includes(yesterday);
+                }
+                else {
+                    result = false;
+                }
+            }
+            return result;
+        }
+        const openCount = vendors.filter(isOpenNow).length;
+        res.json({ count: openCount });
+    }
+    catch (err) {
+        console.error('Error counting open vendors:', err);
+        res.status(500).json({ error: 'Failed to count open vendors' });
+    }
+});
 export default router;

@@ -111,4 +111,15 @@ router.get('/:phone', async (req, res) => {
         res.status(500).json({ error: 'Failed to fetch messages' });
     }
 });
+// GET /api/messages/inbound-count - Get count of inbound messages
+router.get('/inbound-count', async (_req, res) => {
+    try {
+        const count = await Message.countDocuments({ direction: 'inbound' });
+        res.json({ count });
+    }
+    catch (error) {
+        console.error('Error counting inbound messages:', error);
+        res.status(500).json({ error: 'Failed to count inbound messages' });
+    }
+});
 export default router;

@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
-import { connectDB } from './db.js';
+import { connectDB } from './db.cjs';
 import { Admin } from './models/Admin.js';
 import adminRoutes from './routes/admin.js';
 import userRoutes from './routes/users.js';
