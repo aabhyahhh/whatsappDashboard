@@ -180,7 +180,6 @@ export default function UserManagement() {
   });
   const [editError, setEditError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const [isVerified, setIsVerified] = useState(false);
