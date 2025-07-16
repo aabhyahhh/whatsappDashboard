@@ -54,7 +54,7 @@ export default function ActiveVendors24h() {
 
   return (
     <AdminLayout>
-      <div className="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow-md mt-8 border border-gray-200">
+      <div className="w-full max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md mt-8 border border-gray-200 overflow-x-auto">
         <h2 className="text-2xl font-bold mb-6 text-center">Vendors Active in Last 24 Hours</h2>
         {loading ? (
           <div className="text-center py-8">Loading...</div>
@@ -63,49 +63,53 @@ export default function ActiveVendors24h() {
         ) : vendors.length === 0 ? (
           <div className="text-center py-8 text-gray-500">No vendors have contacted in the last 24 hours.</div>
         ) : (
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead>
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact Number</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {vendors.map((vendor) => (
-                <tr key={vendor.contactNumber}>
-                  <td className="px-6 py-4 whitespace-nowrap">{vendor.name || <span className="text-gray-400">(No Name)</span>}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{vendor.contactNumber}</td>
-                  <td className="px-6 py-4 whitespace-nowrap flex flex-col gap-2 md:flex-row md:items-center">
-                    <button
-                      className="text-blue-600 hover:text-blue-900 mr-4 underline"
-                      onClick={() => window.location.href = `/dashboard/chat/${vendor.contactNumber}`}
-                    >
-                      View Chat
-                    </button>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        className="border rounded px-2 py-1 text-sm"
-                        placeholder="Type a message..."
-                        value={messageMap[vendor.contactNumber] || ''}
-                        onChange={e => setMessageMap(prev => ({ ...prev, [vendor.contactNumber]: e.target.value }))}
-                        disabled={sending[vendor.contactNumber]}
-                        style={{ minWidth: 180 }}
-                      />
-                      <button
-                        className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm"
-                        onClick={() => handleSendMessage(vendor.contactNumber)}
-                        disabled={sending[vendor.contactNumber] || !(messageMap[vendor.contactNumber] || '').trim()}
-                      >
-                        {sending[vendor.contactNumber] ? 'Sending...' : 'Send'}
-                      </button>
-                    </div>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead>
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact Number</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {vendors.map((vendor) => (
+                  <tr key={vendor.contactNumber}>
+                    <td className="px-6 py-4 whitespace-nowrap">{vendor.name || <span className="text-gray-400">(No Name)</span>}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{vendor.contactNumber}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-col md:flex-row md:items-center gap-2">
+                        <button
+                          className="text-blue-600 hover:text-blue-900 mr-4 underline"
+                          onClick={() => window.location.href = `/dashboard/chat/${vendor.contactNumber}`}
+                        >
+                          View Chat
+                        </button>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            className="border rounded px-2 py-1 text-sm"
+                            placeholder="Type a message..."
+                            value={messageMap[vendor.contactNumber] || ''}
+                            onChange={e => setMessageMap(prev => ({ ...prev, [vendor.contactNumber]: e.target.value }))}
+                            disabled={sending[vendor.contactNumber]}
+                            style={{ minWidth: 180 }}
+                          />
+                          <button
+                            className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm"
+                            onClick={() => handleSendMessage(vendor.contactNumber)}
+                            disabled={sending[vendor.contactNumber] || !(messageMap[vendor.contactNumber] || '').trim()}
+                          >
+                            {sending[vendor.contactNumber] ? 'Sending...' : 'Send'}
+                          </button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </AdminLayout>

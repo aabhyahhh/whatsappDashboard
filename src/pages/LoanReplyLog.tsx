@@ -8,6 +8,7 @@ interface LoanReplyLogEntry {
   vendorName: string;
   contactNumber: string;
   timestamp: string;
+  aadharVerified?: boolean;
 }
 
 export default function LoanReplyLog() {
@@ -36,7 +37,7 @@ export default function LoanReplyLog() {
   return (
     <AdminLayout>
       <div className="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow-md mt-8 border border-gray-200">
-        <h2 className="text-2xl font-bold mb-6 text-center">Vendors Who Replied with "Loan"</h2>
+        <h2 className="text-2xl font-bold mb-6 text-center">Vendors Interested in Loan</h2>
         {loading ? (
           <div className="text-center py-8">Loading...</div>
         ) : error ? (
@@ -52,6 +53,7 @@ export default function LoanReplyLog() {
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Vendor Name</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Contact Number</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Timestamp</th>
+                  <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Aadhaar</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -61,6 +63,9 @@ export default function LoanReplyLog() {
                     <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900">{log.vendorName}</td>
                     <td className="px-4 py-3 whitespace-nowrap">{log.contactNumber}</td>
                     <td className="px-4 py-3 whitespace-nowrap text-gray-500">{new Date(log.timestamp).toLocaleString()}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-center">
+                      {log.aadharVerified ? <span title="Aadhaar Verified" style={{color: 'green', fontSize: '1.2em'}}>✅</span> : null}
+                    </td>
                   </tr>
                 ))}
               </tbody>
