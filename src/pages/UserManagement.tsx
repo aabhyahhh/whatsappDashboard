@@ -406,47 +406,6 @@ export default function UserManagement() {
     return days.map(String);
   }
 
-  const handleEditClick = (user: User) => {
-    setEditingUser(user);
-    setEditForm({
-      contactNumber: user.contactNumber,
-      name: user.name,
-      status: user.status,
-      operatingHours: {
-        openTime: user.operatingHours.openTime,
-        closeTime: user.operatingHours.closeTime,
-        days: normalizeDaysToNames(user.operatingHours.days),
-      },
-      foodType: user.foodType,
-      bestDishes: user.bestDishes ? [...user.bestDishes] : Array(6).fill({ name: '', price: '' }),
-      menuLink: user.menuLink,
-      mapsLink: user.mapsLink,
-      latitude: user.location?.coordinates?.[1]?.toString() || '',
-      longitude: user.location?.coordinates?.[0]?.toString() || '',
-      profilePictures: user.profilePictures || [],
-      preferredLanguages: user.preferredLanguages || [],
-      foodCategories: user.foodCategories || [],
-      stallType: user.stallType || '',
-      whatsappConsent: user.whatsappConsent || false,
-      onboardingType: user.onboardingType || '',
-      aadharNumber: user.aadharNumber || '',
-      aadharFrontUrl: user.aadharFrontUrl || '',
-      aadharBackUrl: user.aadharBackUrl || '',
-      panNumber: user.panNumber || '',
-      comments: user.comments,
-      vendorIndex: user.vendorIndex,
-      addedBy: user.addedBy,
-      primaryLanguage: user.primaryLanguage,
-      entryType: user.entryType,
-    });
-    setShowAddForm(false);
-    setTimeout(() => {
-      if (editFormRef.current) {
-        editFormRef.current.scrollIntoView({ behavior: 'smooth' });
-      }
-    }, 0);
-  };
-
   const handleEditUserChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setEditForm((prev) => ({ ...prev, [name]: value }));
@@ -499,42 +458,6 @@ export default function UserManagement() {
       setEditError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setIsUpdating(false);
-    }
-  };
-
-  const handleDeleteUser = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this user?')) {
-      return;
-    }
-
-    setIsDeleting(true);
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/login');
-      return;
-    }
-
-    try {
-      const response = await fetch(`${apiBaseUrl}/api/users/${id}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete user');
-      }
-
-      fetchUsers(); // Refresh the list
-      alert('User deleted successfully!');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred'); // Use main error state for delete
-    } finally {
-      setIsDeleting(false);
     }
   };
 
