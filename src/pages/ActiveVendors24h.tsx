@@ -5,6 +5,7 @@ const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 interface Vendor {
   name: string;
   contactNumber: string;
+  lastContact: string;
 }
 
 export default function ActiveVendors24h() {
@@ -54,7 +55,7 @@ export default function ActiveVendors24h() {
 
   return (
     <AdminLayout>
-      <div className="w-full max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-md mt-8 border border-gray-200 overflow-x-auto">
+      <div className="w-full max-w-6xl mx-auto bg-white p-6 rounded-lg shadow-md mt-8 border border-gray-200">
         <h2 className="text-2xl font-bold mb-6 text-center">Vendors Active in Last 24 Hours</h2>
         {loading ? (
           <div className="text-center py-8">Loading...</div>
@@ -63,10 +64,11 @@ export default function ActiveVendors24h() {
         ) : vendors.length === 0 ? (
           <div className="text-center py-8 text-gray-500">No vendors have contacted in the last 24 hours.</div>
         ) : (
-          <div className="overflow-x-auto">
+          <div>
             <table className="min-w-full divide-y divide-gray-200">
               <thead>
                 <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact Number</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -75,6 +77,7 @@ export default function ActiveVendors24h() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {vendors.map((vendor) => (
                   <tr key={vendor.contactNumber}>
+                    <td className="px-6 py-4 whitespace-nowrap">{new Date(vendor.lastContact).toLocaleString()}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{vendor.name || <span className="text-gray-400">(No Name)</span>}</td>
                     <td className="px-6 py-4 whitespace-nowrap">{vendor.contactNumber}</td>
                     <td className="px-6 py-4 whitespace-nowrap">

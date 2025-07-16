@@ -322,14 +322,14 @@ router.post('/', async (req: Request, res: Response) => {
                         const msgPayload: any = {
                             from: `whatsapp:${To.replace('whatsapp:', '')}`,
                             to: From,
-                            contentSid: 'HXb2144200ff4ddc9e5d7a0d149054bab5',
+                            contentSid: 'HXcdbf14c73f068958f96efc216961834d',
                             contentVariables: JSON.stringify({})
                         };
                         if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
                             msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
                         }
                         const twilioResp = await client.messages.create(msgPayload);
-                        console.log('✅ Triggered outbound template message HXb2144200ff4ddc9e5d7a0d149054bab5 in response to loan keyword. Twilio response:', twilioResp);
+                        console.log('✅ Triggered outbound template message HXcdbf14c73f068958f96efc216961834d in response to loan keyword. Twilio response:', twilioResp);
                         // Save the outbound template message to MongoDB for chat display
                         try {
                             await Message.create({
@@ -368,6 +368,46 @@ router.post('/', async (req: Request, res: Response) => {
             }
         );
         console.log('✅ Upserted contact:', { phone, lastSeen: new Date() });
+
+        // After saving the inbound message, check for Aadhaar verification button reply
+        // Twilio interactive replies may come as payload or in the Body
+        // Check for button reply with ID 'verify_aadhar' or body indicating Aadhaar verification
+        const isAadhaarButtonReply = (typeof Body === 'string' && (
+            Body.trim().toLowerCase() === 'yes, i will verify aadhar' ||
+            Body.trim().toLowerCase() === 'yes i will verify aadhar' ||
+            Body.trim().toLowerCase().includes('verify_aadhar')
+        )) || (req.body.ButtonPayload && req.body.ButtonPayload === 'verify_aadhar');
+
+        if (isAadhaarButtonReply && client) {
+            try {
+                const msgPayload: any = {
+                    from: `whatsapp:${To.replace('whatsapp:', '')}`,
+                    to: From,
+                    contentSid: 'HX1a44edbb684afc1a8213054a4731e53d',
+                    contentVariables: JSON.stringify({})
+                };
+                if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
+                    msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+                }
+                const twilioResp = await client.messages.create(msgPayload);
+                console.log('✅ Triggered Aadhaar verification template message HX1a44edbb684afc1a8213054a4731e53d. Twilio response:', twilioResp);
+                // Optionally, save the outbound message to MongoDB for chat display
+                try {
+                    await Message.create({
+                        from: msgPayload.from,
+                        to: msgPayload.to,
+                        body: '[Aadhaar verification template sent]',
+                        direction: 'outbound',
+                        timestamp: new Date(),
+                    });
+                    console.log('✅ Outbound Aadhaar verification template message saved to DB:', msgPayload.to);
+                } catch (err) {
+                    console.error('❌ Failed to save outbound Aadhaar verification template message:', err);
+                }
+            } catch (err) {
+                console.error('❌ Failed to send Aadhaar verification template message:', (err as Error)?.message || err, err);
+            }
+        }
 
         // Return 200 OK to Twilio
         res.status(200).send('OK');
