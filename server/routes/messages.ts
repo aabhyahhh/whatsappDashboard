@@ -138,7 +138,7 @@ router.get('/active-vendor-list-24h', async (_req: Request, res: Response) => {
     }).sort({ timestamp: -1 });
     // Map to unique contact numbers (remove whatsapp: prefix)
     const seen = new Set<string>();
-    const vendors: { contactNumber: string; name: string }[] = [];
+    const vendors: { contactNumber: string; name: string; lastContact: Date }[] = [];
     for (const msg of messages) {
       const contactNumber = (msg.from || '').replace(/^whatsapp:/, '');
       if (!seen.has(contactNumber)) {
@@ -153,7 +153,7 @@ router.get('/active-vendor-list-24h', async (_req: Request, res: Response) => {
           const vendor = await VendorModel.findOne({ contactNumber });
           if (vendor && vendor.name) name = vendor.name;
         }
-        vendors.push({ contactNumber, name });
+        vendors.push({ contactNumber, name, lastContact: msg.timestamp });
         seen.add(contactNumber);
       }
     }
