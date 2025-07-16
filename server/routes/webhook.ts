@@ -282,28 +282,39 @@ router.post('/', async (req: Request, res: Response) => {
                     try {
                         // Log vendor name and contactNumber
                         try {
-                            const VendorModel = (await import('../models/Vendor.js')).default;
-                            const phone = From.replace('whatsapp:', '');
-                            // Find vendor by contactNumber (try with and without country code)
-                            const possibleNumbers = [phone];
-                            if (phone.startsWith('+91')) possibleNumbers.push(phone.replace('+91', '91'));
-                            if (phone.startsWith('+')) possibleNumbers.push(phone.substring(1));
-                            possibleNumbers.push(phone.slice(-10));
-                            const vendor = await VendorModel.findOne({ contactNumber: { $in: possibleNumbers } });
-                            if (vendor) {
-                                // Prevent duplicate logs for same vendor in last 24h
-                                // @ts-ignore: Importing JS model with separate .d.ts for types
+                            const possibleNumbers = [From.replace('whatsapp:', '')];
+                            if (possibleNumbers[0].startsWith('+91')) possibleNumbers.push(possibleNumbers[0].replace('+91', '91'));
+                            if (possibleNumbers[0].startsWith('+')) possibleNumbers.push(possibleNumbers[0].substring(1));
+                            possibleNumbers.push(possibleNumbers[0].slice(-10));
+                            // Try User collection first
+                            const UserModel = (await import('../models/User.js')).User;
+                            let user = await UserModel.findOne({ contactNumber: { $in: possibleNumbers } });
+                            let name = null, contactNumber = null;
+                            if (user) {
+                                name = user.name;
+                                contactNumber = user.contactNumber;
+                            } else {
+                                // Fallback to Vendor collection
+                                const VendorModel = (await import('../models/Vendor.js')).default;
+                                const vendor = await VendorModel.findOne({ contactNumber: { $in: possibleNumbers } });
+                                if (vendor) {
+                                    name = vendor.name;
+                                    contactNumber = vendor.contactNumber;
+                                }
+                            }
+                            if (name && contactNumber) {
+                                // Prevent duplicate logs for same contactNumber in last 24h
                                 const LoanReplyLog = (await import('../models/LoanReplyLog.js')).default;
                                 const since = new Date(Date.now() - 24*60*60*1000);
-                                const alreadyLogged = await LoanReplyLog.findOne({ contactNumber: vendor.contactNumber, timestamp: { $gte: since } });
+                                const alreadyLogged = await LoanReplyLog.findOne({ contactNumber, timestamp: { $gte: since } });
                                 if (!alreadyLogged) {
-                                    await LoanReplyLog.create({ vendorName: vendor.name, contactNumber: vendor.contactNumber });
-                                    console.log('✅ Logged loan reply for vendor:', vendor.name, vendor.contactNumber);
+                                    await LoanReplyLog.create({ vendorName: name, contactNumber });
+                                    console.log('✅ Logged loan reply for:', name, contactNumber);
                                 } else {
-                                    console.log('ℹ️ Vendor already logged for loan reply in last 24h:', vendor.contactNumber);
+                                    console.log('ℹ️ Already logged for loan reply in last 24h:', contactNumber);
                                 }
                             } else {
-                                console.log('No vendor found for contactNumber:', phone);
+                                console.log('No user or vendor found for contactNumber:', possibleNumbers);
                             }
                         } catch (err) {
                             console.error('❌ Failed to log loan reply:', err);
