@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import AdminLayout from '../components/AdminLayout';
+import { useNavigate } from 'react-router-dom';
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
 interface DashboardStats {
@@ -16,6 +17,7 @@ export default function Dashboard() {
   });
   const [activeVendors24h, setActiveVendors24h] = useState<number>(0);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     async function fetchStats() {
@@ -122,12 +124,18 @@ export default function Dashboard() {
 
         {/* Active Vendors in Last 24 Hours Card */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard
-            title="Vendors Active in Last 24 Hours"
-            value={activeVendors24h}
-            icon="⏰"
-            color="border-purple-500"
-          />
+          <button
+            className="w-full text-left"
+            style={{ background: 'none', border: 'none', padding: 0 }}
+            onClick={() => navigate('/dashboard/active-vendors-24h')}
+          >
+            <StatCard
+              title="Vendors Active in Last 24 Hours"
+              value={activeVendors24h}
+              icon="⏰"
+              color="border-purple-500"
+            />
+          </button>
         </div>
 
         {/* Quick Actions */}

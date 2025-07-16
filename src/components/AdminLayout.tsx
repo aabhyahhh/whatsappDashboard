@@ -120,7 +120,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       path: '/loan-replies',
       icon: '💸',
       show: userRole === 'admin' || userRole === 'super_admin'
-    }
+    },
+    {
+      name: 'Active Vendors (24h)',
+      path: '/dashboard/active-vendors-24h',
+      icon: '⏰',
+      show: true
+    },
   ];
 
   return (
