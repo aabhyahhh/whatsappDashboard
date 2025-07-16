@@ -14,6 +14,7 @@ export default function Dashboard() {
     totalIncomingMessages: 0,
     totalOpenVendors: 0
   });
+  const [activeVendors24h, setActiveVendors24h] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,13 +30,18 @@ export default function Dashboard() {
         // Fetch total open vendors
         const openVendorsRes = await fetch(`${apiBaseUrl}/api/vendor/open-count`);
         const openVendorsData = await openVendorsRes.json();
+        // Fetch active vendors in last 24h
+        const activeVendorsRes = await fetch(`${apiBaseUrl}/api/messages/active-vendors-24h`);
+        const activeVendorsData = await activeVendorsRes.json();
         setStats({
           totalVendors: Array.isArray(vendors) ? vendors.length : 0,
           totalIncomingMessages: messagesData.count || 0,
           totalOpenVendors: openVendorsData.count || 0
         });
+        setActiveVendors24h(activeVendorsData.count || 0);
       } catch (err) {
         setStats({ totalVendors: 0, totalIncomingMessages: 0, totalOpenVendors: 0 });
+        setActiveVendors24h(0);
       } finally {
         setLoading(false);
       }
@@ -111,6 +117,16 @@ export default function Dashboard() {
             value={stats.totalOpenVendors}
             icon="🟢"
             color="border-yellow-500"
+          />
+        </div>
+
+        {/* Active Vendors in Last 24 Hours Card */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <StatCard
+            title="Vendors Active in Last 24 Hours"
+            value={activeVendors24h}
+            icon="⏰"
+            color="border-purple-500"
           />
         </div>
 

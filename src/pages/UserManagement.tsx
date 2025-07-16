@@ -1009,6 +1009,27 @@ export default function UserManagement() {
                     </label>
                   ))}
                 </div>
+                <div className="mt-2">
+                  <label className="inline-flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={modalIs24HoursOpen}
+                      onChange={e => {
+                        setModalIs24HoursOpen(e.target.checked);
+                        setNewUser(prev => ({
+                          ...prev,
+                          operatingHours: {
+                            ...prev.operatingHours,
+                            openTime: e.target.checked ? '12:00 AM' : '',
+                            closeTime: e.target.checked ? '11:59 PM' : '',
+                            days: prev.operatingHours.days || [],
+                          },
+                        }));
+                      }}
+                    />
+                    24 hours open
+                  </label>
+                </div>
               </div>
               </div>
               <div className="space-y-2 border border-gray-200 rounded-lg p-4 my-4 bg-gray-50">
@@ -1101,27 +1122,6 @@ export default function UserManagement() {
                   Get Current Location
                 </button>
               </div>
-              </div>
-              <div className="mt-2">
-                <label className="inline-flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={modalIs24HoursOpen}
-                    onChange={e => {
-                      setModalIs24HoursOpen(e.target.checked);
-                      setNewUser(prev => ({
-                        ...prev,
-                        operatingHours: {
-                          ...prev.operatingHours,
-                          openTime: e.target.checked ? '12:00 AM' : '',
-                          closeTime: e.target.checked ? '11:59 PM' : '',
-                          days: prev.operatingHours.days || [],
-                        },
-                      }));
-                    }}
-                  />
-                  24 hours open
-                </label>
               </div>
               <button
                 type="submit"

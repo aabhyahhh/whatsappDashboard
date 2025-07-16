@@ -108,6 +108,25 @@ router.get('/inbound-count', async (_req: Request, res: Response) => {
     }
 });
 
+// GET /api/messages/active-vendors-24h - Number of unique vendors who texted in last 24 hours
+router.get('/active-vendors-24h', async (_req: Request, res: Response) => {
+  try {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    // Find inbound messages in last 24h
+    const messages = await Message.find({
+      direction: 'inbound',
+      timestamp: { $gte: since }
+    }).select('from');
+    // Normalize phone numbers (remove whatsapp: prefix)
+    const uniqueVendors = new Set(
+      messages.map(m => (m.from || '').replace(/^whatsapp:/, ''))
+    );
+    res.json({ count: uniqueVendors.size });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch active vendors in last 24h' });
+  }
+});
+
 // GET /api/messages/:phone - Fetch messages for a specific phone number
 router.get('/:phone', async (req: Request, res: Response) => {
     try {
