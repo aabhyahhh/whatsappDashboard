@@ -170,8 +170,10 @@ router.post('/', async (req, res) => {
                 // Remove all findOne lookups for user and vendor by contactNumber, use find to get all matches
                 // Find all users with this contactNumber (in all fallback forms)
                 const userNumbers = [phone];
-                if (phone.startsWith('+91')) userNumbers.push(phone.replace('+91', '91'));
-                if (phone.startsWith('+')) userNumbers.push(phone.substring(1));
+                if (phone.startsWith('+91'))
+                    userNumbers.push(phone.replace('+91', '91'));
+                if (phone.startsWith('+'))
+                    userNumbers.push(phone.substring(1));
                 userNumbers.push(phone.slice(-10));
                 const users = await User.find({ contactNumber: { $in: userNumbers } });
                 console.log('Users found:', users.length);
@@ -221,20 +223,20 @@ router.post('/', async (req, res) => {
                         const msgPayload = {
                             from: `whatsapp:${To.replace('whatsapp:', '')}`,
                             to: From,
-                            contentSid: 'HX6b8e51dd6b11dd2db65fe9c78546803e',
+                            contentSid: 'HX46464a13f80adebb4b9d552d63acfae9',
                             contentVariables: JSON.stringify({})
                         };
                         if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
                             msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
                         }
                         const twilioResp = await client.messages.create(msgPayload);
-                        console.log('✅ Triggered outbound template message HX6b8e51dd6b11dd2db65fe9c78546803e in response to greeting. Twilio response:', twilioResp);
+                        console.log('✅ Triggered outbound template message HX46464a13f80adebb4b9d552d63acfae9 in response to greeting. Twilio response:', twilioResp);
                         // Save the outbound template message to MongoDB for chat display
                         try {
                             await Message.create({
                                 from: msgPayload.from,
                                 to: msgPayload.to,
-                                body: "Namaste from Laari Khojo!\n\nThanks for reaching out!\nWe help you get discovered by more customers by showing your live location and updates on our platform.\n\nTo get started, please reply with:\n📍 Your current location – so we can mark you active for today.\n\nLet's grow your laari together! 🚀",
+                                body: "👋 Namaste from Laari Khojo!\n🙏 लारी खोजो की ओर से नमस्ते!\n\n📩 Thanks for reaching out!\n📞 संपर्क करने के लिए धन्यवाद!\n\nWe help you get discovered by more customers by showing your updates and services on our platform.\n🧺 हम आपके अपडेट्स और सेवाओं को अपने प्लेटफॉर्म पर दिखाकर आपको ज़्यादा ग्राहकों तक पहुँचाने में मदद करते हैं।\n\n💰 Interested in future loan support?\nJust reply with: *loan*\nभविष्य में लोन सहायता चाहिए?\n➡️ जवाब में भेजें: *loan*\n\nYou can also visit our 🌐 website using the button below.\nआप नीचे दिए गए बटन से हमारी 🌐 वेबसाइट पर भी जा सकते हैं।\n\n🚀 Let’s grow your laari together!\n🌟 आइए मिलकर आपकी लारी को आगे बढ़ाएं!",
                                 direction: 'outbound',
                                 timestamp: new Date(),
                             });

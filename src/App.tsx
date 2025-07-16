@@ -8,6 +8,7 @@ import UserManagement from './pages/UserManagement';
 import OTPVerification from './pages/OTPVerification';
 import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
+import LoanReplyLog from './pages/LoanReplyLog';
 
 function App() {
   return (
@@ -42,6 +43,11 @@ function App() {
         <Route path="/users" element={
           <ProtectedRoute>
             <UserManagement />
+          </ProtectedRoute>
+        } />
+        <Route path="/loan-replies" element={
+          <ProtectedRoute>
+            <LoanReplyLog />
           </ProtectedRoute>
         } />
         <Route path="/" element={<Navigate to="/login" replace />} />

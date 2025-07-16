@@ -1,34 +1,46 @@
 import { useState, useEffect } from 'react';
 import AdminLayout from '../components/AdminLayout';
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
 interface DashboardStats {
-  totalContacts: number;
-  totalMessages: number;
-  recentMessages: number;
-  activeContacts: number;
+  totalVendors: number;
+  totalIncomingMessages: number;
+  totalOpenVendors: number;
 }
 
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>({
-    totalContacts: 0,
-    totalMessages: 0,
-    recentMessages: 0,
-    activeContacts: 0
+    totalVendors: 0,
+    totalIncomingMessages: 0,
+    totalOpenVendors: 0
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // TODO: Fetch actual stats from API
-    // For now, using mock data
-    setTimeout(() => {
-      setStats({
-        totalContacts: 25,
-        totalMessages: 156,
-        recentMessages: 12,
-        activeContacts: 8
-      });
-      setLoading(false);
-    }, 1000);
+    async function fetchStats() {
+      try {
+        setLoading(true);
+        // Fetch total vendors
+        const vendorsRes = await fetch(`${apiBaseUrl}/api/vendor`);
+        const vendors = await vendorsRes.json();
+        // Fetch total incoming messages
+        const messagesRes = await fetch(`${apiBaseUrl}/api/messages/inbound-count`);
+        const messagesData = await messagesRes.json();
+        // Fetch total open vendors
+        const openVendorsRes = await fetch(`${apiBaseUrl}/api/vendor/open-count`);
+        const openVendorsData = await openVendorsRes.json();
+        setStats({
+          totalVendors: Array.isArray(vendors) ? vendors.length : 0,
+          totalIncomingMessages: messagesData.count || 0,
+          totalOpenVendors: openVendorsData.count || 0
+        });
+      } catch (err) {
+        setStats({ totalVendors: 0, totalIncomingMessages: 0, totalOpenVendors: 0 });
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchStats();
   }, []);
 
   const StatCard = ({ title, value, icon, color }: { title: string; value: number; icon: string; color: string }) => (
@@ -83,28 +95,22 @@ export default function Dashboard() {
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
-            title="Total Contacts"
-            value={stats.totalContacts}
-            icon="👥"
+            title="Total Vendors"
+            value={stats.totalVendors}
+            icon="🏪"
             color="border-blue-500"
           />
           <StatCard
-            title="Total Messages"
-            value={stats.totalMessages}
-            icon="💬"
+            title="Total Incoming Messages"
+            value={stats.totalIncomingMessages}
+            icon="📥"
             color="border-green-500"
           />
           <StatCard
-            title="Recent Messages"
-            value={stats.recentMessages}
-            icon="🆕"
+            title="Total Open Vendors"
+            value={stats.totalOpenVendors}
+            icon="🟢"
             color="border-yellow-500"
-          />
-          <StatCard
-            title="Active Contacts"
-            value={stats.activeContacts}
-            icon="��"
-            color="border-purple-500"
           />
         </div>
 

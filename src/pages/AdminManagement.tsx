@@ -276,6 +276,7 @@ export default function AdminManagement() {
                 >
                   <option value="admin">Admin</option>
                   <option value="super_admin">Super Admin</option>
+                  <option value="onground">Onground</option>
                 </select>
               </div>
               <button
@@ -329,6 +330,7 @@ export default function AdminManagement() {
                 >
                   <option value="admin">Admin</option>
                   <option value="super_admin">Super Admin</option>
+                  <option value="onground">Onground</option>
                 </select>
               </div>
               <div className="flex space-x-4">

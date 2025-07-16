@@ -4,6 +4,8 @@ import { Message } from '../models/Message.js';
 import { Contact } from '../models/Contact.js';
 import { client } from '../twilio.js';
 import { User } from '../models/User.js';
+// @ts-ignore: Importing JS model with separate .d.ts for types
+import LoanReplyLog from '../models/LoanReplyLog.js';
 
 const router = Router();
 
@@ -244,21 +246,21 @@ router.post('/', async (req: Request, res: Response) => {
                         const msgPayload: any = {
                             from: `whatsapp:${To.replace('whatsapp:', '')}`,
                             to: From,
-                            contentSid: 'HX6b8e51dd6b11dd2db65fe9c78546803e',
+                            contentSid: 'HX46464a13f80adebb4b9d552d63acfae9',
                             contentVariables: JSON.stringify({})
                         };
                         if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
                             msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
                         }
                         const twilioResp = await client.messages.create(msgPayload);
-                        console.log('✅ Triggered outbound template message HX6b8e51dd6b11dd2db65fe9c78546803e in response to greeting. Twilio response:', twilioResp);
+                        console.log('✅ Triggered outbound template message HX46464a13f80adebb4b9d552d63acfae9 in response to greeting. Twilio response:', twilioResp);
 
                         // Save the outbound template message to MongoDB for chat display
                         try {
                             await Message.create({
                                 from: msgPayload.from,
                                 to: msgPayload.to,
-                                body: "Namaste from Laari Khojo!\n\nThanks for reaching out!\nWe help you get discovered by more customers by showing your live location and updates on our platform.\n\nTo get started, please reply with:\n📍 Your current location – so we can mark you active for today.\n\nLet's grow your laari together! 🚀",
+                                body: "👋 Namaste from Laari Khojo!\n🙏 लारी खोजो की ओर से नमस्ते!\n\n📩 Thanks for reaching out!\n📞 संपर्क करने के लिए धन्यवाद!\n\nWe help you get discovered by more customers by showing your updates and services on our platform.\n🧺 हम आपके अपडेट्स और सेवाओं को अपने प्लेटफॉर्म पर दिखाकर आपको ज़्यादा ग्राहकों तक पहुँचाने में मदद करते हैं।\n\n💰 Interested in future loan support?\nJust reply with: *loan*\nभविष्य में लोन सहायता चाहिए?\n➡️ जवाब में भेजें: *loan*\n\nYou can also visit our 🌐 website using the button below.\nआप नीचे दिए गए बटन से हमारी 🌐 वेबसाइट पर भी जा सकते हैं।\n\n🚀 Let’s grow your laari together!\n🌟 आइए मिलकर आपकी लारी को आगे बढ़ाएं!",
                                 direction: 'outbound',
                                 timestamp: new Date(),
                             });
@@ -271,6 +273,70 @@ router.post('/', async (req: Request, res: Response) => {
                     }
                 } else {
                     console.warn('⚠️ Twilio client not initialized, cannot send outbound template message.');
+                }
+            }
+            // Match 'loan' in any case, as a whole word
+            if (/\bloan\b/i.test(Body)) {
+                console.log('Attempting to send template message in response to loan keyword');
+                if (client) {
+                    try {
+                        // Log vendor name and contactNumber
+                        try {
+                            const VendorModel = (await import('../models/Vendor.js')).default;
+                            const phone = From.replace('whatsapp:', '');
+                            // Find vendor by contactNumber (try with and without country code)
+                            const possibleNumbers = [phone];
+                            if (phone.startsWith('+91')) possibleNumbers.push(phone.replace('+91', '91'));
+                            if (phone.startsWith('+')) possibleNumbers.push(phone.substring(1));
+                            possibleNumbers.push(phone.slice(-10));
+                            const vendor = await VendorModel.findOne({ contactNumber: { $in: possibleNumbers } });
+                            if (vendor) {
+                                // Prevent duplicate logs for same vendor in last 24h
+                                // @ts-ignore: Importing JS model with separate .d.ts for types
+                                const LoanReplyLog = (await import('../models/LoanReplyLog.js')).default;
+                                const since = new Date(Date.now() - 24*60*60*1000);
+                                const alreadyLogged = await LoanReplyLog.findOne({ contactNumber: vendor.contactNumber, timestamp: { $gte: since } });
+                                if (!alreadyLogged) {
+                                    await LoanReplyLog.create({ vendorName: vendor.name, contactNumber: vendor.contactNumber });
+                                    console.log('✅ Logged loan reply for vendor:', vendor.name, vendor.contactNumber);
+                                } else {
+                                    console.log('ℹ️ Vendor already logged for loan reply in last 24h:', vendor.contactNumber);
+                                }
+                            } else {
+                                console.log('No vendor found for contactNumber:', phone);
+                            }
+                        } catch (err) {
+                            console.error('❌ Failed to log loan reply:', err);
+                        }
+                        const msgPayload: any = {
+                            from: `whatsapp:${To.replace('whatsapp:', '')}`,
+                            to: From,
+                            contentSid: 'HX88aee77281b74e2da390ff8bf7517ce3',
+                            contentVariables: JSON.stringify({})
+                        };
+                        if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
+                            msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+                        }
+                        const twilioResp = await client.messages.create(msgPayload);
+                        console.log('✅ Triggered outbound template message HX88aee77281b74e2da390ff8bf7517ce3 in response to loan keyword. Twilio response:', twilioResp);
+                        // Save the outbound template message to MongoDB for chat display
+                        try {
+                            await Message.create({
+                                from: msgPayload.from,
+                                to: msgPayload.to,
+                                body: '[Loan template message sent]',
+                                direction: 'outbound',
+                                timestamp: new Date(),
+                            });
+                            console.log('✅ Outbound loan template message saved to DB:', msgPayload.to);
+                        } catch (err) {
+                            console.error('❌ Failed to save outbound loan template message:', err);
+                        }
+                    } catch (err) {
+                        console.error('❌ Failed to send outbound loan template message:', (err as Error)?.message || err, err);
+                    }
+                } else {
+                    console.warn('⚠️ Twilio client not initialized, cannot send outbound loan template message.');
                 }
             }
         }
@@ -298,6 +364,16 @@ router.post('/', async (req: Request, res: Response) => {
         console.error('Error processing webhook:', (error as Error)?.message);
         res.status(500).json({ error: 'Internal server error' });
     }
+});
+
+// Add endpoint to fetch all loan reply logs
+router.get('/loan-replies', async (_req, res) => {
+  try {
+    const logs = await LoanReplyLog.find().sort({ timestamp: -1 });
+    res.json(logs);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch loan reply logs' });
+  }
 });
 
 export default router;

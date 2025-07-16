@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
+import { jwtDecode } from 'jwt-decode';
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
 interface Dish {
@@ -80,6 +81,33 @@ interface UserFormData {
   addedBy?: string;
 }
 
+// Add this utility function at the top (after imports):
+const getDayName = (dayNumber: string | number) => {
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  return days[Number(dayNumber)] || dayNumber;
+};
+
+// Add this utility for onboarding icon:
+const getOnboardingIcon = (entryType: string | undefined) => {
+  switch (entryType) {
+    case 'O': return '🧍'; // Onground
+    case 'M': return '✍️'; // Manual
+    case 'W': return '🌐'; // Website
+    default: return '';
+  }
+};
+
+// Update the food type utility to return color and label:
+const getFoodTypeDisplay = (foodType: string | undefined) => {
+  switch ((foodType || '').toLowerCase()) {
+    case 'veg': return { label: 'Veg', color: '#22c55e' }; // green
+    case 'nonveg': return { label: 'Nonveg', color: '#ef4444' }; // red
+    case 'jain': return { label: 'Jain', color: '#f59e42' }; // orange
+    case 'swaminarayan': return { label: 'Swaminarayan', color: '#a855f7' }; // purple
+    default: return { label: '', color: '#374151' };
+  }
+};
+
 export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -152,13 +180,13 @@ export default function UserManagement() {
   });
   const [editError, setEditError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const [isVerified, setIsVerified] = useState(false);
   const editFormRef = useRef<HTMLDivElement>(null);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [currentAdminName, setCurrentAdminName] = useState<string>('');
+  const [userRole, setUserRole] = useState<string | null>(null);
   // Filter states
 
   const allDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -170,6 +198,18 @@ export default function UserManagement() {
       setIsVerified(true);
     }
   }, [location.state]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const decodedToken: any = jwtDecode(token);
+        setUserRole(decodedToken.role);
+      } catch (error) {
+        setUserRole(null);
+      }
+    }
+  }, []);
 
   const fetchUsers = async () => {
     const token = localStorage.getItem('token');
@@ -353,46 +393,18 @@ export default function UserManagement() {
     }
   };
 
-  const handleEditClick = (user: User) => {
-    setEditingUser(user);
-    setEditForm({
-      contactNumber: user.contactNumber,
-      name: user.name,
-      status: user.status,
-      operatingHours: {
-        openTime: user.operatingHours.openTime,
-        closeTime: user.operatingHours.closeTime,
-        days: user.operatingHours.days,
-      },
-      foodType: user.foodType,
-      bestDishes: user.bestDishes ? [...user.bestDishes] : Array(6).fill({ name: '', price: '' }),
-      menuLink: user.menuLink,
-      mapsLink: user.mapsLink,
-      latitude: user.location?.coordinates?.[1]?.toString() || '',
-      longitude: user.location?.coordinates?.[0]?.toString() || '',
-      profilePictures: user.profilePictures || [],
-      preferredLanguages: user.preferredLanguages || [],
-      foodCategories: user.foodCategories || [],
-      stallType: user.stallType || '',
-      whatsappConsent: user.whatsappConsent || false,
-      onboardingType: user.onboardingType || '',
-      aadharNumber: user.aadharNumber || '',
-      aadharFrontUrl: user.aadharFrontUrl || '',
-      aadharBackUrl: user.aadharBackUrl || '',
-      panNumber: user.panNumber || '',
-      comments: user.comments,
-      vendorIndex: user.vendorIndex,
-      addedBy: user.addedBy,
-      primaryLanguage: user.primaryLanguage,
-      entryType: user.entryType,
-    });
-    setShowAddForm(false);
-    setTimeout(() => {
-      if (editFormRef.current) {
-        editFormRef.current.scrollIntoView({ behavior: 'smooth' });
-      }
-    }, 0);
-  };
+  const dayNumberToName = [
+    'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
+  ];
+  function normalizeDaysToNames(days: any[]): string[] {
+    if (!days || days.length === 0) return [];
+    if (typeof days[0] === 'number') {
+      return days.map((d: number | string) =>
+        typeof d === 'number' && d >= 0 && d <= 6 ? dayNumberToName[d] : String(d)
+      );
+    }
+    return days.map(String);
+  }
 
   const handleEditUserChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -446,42 +458,6 @@ export default function UserManagement() {
       setEditError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setIsUpdating(false);
-    }
-  };
-
-  const handleDeleteUser = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this user?')) {
-      return;
-    }
-
-    setIsDeleting(true);
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/login');
-      return;
-    }
-
-    try {
-      const response = await fetch(`${apiBaseUrl}/api/users/${id}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to delete user');
-      }
-
-      fetchUsers(); // Refresh the list
-      alert('User deleted successfully!');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred'); // Use main error state for delete
-    } finally {
-      setIsDeleting(false);
     }
   };
 
@@ -566,6 +542,115 @@ export default function UserManagement() {
     }
   };
 
+  const [selectedVendor, setSelectedVendor] = useState<User | null>(null);
+  const [showVendorModal, setShowVendorModal] = useState(false);
+  const [modalEditForm, setModalEditForm] = useState<Partial<UserFormData>>({});
+  const [modalEditMode, setModalEditMode] = useState(false);
+  const [modalIsUpdating, setModalIsUpdating] = useState(false);
+  const [modalIsDeleting, setModalIsDeleting] = useState(false);
+  // Add a state for 24 hours open in Add User, Edit User, and modal edit forms:
+  const [modalIs24HoursOpen, setModalIs24HoursOpen] = useState(false);
+  const [editIs24HoursOpen, setEditIs24HoursOpen] = useState(false);
+
+  const handleVendorRowClick = (user: User) => {
+    setSelectedVendor(user);
+    setModalEditForm({
+      contactNumber: user.contactNumber,
+      name: user.name,
+      status: user.status,
+      operatingHours: {
+        openTime: user.operatingHours.openTime,
+        closeTime: user.operatingHours.closeTime,
+        days: normalizeDaysToNames(user.operatingHours.days),
+      },
+      foodType: user.foodType,
+      bestDishes: user.bestDishes ? [...user.bestDishes] : Array(6).fill({ name: '', price: '' }),
+      menuLink: user.menuLink,
+      mapsLink: user.mapsLink,
+      latitude: user.location?.coordinates?.[1]?.toString() || '',
+      longitude: user.location?.coordinates?.[0]?.toString() || '',
+      profilePictures: user.profilePictures || [],
+      preferredLanguages: user.preferredLanguages || [],
+      foodCategories: user.foodCategories || [],
+      stallType: user.stallType || '',
+      whatsappConsent: user.whatsappConsent || false,
+      onboardingType: user.onboardingType || '',
+      aadharNumber: user.aadharNumber || '',
+      aadharFrontUrl: user.aadharFrontUrl || '',
+      aadharBackUrl: user.aadharBackUrl || '',
+      panNumber: user.panNumber || '',
+      comments: user.comments,
+      vendorIndex: user.vendorIndex,
+      addedBy: user.addedBy,
+      primaryLanguage: user.primaryLanguage,
+      entryType: user.entryType,
+    });
+    setModalEditMode(false);
+    setShowVendorModal(true);
+  };
+
+  const handleModalEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setModalEditForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleModalUpdate = async () => {
+    if (!selectedVendor) return;
+    setModalIsUpdating(true);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setModalIsUpdating(false);
+      return;
+    }
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/users/${selectedVendor._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(modalEditForm),
+      });
+      if (!response.ok) {
+        throw new Error(response.statusText);
+      }
+      fetchUsers();
+      setShowVendorModal(false);
+    } catch (err) {
+      console.error('Error updating user:', err);
+    } finally {
+      setModalIsUpdating(false);
+    }
+  };
+
+  const handleModalDelete = async () => {
+    if (!selectedVendor) return;
+    if (!window.confirm('Are you sure you want to delete this user?')) return;
+    setModalIsDeleting(true);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setModalIsDeleting(false);
+      return;
+    }
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/users/${selectedVendor._id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        throw new Error(response.statusText);
+      }
+      fetchUsers();
+      setShowVendorModal(false);
+    } catch (err) {
+      console.error('Error deleting user:', err);
+    } finally {
+      setModalIsDeleting(false);
+    }
+  };
+
   if (loading) {
     return <div className="text-center py-10">Loading users...</div>;
   }
@@ -576,17 +661,18 @@ export default function UserManagement() {
 
   return (
     <AdminLayout>
-      <div className="max-w-7xl mx-auto px-2 md:px-6 py-4 flex flex-col">
+      <div className="w-full px-2 md:px-6 py-4 flex flex-col">
         <h1 className="text-3xl font-bold mb-6 text-gray-800">User Management</h1>
 
         <button
           onClick={() => setShowAddForm(!showAddForm)}
-          className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mb-4 self-start"
+          className={`bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mb-4 self-start ${!['admin','super_admin','onground'].includes(userRole || '') ? 'opacity-50 cursor-not-allowed' : ''}`}
+          disabled={!['admin','super_admin','onground'].includes(userRole || '')}
         >
           {showAddForm ? 'Hide Add User Form' : 'Add New User'}
         </button>
 
-        {showAddForm && (
+        {showAddForm && ['admin','super_admin','onground'].includes(userRole || '') && (
           <div className="bg-white p-6 rounded-lg shadow-md mb-4 w-full max-w-2xl mx-auto border border-gray-200">
             <h2 className="text-2xl font-bold mb-6">Add New User</h2>
             {addError && <div className="text-red-600 mb-4">Error: {addError}</div>}
@@ -623,6 +709,23 @@ export default function UserManagement() {
                   required
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">Food Type</label>
+                <div className="flex gap-4">
+                  <label className="inline-flex items-center gap-1">
+                    <input type="radio" name="foodType" value="veg" checked={newUser.foodType === 'veg'} onChange={() => setNewUser(prev => ({ ...prev, foodType: 'veg' }))} /> Veg
+                  </label>
+                  <label className="inline-flex items-center gap-1">
+                    <input type="radio" name="foodType" value="Nonveg" checked={newUser.foodType === 'Nonveg'} onChange={() => setNewUser(prev => ({ ...prev, foodType: 'Nonveg' }))} /> Nonveg
+                  </label>
+                  <label className="inline-flex items-center gap-1">
+                    <input type="radio" name="foodType" value="Swaminarayan" checked={newUser.foodType === 'Swaminarayan'} onChange={() => setNewUser(prev => ({ ...prev, foodType: 'Swaminarayan' }))} /> Swaminarayan
+                  </label>
+                  <label className="inline-flex items-center gap-1">
+                    <input type="radio" name="foodType" value="Jain" checked={newUser.foodType === 'Jain'} onChange={() => setNewUser(prev => ({ ...prev, foodType: 'Jain' }))} /> Jain
+                  </label>
+                </div>
               </div>
               <div className="space-y-2">
                 <label htmlFor="newStatus" className="block text-sm font-medium text-gray-700">Status</label>
@@ -683,7 +786,11 @@ export default function UserManagement() {
                               const arr = prev.preferredLanguages.includes(lang)
                                 ? prev.preferredLanguages.filter(l => l !== lang)
                                 : [...prev.preferredLanguages, lang];
-                              return { ...prev, preferredLanguages: arr };
+                              return {
+                                ...prev,
+                                preferredLanguages: arr,
+                                primaryLanguage: arr.length > 0 ? arr[0] : 'English',
+                              };
                             });
                           }}
                         />
@@ -849,6 +956,7 @@ export default function UserManagement() {
                       value={newUser.operatingHours.openTime}
                       onChange={handleAddUserChange}
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      disabled={modalIs24HoursOpen}
                     >
                       <option value="">Select Time</option>
                       {timeOptions.map((time) => (
@@ -864,6 +972,7 @@ export default function UserManagement() {
                       value={newUser.operatingHours.closeTime}
                       onChange={handleAddUserChange}
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      disabled={modalIs24HoursOpen}
                     >
                       <option value="">Select Time</option>
                       {timeOptions.map((time) => (
@@ -993,6 +1102,27 @@ export default function UserManagement() {
                 </button>
               </div>
               </div>
+              <div className="mt-2">
+                <label className="inline-flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={modalIs24HoursOpen}
+                    onChange={e => {
+                      setModalIs24HoursOpen(e.target.checked);
+                      setNewUser(prev => ({
+                        ...prev,
+                        operatingHours: {
+                          ...prev.operatingHours,
+                          openTime: e.target.checked ? '12:00 AM' : '',
+                          closeTime: e.target.checked ? '11:59 PM' : '',
+                          days: prev.operatingHours.days || [],
+                        },
+                      }));
+                    }}
+                  />
+                  24 hours open
+                </label>
+              </div>
               <button
                 type="submit"
                 disabled={isAdding}
@@ -1004,7 +1134,7 @@ export default function UserManagement() {
           </div>
         )}
 
-        {editingUser && (
+        {editingUser && ['admin','super_admin','onground'].includes(userRole || '') && (
           <div ref={editFormRef} className="bg-white p-6 rounded-lg shadow-md mb-4 w-full max-w-2xl mx-auto border border-gray-200">
             <h2 className="text-2xl font-bold mb-6">Edit User</h2>
             {editError && <div className="text-red-600 mb-4">Error: {editError}</div>}
@@ -1038,6 +1168,23 @@ export default function UserManagement() {
                   required
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">Food Type</label>
+                <div className="flex gap-4">
+                  <label className="inline-flex items-center gap-1">
+                    <input type="radio" name="foodType" value="veg" checked={editForm.foodType === 'veg'} onChange={() => setEditForm(prev => ({ ...prev, foodType: 'veg' }))} /> Veg
+                  </label>
+                  <label className="inline-flex items-center gap-1">
+                    <input type="radio" name="foodType" value="Nonveg" checked={editForm.foodType === 'Nonveg'} onChange={() => setEditForm(prev => ({ ...prev, foodType: 'Nonveg' }))} /> Nonveg
+                  </label>
+                  <label className="inline-flex items-center gap-1">
+                    <input type="radio" name="foodType" value="Swaminarayan" checked={editForm.foodType === 'Swaminarayan'} onChange={() => setEditForm(prev => ({ ...prev, foodType: 'Swaminarayan' }))} /> Swaminarayan
+                  </label>
+                  <label className="inline-flex items-center gap-1">
+                    <input type="radio" name="foodType" value="Jain" checked={editForm.foodType === 'Jain'} onChange={() => setEditForm(prev => ({ ...prev, foodType: 'Jain' }))} /> Jain
+                  </label>
+                </div>
               </div>
               <div className="space-y-2">
                 <label htmlFor="editStatus" className="block text-sm font-medium text-gray-700">Status</label>
@@ -1098,7 +1245,11 @@ export default function UserManagement() {
                               const arr = prev.preferredLanguages?.includes(lang)
                                 ? prev.preferredLanguages.filter(l => l !== lang)
                                 : [...(prev.preferredLanguages || []), lang];
-                              return { ...prev, preferredLanguages: arr };
+                              return {
+                                ...prev,
+                                preferredLanguages: arr,
+                                primaryLanguage: arr.length > 0 ? arr[0] : 'English',
+                              };
                             });
                           }}
                         />
@@ -1264,6 +1415,7 @@ export default function UserManagement() {
                       value={editForm.operatingHours?.openTime || ''}
                       onChange={handleEditUserChange}
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      disabled={editIs24HoursOpen}
                     >
                       <option value="">Select Time</option>
                       {timeOptions.map((time) => (
@@ -1279,6 +1431,7 @@ export default function UserManagement() {
                       value={editForm.operatingHours?.closeTime || ''}
                       onChange={handleEditUserChange}
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      disabled={editIs24HoursOpen}
                     >
                       <option value="">Select Time</option>
                       {timeOptions.map((time) => (
@@ -1324,7 +1477,7 @@ export default function UserManagement() {
                             setEditForm(prev => {
                               const days = prev.operatingHours?.days || [];
                               const updatedDays = checked
-                                ? [...days, value]
+                                ? Array.from(new Set([...days, value]))
                                 : days.filter((d) => d !== value);
                               return {
                                 ...prev,
@@ -1435,6 +1588,27 @@ export default function UserManagement() {
                   </button>
                 </div>
               </div>
+              <div className="mt-2">
+                <label className="inline-flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={editIs24HoursOpen}
+                    onChange={e => {
+                      setEditIs24HoursOpen(e.target.checked);
+                      setEditForm(prev => ({
+                        ...prev,
+                        operatingHours: {
+                          ...prev.operatingHours,
+                          openTime: e.target.checked ? '12:00 AM' : '',
+                          closeTime: e.target.checked ? '11:59 PM' : '',
+                          days: prev.operatingHours?.days || [],
+                        },
+                      }));
+                    }}
+                  />
+                  24 hours open
+                </label>
+              </div>
               <button
                 type="submit"
                 disabled={isUpdating}
@@ -1464,17 +1638,12 @@ export default function UserManagement() {
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Index</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Contact Number</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Name</th>
-                  <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Status</th>
-                  <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Last Active</th>
-                  <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Profile</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Open</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Close</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Days</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Food</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Best Dishes</th>
-                  <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Menu</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Maps</th>
-                  <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -1485,17 +1654,10 @@ export default function UserManagement() {
                   const adminName = user.addedBy || 'admin';
                   const customIndex = `${idx + 1}_${lang}_${entryType}_${adminName}`;
                   return (
-                    <tr key={user._id} className="hover:bg-gray-50">
+                    <tr key={user._id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleVendorRowClick(user)}>
                       <td className="px-4 py-3 whitespace-nowrap">{customIndex}</td>
                       <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900 truncate max-w-[140px]">{user.contactNumber}</td>
                       <td className="px-4 py-3 whitespace-nowrap truncate max-w-[180px]">{user.name}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">{user.status}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">{new Date(user.lastActive).toLocaleDateString()}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        {user.profilePictures && user.profilePictures.length > 0 && (
-                          <img src={user.profilePictures[0]} alt="Profile" className="h-8 w-8 rounded-full object-cover" />
-                        )}
-                      </td>
                       <td className="px-4 py-3 whitespace-nowrap">{user.operatingHours.openTime || 'N/A'}</td>
                       <td className="px-4 py-3 whitespace-nowrap">{user.operatingHours.closeTime || 'N/A'}</td>
                       <td className="px-4 py-3 whitespace-nowrap truncate max-w-[120px]">{
@@ -1513,22 +1675,7 @@ export default function UserManagement() {
                         {(user.bestDishes && user.bestDishes.filter(dish => dish.name).length > 0) ?
                           user.bestDishes.filter(dish => dish.name).map(dish => `${dish.name} (${dish.price || 'N/A'})`).join(', ') : 'N/A'}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap truncate max-w-[100px]"><a href={user.menuLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{user.menuLink ? 'Link' : 'N/A'}</a></td>
                       <td className="px-4 py-3 whitespace-nowrap truncate max-w-[120px]"><a href={user.mapsLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{user.mapsLink || 'N/A'}</a></td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <button 
-                          onClick={() => handleEditClick(user)}
-                          className="font-medium text-blue-600 hover:underline mr-3">
-                            Edit
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteUser(user._id)}
-                          disabled={isDeleting}
-                          className={`font-medium text-red-600 hover:underline ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        >
-                          {isDeleting ? 'Deleting...' : 'Delete'}
-                        </button>
-                      </td>
                     </tr>
                   );
                 })}
@@ -1537,6 +1684,482 @@ export default function UserManagement() {
           </div>
         )}
       </div>
+      {showVendorModal && selectedVendor && (
+        <div className="modal-container" onClick={(e) => e.target === e.currentTarget && setShowVendorModal(false)}>
+          <div className="modal-content">
+            <div className="modal-header" style={{ padding: '20px', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: 22, fontWeight: 700 }}>{selectedVendor.name}</span>
+                <span style={{ fontSize: 16, color: '#374151', marginTop: 2 }}>{selectedVendor.contactNumber}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                {getFoodTypeDisplay(selectedVendor.foodType).label && (
+                  <span style={{ fontSize: 18, fontWeight: 600, color: getFoodTypeDisplay(selectedVendor.foodType).color }}>
+                    {getFoodTypeDisplay(selectedVendor.foodType).label}
+                  </span>
+                )}
+                <span title={selectedVendor.entryType === 'O' ? 'Onground' : selectedVendor.entryType === 'M' ? 'Manual Entry' : 'Self'} style={{ fontSize: 28, marginLeft: 8 }}>{getOnboardingIcon(selectedVendor.entryType)}</span>
+              </div>
+            </div>
+            <div className="modal-body" style={{ padding: '20px' }}>
+              {!modalEditMode ? (
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label className="form-label">Name</label>
+                    <div>{selectedVendor.name}</div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Contact Number</label>
+                    <div>{selectedVendor.contactNumber}</div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Open Time</label>
+                    <div>{selectedVendor.operatingHours.openTime || 'N/A'}</div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Close Time</label>
+                    <div>{selectedVendor.operatingHours.closeTime || 'N/A'}</div>
+                  </div>
+                  <div className="form-group full-width">
+                    <label className="form-label">Operating Days</label>
+                    <div>{selectedVendor.operatingHours.days?.map(day => getDayName(day)).join(', ') || 'Not specified'}</div>
+                  </div>
+                  <div className="form-group full-width">
+                    <label className="form-label">Best Dishes</label>
+                    <ul style={{ margin: 0, paddingLeft: 18 }}>
+                      {(selectedVendor.bestDishes && selectedVendor.bestDishes.length > 0 && selectedVendor.bestDishes[0].name) ?
+                        selectedVendor.bestDishes.map((dish, i) => dish.name && <li key={i}>{dish.name}{dish.price ? ` (₹${dish.price})` : ''}</li>) :
+                        <li>N/A</li>
+                      }
+                    </ul>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Maps Link</label>
+                    {selectedVendor.mapsLink ? (
+                      <a
+                        href={selectedVendor.mapsLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline"
+                        style={{
+                          display: 'inline-block',
+                          maxWidth: 320,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          verticalAlign: 'middle',
+                        }}
+                        title={selectedVendor.mapsLink}
+                      >
+                        {selectedVendor.mapsLink}
+                      </a>
+                    ) : (selectedVendor.location?.coordinates ? (
+                      <span>Lat: {selectedVendor.location.coordinates[1]}, Lng: {selectedVendor.location.coordinates[0]}</span>
+                    ) : 'N/A')}
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Preferred Language</label>
+                    <div>{selectedVendor.preferredLanguages?.join(', ') || selectedVendor.primaryLanguage || 'N/A'}</div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Food Category</label>
+                    <div>{selectedVendor.foodCategories?.join(', ') || 'N/A'}</div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">WhatsApp Consent</label>
+                    <span style={{ fontSize: 22 }}>{selectedVendor.whatsappConsent ? '✅' : '❌'}</span>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Comments</label>
+                    <div>{selectedVendor.comments || 'N/A'}</div>
+                  </div>
+                </div>
+              ) : (
+                // Edit mode: reuse the add/edit user form fields, but for modalEditForm
+                <form className="space-y-6" onSubmit={e => { e.preventDefault(); handleModalUpdate(); }}>
+                  {/* Name */}
+                  <div className="form-group">
+                    <label className="form-label">Name</label>
+                    <input type="text" name="name" value={modalEditForm.name || ''} onChange={handleModalEditChange} className="form-input" required />
+                  </div>
+                  {/* Food Type */}
+                  <div className="form-group full-width">
+                    <label className="form-label">Food Type</label>
+                    <div className="flex gap-4">
+                      <label className="inline-flex items-center gap-1">
+                        <input type="radio" name="foodType" value="veg" checked={modalEditForm.foodType === 'veg'} onChange={() => setModalEditForm(prev => ({ ...prev, foodType: 'veg' }))} /> Veg
+                      </label>
+                      <label className="inline-flex items-center gap-1">
+                        <input type="radio" name="foodType" value="Nonveg" checked={modalEditForm.foodType === 'Nonveg'} onChange={() => setModalEditForm(prev => ({ ...prev, foodType: 'Nonveg' }))} /> Nonveg
+                      </label>
+                      <label className="inline-flex items-center gap-1">
+                        <input type="radio" name="foodType" value="Swaminarayan" checked={modalEditForm.foodType === 'Swaminarayan'} onChange={() => setModalEditForm(prev => ({ ...prev, foodType: 'Swaminarayan' }))} /> Swaminarayan
+                      </label>
+                      <label className="inline-flex items-center gap-1">
+                        <input type="radio" name="foodType" value="Jain" checked={modalEditForm.foodType === 'Jain'} onChange={() => setModalEditForm(prev => ({ ...prev, foodType: 'Jain' }))} /> Jain
+                      </label>
+                    </div>
+                  </div>
+                  {/* Contact Number */}
+                  <div className="form-group">
+                    <label className="form-label">Contact Number</label>
+                    <input type="text" name="contactNumber" value={modalEditForm.contactNumber || ''} onChange={handleModalEditChange} className="form-input" required />
+                  </div>
+                  {/* Profile Pictures (show thumbnails, allow upload) */}
+                  <div className="form-group full-width">
+                    <label className="form-label">Business Images</label>
+                    <input type="file" accept="image/*" multiple onChange={async (e) => {
+                      const files = Array.from(e.target.files || []);
+                      if (files.length > 10) { alert('You can upload a maximum of 10 images.'); return; }
+                      const formData = new FormData();
+                      files.forEach(file => formData.append('images', file));
+                      const res = await fetch(`${apiBaseUrl}/api/users/upload-images`, {
+                        method: 'POST',
+                        body: formData,
+                        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                      });
+                      const data = await res.json();
+                      setModalEditForm(prev => ({ ...prev, profilePictures: data.urls }));
+                    }} />
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {modalEditForm.profilePictures && modalEditForm.profilePictures.map((url, i) => (
+                        <img key={url + i} src={url} alt="Business" className="w-20 h-20 object-cover rounded border" />
+                      ))}
+                    </div>
+                  </div>
+                  {/* Preferred Languages */}
+                  <div className="form-group full-width">
+                    <label className="form-label">Preferred Language</label>
+                    <div className="flex gap-4">
+                      {['Hindi', 'English', 'Gujarati'].map(lang => (
+                        <label key={lang} className="inline-flex items-center gap-1">
+                          <input
+                            type="checkbox"
+                            value={lang}
+                            checked={modalEditForm.preferredLanguages?.includes(lang) || false}
+                            onChange={() => {
+                              setModalEditForm(prev => {
+                                const arr = prev.preferredLanguages?.includes(lang)
+                                  ? prev.preferredLanguages.filter(l => l !== lang)
+                                  : [...(prev.preferredLanguages || []), lang];
+                                return {
+                                  ...prev,
+                                  preferredLanguages: arr,
+                                  primaryLanguage: arr.length > 0 ? arr[0] : 'English',
+                                };
+                              });
+                            }}
+                          />
+                          {lang}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Food Categories */}
+                  <div className="form-group full-width">
+                    <label className="form-label">Category of Food</label>
+                    <div className="flex flex-wrap gap-4">
+                      {['Chaat','Juices','Tea/coffee','Snacks (Samosa, Vada Pav, etc.)','Dessert','Gujju Snacks','PavBhaji','Punjabi (Parathe, Lassi, etc)','Pani Puri','Korean','Chinese','South Indian','Other'].map(cat => (
+                        <label key={cat} className="inline-flex items-center gap-1">
+                          <input
+                            type="checkbox"
+                            value={cat}
+                            checked={modalEditForm.foodCategories?.includes(cat) || false}
+                            onChange={() => {
+                              setModalEditForm(prev => {
+                                const arr = prev.foodCategories?.includes(cat)
+                                  ? prev.foodCategories.filter(c => c !== cat)
+                                  : [...(prev.foodCategories || []), cat];
+                                return { ...prev, foodCategories: arr };
+                              });
+                            }}
+                          />
+                          {cat}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Stall Type */}
+                  <div className="form-group full-width">
+                    <label className="form-label">Stall Type</label>
+                    <div className="flex gap-4">
+                      <label className="inline-flex items-center gap-1">
+                        <input type="radio" name="stallType" value="fixed" checked={modalEditForm.stallType === 'fixed'} onChange={() => setModalEditForm(prev => ({ ...prev, stallType: 'fixed' }))} /> Fixed
+                      </label>
+                      <label className="inline-flex items-center gap-1">
+                        <input type="radio" name="stallType" value="mobile" checked={modalEditForm.stallType === 'mobile'} onChange={() => setModalEditForm(prev => ({ ...prev, stallType: 'mobile' }))} /> Mobile
+                      </label>
+                    </div>
+                  </div>
+                  {/* WhatsApp Consent */}
+                  <div className="form-group full-width">
+                    <label className="form-label">WhatsApp Consent</label>
+                    <input type="checkbox" checked={modalEditForm.whatsappConsent || false} onChange={() => setModalEditForm(prev => ({ ...prev, whatsappConsent: !prev.whatsappConsent }))} />
+                  </div>
+                  {/* Onboarding Type */}
+                  <div className="form-group full-width">
+                    <label className="form-label">Onboarding Type</label>
+                    <div className="flex gap-4">
+                      {['O', 'M', 'W'].map(type => (
+                        <label key={type} className="inline-flex items-center gap-1">
+                          <input
+                            type="radio"
+                            name="entryType"
+                            value={type}
+                            checked={modalEditForm.entryType === type}
+                            onChange={() => setModalEditForm(prev => ({ ...prev, entryType: type as 'O' | 'M' | 'W' }))}
+                          />
+                          {getOnboardingIcon(type)}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Aadhar Number */}
+                  <div className="form-group full-width">
+                    <label className="form-label">Aadhar Number</label>
+                    <input type="text" name="aadharNumber" value={modalEditForm.aadharNumber || ''} onChange={handleModalEditChange} className="form-input" placeholder="Enter Aadhar Number" />
+                  </div>
+                  {/* Aadhar Photos */}
+                  <div className="form-group full-width">
+                    <label className="form-label">Aadhar Photo (Front)</label>
+                    <input type="file" accept="image/*" onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const formData = new FormData();
+                      formData.append('image', file);
+                      const res = await fetch(`${apiBaseUrl}/api/users/upload-images`, {
+                        method: 'POST',
+                        body: formData,
+                        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                      });
+                      const data = await res.json();
+                      setModalEditForm(prev => ({ ...prev, aadharFrontUrl: data.urls[0] }));
+                    }} />
+                    {modalEditForm.aadharFrontUrl && <img src={modalEditForm.aadharFrontUrl} alt="Aadhar Front" className="w-20 h-20 object-cover rounded border mt-2" />}
+                  </div>
+                  <div className="form-group full-width">
+                    <label className="form-label">Aadhar Photo (Back)</label>
+                    <input type="file" accept="image/*" onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const formData = new FormData();
+                      formData.append('image', file);
+                      const res = await fetch(`${apiBaseUrl}/api/users/upload-images`, {
+                        method: 'POST',
+                        body: formData,
+                        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+                      });
+                      const data = await res.json();
+                      setModalEditForm(prev => ({ ...prev, aadharBackUrl: data.urls[0] }));
+                    }} />
+                    {modalEditForm.aadharBackUrl && <img src={modalEditForm.aadharBackUrl} alt="Aadhar Back" className="w-20 h-20 object-cover rounded border mt-2" />}
+                  </div>
+                  {/* PAN Number */}
+                  <div className="form-group full-width">
+                    <label className="form-label">PAN Number</label>
+                    <input type="text" name="panNumber" value={modalEditForm.panNumber || ''} onChange={handleModalEditChange} className="form-input" placeholder="Enter PAN Number" />
+                  </div>
+                  {/* Comments */}
+                  <div className="form-group full-width">
+                    <label className="form-label">Comments</label>
+                    <textarea name="comments" value={modalEditForm.comments || ''} onChange={handleModalEditChange} className="form-input" rows={3} />
+                  </div>
+                  {/* Operating Hours */}
+                  <div className="form-group full-width">
+                    <label className="form-label">Operating Hours</label>
+                    <div className="mb-2">
+                      <label className="inline-flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={modalIs24HoursOpen}
+                          onChange={e => {
+                            setModalIs24HoursOpen(e.target.checked);
+                            setModalEditForm(prev => ({
+                              ...prev,
+                              operatingHours: {
+                                openTime: e.target.checked ? '12:00 AM' : (prev.operatingHours?.openTime || ''),
+                                closeTime: e.target.checked ? '11:59 PM' : (prev.operatingHours?.closeTime || ''),
+                                days: prev.operatingHours?.days ?? [],
+                              },
+                            }));
+                          }}
+                        />
+                        24 hours open
+                      </label>
+                    </div>
+                    <div className="operating-hours-grid">
+                      <div>
+                        <label className="form-label-small">Open Time</label>
+                        <input
+                          type="time"
+                          name="openTime"
+                          value={modalEditForm.operatingHours?.openTime || ''}
+                          onChange={e => setModalEditForm(prev => ({
+                            ...prev,
+                            operatingHours: {
+                              openTime: e.target.value,
+                              closeTime: prev.operatingHours?.closeTime || '',
+                              days: prev.operatingHours?.days || [],
+                            },
+                          }))}
+                          className="form-input"
+                          disabled={modalIs24HoursOpen}
+                        />
+                      </div>
+                      <div>
+                        <label className="form-label-small">Close Time</label>
+                        <input
+                          type="time"
+                          name="closeTime"
+                          value={modalEditForm.operatingHours?.closeTime || ''}
+                          onChange={e => setModalEditForm(prev => ({
+                            ...prev,
+                            operatingHours: {
+                              openTime: prev.operatingHours?.openTime || '',
+                              closeTime: e.target.value,
+                              days: prev.operatingHours?.days || [],
+                            },
+                          }))}
+                          className="form-input"
+                          disabled={modalIs24HoursOpen}
+                        />
+                      </div>
+                    </div>
+                    <div className="days-display" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                      <span className="form-label-small">Days: </span>
+                      <div style={{ marginBottom: 8 }}>
+                        <label style={{ fontWeight: 500 }}>
+                          <input
+                            type="checkbox"
+                            checked={modalEditForm.operatingHours?.days?.length === 7}
+                            onChange={e => {
+                              const checked = e.target.checked;
+                              setModalEditForm(prev => ({
+                                ...prev,
+                                operatingHours: {
+                                  openTime: prev.operatingHours?.openTime || '',
+                                  closeTime: prev.operatingHours?.closeTime || '',
+                                  days: checked ? ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] : [],
+                                },
+                              }));
+                            }}
+                            style={{ marginRight: 6 }}
+                          />
+                          Select All
+                        </label>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '4px' }}>
+                        {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(day => (
+                          <label key={day} style={{ marginRight: 8, display: 'flex', alignItems: 'center' }}>
+                            <input
+                              type="checkbox"
+                              checked={modalEditForm.operatingHours?.days?.includes(day) || false}
+                              onChange={e => {
+                                const checked = e.target.checked;
+                                setModalEditForm(prev => {
+                                  const days = prev.operatingHours?.days || [];
+                                  const updatedDays = checked
+                                    ? [...days, day]
+                                    : days.filter(d => d !== day);
+                                  return {
+                                    ...prev,
+                                    operatingHours: {
+                                      openTime: prev.operatingHours?.openTime || '',
+                                      closeTime: prev.operatingHours?.closeTime || '',
+                                      days: updatedDays,
+                                    },
+                                  };
+                                });
+                              }}
+                              style={{ marginRight: 4 }}
+                            />
+                            {day}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  {/* Best Dishes */}
+                  <div className="form-group full-width">
+                    <label className="form-label">Best Dishes (at least 1 required)</label>
+                    {[...Array(6)].map((_, index) => (
+                      <div key={index} className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="form-label-small">Best Dish {index + 1}{index === 0 && ' (Required)'}</label>
+                          <input
+                            type="text"
+                            name={`bestDishName${index + 1}`}
+                            value={modalEditForm.bestDishes?.[index]?.name || ''}
+                            onChange={e => {
+                              const value = e.target.value;
+                              setModalEditForm(prev => {
+                                const updated = [...(prev.bestDishes || Array(6).fill({ name: '', price: '' }))];
+                                updated[index] = { ...updated[index], name: value };
+                                return { ...prev, bestDishes: updated };
+                              });
+                            }}
+                            required={index === 0}
+                            className="form-input"
+                          />
+                        </div>
+                        <div>
+                          <label className="form-label-small">Price</label>
+                          <input
+                            type="number"
+                            name={`bestDishPrice${index + 1}`}
+                            value={modalEditForm.bestDishes?.[index]?.price || ''}
+                            onChange={e => {
+                              const value = e.target.value === '' ? '' : parseFloat(e.target.value);
+                              setModalEditForm(prev => {
+                                const updated = [...(prev.bestDishes || Array(6).fill({ name: '', price: '' }))];
+                                updated[index] = { ...updated[index], price: value };
+                                return { ...prev, bestDishes: updated };
+                              });
+                            }}
+                            className="form-input"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Menu Link, Maps Link, Lat/Lng */}
+                  <div className="form-group full-width">
+                    <label className="form-label">Menu Link</label>
+                    <input type="text" name="menuLink" value={modalEditForm.menuLink || ''} onChange={handleModalEditChange} className="form-input" />
+                  </div>
+                  <div className="form-group full-width">
+                    <label className="form-label">Maps Link</label>
+                    <input type="text" name="mapsLink" value={modalEditForm.mapsLink || ''} onChange={handleModalEditChange} className="form-input" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Latitude</label>
+                    <input type="number" step="any" name="latitude" value={modalEditForm.latitude || ''} onChange={handleModalEditChange} className="form-input" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Longitude</label>
+                    <input type="number" step="any" name="longitude" value={modalEditForm.longitude || ''} onChange={handleModalEditChange} className="form-input" />
+                  </div>
+                  <div className="col-span-2 flex justify-end mt-2">
+                    <button type="button" className="btn btn-secondary" onClick={handleGetCurrentLocationEdit}>Get Current Location</button>
+                  </div>
+                  <div className="modal-actions">
+                    <button type="button" className="btn btn-secondary" onClick={() => setModalEditMode(false)}>Cancel</button>
+                    <button type="submit" className="btn btn-primary" disabled={modalIsUpdating}>{modalIsUpdating ? 'Updating...' : 'Update'}</button>
+                    <button type="button" className="btn btn-danger" onClick={handleModalDelete} disabled={modalIsDeleting}>{modalIsDeleting ? 'Deleting...' : 'Delete'}</button>
+                  </div>
+                </form>
+              )}
+            </div>
+            {!modalEditMode && (
+              <div className="modal-actions">
+                <button className="btn btn-secondary" onClick={() => setShowVendorModal(false)}>Close</button>
+                <button className="btn btn-primary" onClick={() => setModalEditMode(true)}>Edit</button>
+                <button className="btn btn-danger" onClick={handleModalDelete} disabled={modalIsDeleting}>{modalIsDeleting ? 'Deleting...' : 'Delete'}</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 } 
