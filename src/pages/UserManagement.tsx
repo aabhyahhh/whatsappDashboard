@@ -394,6 +394,19 @@ export default function UserManagement() {
     }
   };
 
+  const dayNumberToName = [
+    'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
+  ];
+  function normalizeDaysToNames(days: any[]): string[] {
+    if (!days || days.length === 0) return [];
+    if (typeof days[0] === 'number') {
+      return days.map((d: number | string) =>
+        typeof d === 'number' && d >= 0 && d <= 6 ? dayNumberToName[d] : d
+      );
+    }
+    return days;
+  }
+
   const handleEditClick = (user: User) => {
     setEditingUser(user);
     setEditForm({
@@ -403,7 +416,7 @@ export default function UserManagement() {
       operatingHours: {
         openTime: user.operatingHours.openTime,
         closeTime: user.operatingHours.closeTime,
-        days: user.operatingHours.days,
+        days: normalizeDaysToNames(user.operatingHours.days),
       },
       foodType: user.foodType,
       bestDishes: user.bestDishes ? [...user.bestDishes] : Array(6).fill({ name: '', price: '' }),
@@ -626,7 +639,7 @@ export default function UserManagement() {
       operatingHours: {
         openTime: user.operatingHours.openTime,
         closeTime: user.operatingHours.closeTime,
-        days: user.operatingHours.days,
+        days: normalizeDaysToNames(user.operatingHours.days),
       },
       foodType: user.foodType,
       bestDishes: user.bestDishes ? [...user.bestDishes] : Array(6).fill({ name: '', price: '' }),
@@ -1150,6 +1163,27 @@ export default function UserManagement() {
                 </button>
               </div>
               </div>
+              <div className="mt-2">
+                <label className="inline-flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={modalIs24HoursOpen}
+                    onChange={e => {
+                      setModalIs24HoursOpen(e.target.checked);
+                      setNewUser(prev => ({
+                        ...prev,
+                        operatingHours: {
+                          ...prev.operatingHours,
+                          openTime: e.target.checked ? '12:00 AM' : '',
+                          closeTime: e.target.checked ? '11:59 PM' : '',
+                          days: prev.operatingHours.days || [],
+                        },
+                      }));
+                    }}
+                  />
+                  24 hours open
+                </label>
+              </div>
               <button
                 type="submit"
                 disabled={isAdding}
@@ -1487,7 +1521,7 @@ export default function UserManagement() {
                             setEditForm(prev => {
                               const days = prev.operatingHours?.days || [];
                               const updatedDays = checked
-                                ? [...days, value]
+                                ? Array.from(new Set([...days, value]))
                                 : days.filter((d) => d !== value);
                               return {
                                 ...prev,
@@ -1598,7 +1632,7 @@ export default function UserManagement() {
                   </button>
                 </div>
               </div>
-              <div className="mb-2">
+              <div className="mt-2">
                 <label className="inline-flex items-center gap-2">
                   <input
                     type="checkbox"
@@ -1654,7 +1688,6 @@ export default function UserManagement() {
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Food</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Best Dishes</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Maps</th>
-                  <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -1687,22 +1720,6 @@ export default function UserManagement() {
                           user.bestDishes.filter(dish => dish.name).map(dish => `${dish.name} (${dish.price || 'N/A'})`).join(', ') : 'N/A'}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap truncate max-w-[120px]"><a href={user.mapsLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{user.mapsLink || 'N/A'}</a></td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); handleEditClick(user); }}
-                          className="font-medium text-blue-600 hover:underline mr-3">
-                            Edit
-                        </button>
-                        {['admin','super_admin'].includes(userRole || '') && (
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); handleDeleteUser(user._id); }}
-                            disabled={isDeleting}
-                            className={`font-medium text-red-600 hover:underline ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
-                          >
-                            {isDeleting ? 'Deleting...' : 'Delete'}
-                          </button>
-                        )}
-                      </td>
                     </tr>
                   );
                 })}

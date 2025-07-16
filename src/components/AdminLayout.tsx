@@ -114,6 +114,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       path: '/admin/users',
       icon: '🔧',
       show: userRole === 'super_admin'
+    },
+    {
+      name: 'Loan Reply Log',
+      path: '/loan-replies',
+      icon: '💸',
+      show: userRole === 'admin' || userRole === 'super_admin'
     }
   ];
 
