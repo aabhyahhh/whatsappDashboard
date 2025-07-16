@@ -661,7 +661,7 @@ export default function UserManagement() {
 
   return (
     <AdminLayout>
-      <div className="max-w-7xl mx-auto px-2 md:px-6 py-4 flex flex-col">
+      <div className="w-full px-2 md:px-6 py-4 flex flex-col">
         <h1 className="text-3xl font-bold mb-6 text-gray-800">User Management</h1>
 
         <button
@@ -709,6 +709,23 @@ export default function UserManagement() {
                   required
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">Food Type</label>
+                <div className="flex gap-4">
+                  <label className="inline-flex items-center gap-1">
+                    <input type="radio" name="foodType" value="veg" checked={newUser.foodType === 'veg'} onChange={() => setNewUser(prev => ({ ...prev, foodType: 'veg' }))} /> Veg
+                  </label>
+                  <label className="inline-flex items-center gap-1">
+                    <input type="radio" name="foodType" value="Nonveg" checked={newUser.foodType === 'Nonveg'} onChange={() => setNewUser(prev => ({ ...prev, foodType: 'Nonveg' }))} /> Nonveg
+                  </label>
+                  <label className="inline-flex items-center gap-1">
+                    <input type="radio" name="foodType" value="Swaminarayan" checked={newUser.foodType === 'Swaminarayan'} onChange={() => setNewUser(prev => ({ ...prev, foodType: 'Swaminarayan' }))} /> Swaminarayan
+                  </label>
+                  <label className="inline-flex items-center gap-1">
+                    <input type="radio" name="foodType" value="Jain" checked={newUser.foodType === 'Jain'} onChange={() => setNewUser(prev => ({ ...prev, foodType: 'Jain' }))} /> Jain
+                  </label>
+                </div>
               </div>
               <div className="space-y-2">
                 <label htmlFor="newStatus" className="block text-sm font-medium text-gray-700">Status</label>
@@ -1151,6 +1168,23 @@ export default function UserManagement() {
                   required
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">Food Type</label>
+                <div className="flex gap-4">
+                  <label className="inline-flex items-center gap-1">
+                    <input type="radio" name="foodType" value="veg" checked={editForm.foodType === 'veg'} onChange={() => setEditForm(prev => ({ ...prev, foodType: 'veg' }))} /> Veg
+                  </label>
+                  <label className="inline-flex items-center gap-1">
+                    <input type="radio" name="foodType" value="Nonveg" checked={editForm.foodType === 'Nonveg'} onChange={() => setEditForm(prev => ({ ...prev, foodType: 'Nonveg' }))} /> Nonveg
+                  </label>
+                  <label className="inline-flex items-center gap-1">
+                    <input type="radio" name="foodType" value="Swaminarayan" checked={editForm.foodType === 'Swaminarayan'} onChange={() => setEditForm(prev => ({ ...prev, foodType: 'Swaminarayan' }))} /> Swaminarayan
+                  </label>
+                  <label className="inline-flex items-center gap-1">
+                    <input type="radio" name="foodType" value="Jain" checked={editForm.foodType === 'Jain'} onChange={() => setEditForm(prev => ({ ...prev, foodType: 'Jain' }))} /> Jain
+                  </label>
+                </div>
               </div>
               <div className="space-y-2">
                 <label htmlFor="editStatus" className="block text-sm font-medium text-gray-700">Status</label>
@@ -1747,6 +1781,24 @@ export default function UserManagement() {
                   <div className="form-group">
                     <label className="form-label">Name</label>
                     <input type="text" name="name" value={modalEditForm.name || ''} onChange={handleModalEditChange} className="form-input" required />
+                  </div>
+                  {/* Food Type */}
+                  <div className="form-group full-width">
+                    <label className="form-label">Food Type</label>
+                    <div className="flex gap-4">
+                      <label className="inline-flex items-center gap-1">
+                        <input type="radio" name="foodType" value="veg" checked={modalEditForm.foodType === 'veg'} onChange={() => setModalEditForm(prev => ({ ...prev, foodType: 'veg' }))} /> Veg
+                      </label>
+                      <label className="inline-flex items-center gap-1">
+                        <input type="radio" name="foodType" value="Nonveg" checked={modalEditForm.foodType === 'Nonveg'} onChange={() => setModalEditForm(prev => ({ ...prev, foodType: 'Nonveg' }))} /> Nonveg
+                      </label>
+                      <label className="inline-flex items-center gap-1">
+                        <input type="radio" name="foodType" value="Swaminarayan" checked={modalEditForm.foodType === 'Swaminarayan'} onChange={() => setModalEditForm(prev => ({ ...prev, foodType: 'Swaminarayan' }))} /> Swaminarayan
+                      </label>
+                      <label className="inline-flex items-center gap-1">
+                        <input type="radio" name="foodType" value="Jain" checked={modalEditForm.foodType === 'Jain'} onChange={() => setModalEditForm(prev => ({ ...prev, foodType: 'Jain' }))} /> Jain
+                      </label>
+                    </div>
                   </div>
                   {/* Contact Number */}
                   <div className="form-group">
