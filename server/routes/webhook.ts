@@ -4,7 +4,6 @@ import { Message } from '../models/Message.js';
 import { Contact } from '../models/Contact.js';
 import { client } from '../twilio.js';
 import { User } from '../models/User.js';
-import express from 'express';
 // @ts-ignore: Importing JS model with separate .d.ts for types
 import LoanReplyLog from '../models/LoanReplyLog.js';
 
@@ -368,7 +367,7 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 // Add endpoint to fetch all loan reply logs
-router.get('/loan-replies', async (req, res) => {
+router.get('/loan-replies', async (_req, res) => {
   try {
     const logs = await LoanReplyLog.find().sort({ timestamp: -1 });
     res.json(logs);

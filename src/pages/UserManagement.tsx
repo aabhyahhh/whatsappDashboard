@@ -401,10 +401,10 @@ export default function UserManagement() {
     if (!days || days.length === 0) return [];
     if (typeof days[0] === 'number') {
       return days.map((d: number | string) =>
-        typeof d === 'number' && d >= 0 && d <= 6 ? dayNumberToName[d] : d
+        typeof d === 'number' && d >= 0 && d <= 6 ? dayNumberToName[d] : String(d)
       );
     }
-    return days;
+    return days.map(String);
   }
 
   const handleEditClick = (user: User) => {
