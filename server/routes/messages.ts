@@ -108,6 +108,61 @@ router.get('/inbound-count', async (_req: Request, res: Response) => {
     }
 });
 
+// GET /api/messages/active-vendors-24h - Number of unique vendors who texted in last 24 hours
+router.get('/active-vendors-24h', async (_req: Request, res: Response) => {
+  try {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    // Find inbound messages in last 24h
+    const messages = await Message.find({
+      direction: 'inbound',
+      timestamp: { $gte: since }
+    }).select('from');
+    // Normalize phone numbers (remove whatsapp: prefix)
+    const uniqueVendors = new Set(
+      messages.map(m => (m.from || '').replace(/^whatsapp:/, ''))
+    );
+    res.json({ count: uniqueVendors.size });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch active vendors in last 24h' });
+  }
+});
+
+// GET /api/messages/active-vendor-list-24h - List of unique vendors who texted in last 24 hours
+router.get('/active-vendor-list-24h', async (_req: Request, res: Response) => {
+  try {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    // Find inbound messages in last 24h
+    const messages = await Message.find({
+      direction: 'inbound',
+      timestamp: { $gte: since }
+    }).sort({ timestamp: -1 });
+    // Map to unique contact numbers (remove whatsapp: prefix)
+    const seen = new Set<string>();
+    const vendors: { contactNumber: string; name: string }[] = [];
+    for (const msg of messages) {
+      const contactNumber = (msg.from || '').replace(/^whatsapp:/, '');
+      if (!seen.has(contactNumber)) {
+        // Try to get name from User or Vendor
+        let name = '';
+        const UserModel = (await import('../models/User.js')).User;
+        const user = await UserModel.findOne({ contactNumber });
+        if (user && user.name) {
+          name = user.name;
+        } else {
+          const VendorModel = (await import('../models/Vendor.js')).default;
+          const vendor = await VendorModel.findOne({ contactNumber });
+          if (vendor && vendor.name) name = vendor.name;
+        }
+        vendors.push({ contactNumber, name });
+        seen.add(contactNumber);
+      }
+    }
+    res.json(vendors);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch active vendor list in last 24h' });
+  }
+});
+
 // GET /api/messages/:phone - Fetch messages for a specific phone number
 router.get('/:phone', async (req: Request, res: Response) => {
     try {

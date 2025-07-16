@@ -322,20 +322,20 @@ router.post('/', async (req: Request, res: Response) => {
                         const msgPayload: any = {
                             from: `whatsapp:${To.replace('whatsapp:', '')}`,
                             to: From,
-                            contentSid: 'HX88aee77281b74e2da390ff8bf7517ce3',
+                            contentSid: 'HXb2144200ff4ddc9e5d7a0d149054bab5',
                             contentVariables: JSON.stringify({})
                         };
                         if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
                             msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
                         }
                         const twilioResp = await client.messages.create(msgPayload);
-                        console.log('✅ Triggered outbound template message HX88aee77281b74e2da390ff8bf7517ce3 in response to loan keyword. Twilio response:', twilioResp);
+                        console.log('✅ Triggered outbound template message HXb2144200ff4ddc9e5d7a0d149054bab5 in response to loan keyword. Twilio response:', twilioResp);
                         // Save the outbound template message to MongoDB for chat display
                         try {
                             await Message.create({
                                 from: msgPayload.from,
                                 to: msgPayload.to,
-                                body: '[Loan template message sent]',
+                                body: `Certainly! ✅\nज़रूर! ✅\n\nWe’re currently working on loan services specially designed for vendors like you.\nहम वेंडर्स के लिए खासतौर पर बनाई गई लोन सेवाओं पर काम कर रहे हैं।\n\nTo help you secure this opportunity, *are you willing to verify your Aadhaar information?*\nइस अवसर को सुरक्षित करने के लिए, *क्या आप अपनी आधार जानकारी सत्यापित करने के लिए तैयार हैं?*\n\nWe’ll notify you as soon as the loan support system is live.\nजैसे ही हमारी लोन सहायता सेवा शुरू होती है, हम आपको तुरंत सूचित करेंगे।\n\nDon’t worry — your interest is already saved with us! 🙌\nचिंता न करें — आपकी रुचि हमने सुरक्षित रख ली है! 🙌\n\nThanks for your patience! 💛\nआपके धैर्य के लिए धन्यवाद! 💛`,
                                 direction: 'outbound',
                                 timestamp: new Date(),
                             });
@@ -381,7 +381,33 @@ router.post('/', async (req: Request, res: Response) => {
 router.get('/loan-replies', async (_req, res) => {
   try {
     const logs = await LoanReplyLog.find().sort({ timestamp: -1 });
-    res.json(logs);
+    // For each log, check if there is a message from this contactNumber with Aadhaar verification
+    const results = await Promise.all(logs.map(async (log: any) => {
+      // Find any inbound message from this contactNumber with button reply for Aadhaar verification
+      // We assume Twilio sends button replies as body: 'Yes, I will verify Aadhar' or similar, or as a payload field
+      // Adjust the query as needed for your actual Twilio payload
+      const possibleNumbers = [log.contactNumber];
+      if (log.contactNumber.startsWith('+91')) possibleNumbers.push(log.contactNumber.replace('+91', '91'));
+      if (log.contactNumber.startsWith('+')) possibleNumbers.push(log.contactNumber.substring(1));
+      possibleNumbers.push(log.contactNumber.slice(-10));
+      // Look for a message with body or payload indicating Aadhaar verification
+      const verified = await Message.findOne({
+        from: { $in: possibleNumbers.map(n => `whatsapp:${n}`) },
+        direction: 'inbound',
+        $or: [
+          { body: /yes[\s,\-_.]*i.*will.*verify.*aadhar/i },
+          { body: /yes[\s,\-_.]*aadhar/i },
+          { body: /aadhaar.*verified/i },
+          { body: /verify_aadhar/i },
+          // Add more patterns if needed
+        ]
+      });
+      return {
+        ...log.toObject(),
+        aadharVerified: !!verified
+      };
+    }));
+    res.json(results);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch loan reply logs' });
   }

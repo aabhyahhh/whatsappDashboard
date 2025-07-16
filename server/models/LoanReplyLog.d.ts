@@ -1,10 +1,2 @@
-import { Model, Document } from 'mongoose';
-
-export interface ILoanReplyLog extends Document {
-  vendorName: string;
-  contactNumber: string;
-  timestamp: Date;
-}
-
-declare const LoanReplyLog: Model<ILoanReplyLog>;
+declare const LoanReplyLog: any;
 export default LoanReplyLog; 
