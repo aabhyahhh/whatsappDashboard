@@ -217,7 +217,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 >
                   <div className="flex-shrink-0 h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center mr-3">
                     <span className="text-white text-xs font-medium">
-                      {contact.phone.slice(-2)}
+                      {contact.phone ? contact.phone.slice(-2) : ''}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">

@@ -13,7 +13,27 @@ router.get('/', async (_req: Request, res: Response) => {
             .select('phone lastSeen createdAt updatedAt')
             .limit(50); // Limit to 50 most recent contacts for sidebar
 
-        res.json(contacts);
+        // Enhance each contact with vendor name from User collection
+        const User = (await import('../models/User.js')).User;
+        const normalizePhone = (phone: string) => phone.replace(/^\+91/, '').replace(/^91/, '').replace(/\D/g, '');
+        const contactsWithNames = await Promise.all(
+            contacts.map(async (contact) => {
+                let name = '';
+                const normalizedPhone = normalizePhone(contact.phone);
+                const user = await User.findOne({
+                  $or: [
+                    { contactNumber: contact.phone },
+                    { contactNumber: '+91' + normalizedPhone },
+                    { contactNumber: '91' + normalizedPhone },
+                    { contactNumber: normalizedPhone }
+                  ]
+                });
+                if (user && user.name) name = user.name;
+                return { ...contact.toObject(), name };
+            })
+        );
+
+        res.json(contactsWithNames);
     } catch (error) {
         res.status(500).json({ message: (error as Error)?.message || error });
     }
