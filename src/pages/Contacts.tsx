@@ -21,8 +21,6 @@ export default function Contacts() {
   const [userContacts, setUserContacts] = useState<UserContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [editingContactId, setEditingContactId] = useState<string | null>(null);
-  const [editingName, setEditingName] = useState<string>('');
 
   useEffect(() => {
     const fetchContacts = async () => {
@@ -95,35 +93,6 @@ export default function Contacts() {
     }
   };
 
-  // Add save name handler for incoming contacts
-  const handleEditName = (contactId: string, currentName: string) => {
-    setEditingContactId(contactId);
-    setEditingName(currentName || '');
-  };
-
-  const handleCancelEdit = () => {
-    setEditingContactId(null);
-    setEditingName('');
-  };
-
-  const handleSaveName = async (contactId: string) => {
-    if (!editingName.trim()) return;
-    try {
-      const response = await fetch(`${apiBaseUrl}/api/contacts/${contactId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: editingName.trim() })
-      });
-      if (!response.ok) throw new Error('Failed to update name');
-      const updatedContact = await response.json();
-      setContacts((prev) => prev.map(c => c._id === contactId ? { ...c, name: updatedContact.name } : c));
-      setEditingContactId(null);
-      setEditingName('');
-    } catch (err) {
-      alert('Failed to update name');
-    }
-  };
-
   if (loading) {
     return (
       <AdminLayout>
@@ -193,9 +162,6 @@ export default function Contacts() {
                           <div className="ml-4">
                             <div className="text-sm font-medium text-gray-900">
                               {contact.phone}
-                              <span className="ml-2 text-gray-600">
-                                {contact.name ? `(${contact.name})` : <span className="italic text-gray-400">(no name)</span>}
-                              </span>
                             </div>
                           </div>
                         </div>
