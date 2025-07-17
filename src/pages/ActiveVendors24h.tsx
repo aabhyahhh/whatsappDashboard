@@ -8,12 +8,23 @@ interface Vendor {
   lastContact: string;
 }
 
+interface VendorStats {
+  days: { date: string; count: number }[];
+  week: { start: string; end: string; count: number };
+  month: { month: string; count: number };
+}
+
 export default function ActiveVendors24h() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [messageMap, setMessageMap] = useState<{ [contact: string]: string }>({});
   const [sending, setSending] = useState<{ [contact: string]: boolean }>({});
+
+  // New state for stats
+  const [stats, setStats] = useState<VendorStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchVendors() {
@@ -31,6 +42,24 @@ export default function ActiveVendors24h() {
       }
     }
     fetchVendors();
+  }, []);
+
+  useEffect(() => {
+    async function fetchStats() {
+      setStatsLoading(true);
+      setStatsError(null);
+      try {
+        const res = await fetch(`${apiBaseUrl}/api/messages/active-vendors-stats`);
+        if (!res.ok) throw new Error('Failed to fetch vendor stats');
+        const data = await res.json();
+        setStats(data);
+      } catch (err: any) {
+        setStatsError(err.message || 'Failed to fetch vendor stats');
+      } finally {
+        setStatsLoading(false);
+      }
+    }
+    fetchStats();
   }, []);
 
   const handleSendMessage = async (contactNumber: string) => {
@@ -57,6 +86,27 @@ export default function ActiveVendors24h() {
     <AdminLayout>
       <div className="w-full max-w-6xl mx-auto bg-white p-6 rounded-lg shadow-md mt-8 border border-gray-200">
         <h2 className="text-2xl font-bold mb-6 text-center">Vendors Active in Last 24 Hours</h2>
+        {/* Vendor stats summary */}
+        <div className="mb-6">
+          {statsLoading ? (
+            <div className="text-center text-gray-500">Loading vendor stats...</div>
+          ) : statsError ? (
+            <div className="text-center text-red-600">{statsError}</div>
+          ) : stats ? (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <div className="mb-2 font-semibold">Active Vendors (Current Week, Monday to Monday):</div>
+              <ul className="mb-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+                {stats.days.map(day => (
+                  <li key={day.date} className="text-sm">
+                    <span className="font-medium">{day.date}:</span> {day.count}
+                  </li>
+                ))}
+              </ul>
+              <div className="mb-1 text-sm font-medium">Total active this week: <span className="font-bold">{stats.week.count}</span></div>
+              <div className="text-sm font-medium">Total active this month: <span className="font-bold">{stats.month.count}</span></div>
+            </div>
+          ) : null}
+        </div>
         {loading ? (
           <div className="text-center py-8">Loading...</div>
         ) : error ? (

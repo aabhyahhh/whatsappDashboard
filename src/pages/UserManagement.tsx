@@ -1653,16 +1653,17 @@ export default function UserManagement() {
                   const entryType = user.entryType || 'O';
                   const adminName = user.addedBy || 'admin';
                   const customIndex = `${idx + 1}_${lang}_${entryType}_${adminName}`;
+                  const operatingHours = user.operatingHours || {};
                   return (
                     <tr key={user._id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleVendorRowClick(user)}>
                       <td className="px-4 py-3 whitespace-nowrap">{customIndex}</td>
                       <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900 truncate max-w-[140px]">{user.contactNumber}</td>
                       <td className="px-4 py-3 whitespace-nowrap truncate max-w-[180px]">{user.name}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">{user.operatingHours.openTime || 'N/A'}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">{user.operatingHours.closeTime || 'N/A'}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">{operatingHours.openTime || 'N/A'}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">{operatingHours.closeTime || 'N/A'}</td>
                       <td className="px-4 py-3 whitespace-nowrap truncate max-w-[120px]">{
-                        (user.operatingHours.days && user.operatingHours.days.length > 0)
-                          ? user.operatingHours.days
+                        (operatingHours.days && operatingHours.days.length > 0)
+                          ? operatingHours.days
                               .map((d: any) => {
                                 const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                                 return typeof d === 'number' && d >= 0 && d <= 6 ? dayNames[d] : d;

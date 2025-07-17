@@ -163,6 +163,65 @@ router.get('/active-vendor-list-24h', async (_req: Request, res: Response) => {
   }
 });
 
+// GET /api/messages/active-vendors-stats - Day-wise, week, and month unique vendor stats
+router.get('/active-vendors-stats', async (_req, res) => {
+  try {
+    const now = new Date();
+    // Get start of week (Monday)
+    const dayOfWeek = (now.getDay() + 6) % 7; // 0=Monday, 6=Sunday
+    const startOfWeek = new Date(now);
+    startOfWeek.setHours(0, 0, 0, 0);
+    startOfWeek.setDate(now.getDate() - dayOfWeek);
+    // Get start of month
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    // Get all inbound messages from start of month
+    const messages = await Message.find({
+      direction: 'inbound',
+      timestamp: { $gte: startOfMonth }
+    }).select('from timestamp');
+    // Helper to normalize phone
+    const normalize = (n: string) => (n || '').replace(/^whatsapp:/, '');
+    // Day-wise aggregation for current week
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(startOfWeek);
+      day.setDate(startOfWeek.getDate() + i);
+      const nextDay = new Date(day);
+      nextDay.setDate(day.getDate() + 1);
+      const vendors = new Set();
+      for (const msg of messages) {
+        if (msg.timestamp >= day && msg.timestamp < nextDay) {
+          vendors.add(normalize(msg.from));
+        }
+      }
+      days.push({ date: day.toISOString().slice(0, 10), count: vendors.size });
+    }
+    // Week unique vendors
+    const weekVendors = new Set();
+    for (const msg of messages) {
+      if (msg.timestamp >= startOfWeek && msg.timestamp < new Date(startOfWeek.getTime() + 7 * 24 * 60 * 60 * 1000)) {
+        weekVendors.add(normalize(msg.from));
+      }
+    }
+    // Month unique vendors
+    const monthVendors = new Set(messages.map(msg => normalize(msg.from)));
+    res.json({
+      days,
+      week: {
+        start: startOfWeek.toISOString().slice(0, 10),
+        end: new Date(startOfWeek.getTime() + 6 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+        count: weekVendors.size
+      },
+      month: {
+        month: startOfMonth.toISOString().slice(0, 7),
+        count: monthVendors.size
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch active vendor stats' });
+  }
+});
+
 // GET /api/messages/:phone - Fetch messages for a specific phone number
 router.get('/:phone', async (req: Request, res: Response) => {
     try {
