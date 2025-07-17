@@ -16,7 +16,7 @@ interface User {
   status: 'active' | 'inactive' | 'suspended';
   lastActive: string;
   profilePictures?: string[];
-  foodType?: 'veg' | 'Nonveg' | 'Swaminarayan' | 'Jain';
+  foodType?: 'veg' | 'nonveg' | 'swaminarayan' | 'jain';
   bestDishes?: Dish[];
   menuLink?: string;
   mapsLink?: string;
@@ -53,7 +53,7 @@ interface UserFormData {
   name: string;
   status: 'active' | 'inactive' | 'suspended';
   profilePictures: string[];
-  foodType: 'veg' | 'Nonveg' | 'Swaminarayan' | 'Jain';
+  foodType: 'veg' | 'nonveg' | 'swaminarayan' | 'jain';
   bestDishes: Dish[];
   menuLink: string;
   mapsLink?: string;
@@ -714,16 +714,16 @@ export default function UserManagement() {
                 <label className="block text-sm font-medium text-gray-700">Food Type</label>
                 <div className="flex gap-4">
                   <label className="inline-flex items-center gap-1">
-                    <input type="radio" name="foodType" value="veg" checked={newUser.foodType === 'veg'} onChange={() => setNewUser(prev => ({ ...prev, foodType: 'veg' }))} /> Veg
+                    <input type="radio" name="foodType" value="veg" checked={newUser.foodType === 'veg'} onChange={e => setNewUser(prev => ({ ...prev, foodType: e.target.value as 'veg' | 'nonveg' | 'swaminarayan' | 'jain' }))} /> Veg
                   </label>
                   <label className="inline-flex items-center gap-1">
-                    <input type="radio" name="foodType" value="Nonveg" checked={newUser.foodType === 'Nonveg'} onChange={() => setNewUser(prev => ({ ...prev, foodType: 'Nonveg' }))} /> Nonveg
+                    <input type="radio" name="foodType" value="nonveg" checked={newUser.foodType === 'nonveg'} onChange={e => setNewUser(prev => ({ ...prev, foodType: e.target.value as 'veg' | 'nonveg' | 'swaminarayan' | 'jain' }))} /> Nonveg
                   </label>
                   <label className="inline-flex items-center gap-1">
-                    <input type="radio" name="foodType" value="Swaminarayan" checked={newUser.foodType === 'Swaminarayan'} onChange={() => setNewUser(prev => ({ ...prev, foodType: 'Swaminarayan' }))} /> Swaminarayan
+                    <input type="radio" name="foodType" value="swaminarayan" checked={newUser.foodType === 'swaminarayan'} onChange={e => setNewUser(prev => ({ ...prev, foodType: e.target.value as 'veg' | 'nonveg' | 'swaminarayan' | 'jain' }))} /> Swaminarayan
                   </label>
                   <label className="inline-flex items-center gap-1">
-                    <input type="radio" name="foodType" value="Jain" checked={newUser.foodType === 'Jain'} onChange={() => setNewUser(prev => ({ ...prev, foodType: 'Jain' }))} /> Jain
+                    <input type="radio" name="foodType" value="jain" checked={newUser.foodType === 'jain'} onChange={e => setNewUser(prev => ({ ...prev, foodType: e.target.value as 'veg' | 'nonveg' | 'swaminarayan' | 'jain' }))} /> Jain
                   </label>
                 </div>
               </div>
@@ -1173,16 +1173,16 @@ export default function UserManagement() {
                 <label className="block text-sm font-medium text-gray-700">Food Type</label>
                 <div className="flex gap-4">
                   <label className="inline-flex items-center gap-1">
-                    <input type="radio" name="foodType" value="veg" checked={editForm.foodType === 'veg'} onChange={() => setEditForm(prev => ({ ...prev, foodType: 'veg' }))} /> Veg
+                    <input type="radio" name="foodType" value="veg" checked={editForm.foodType === 'veg'} onChange={e => setEditForm(prev => ({ ...prev, foodType: e.target.value as 'veg' | 'nonveg' | 'swaminarayan' | 'jain' }))} /> Veg
                   </label>
                   <label className="inline-flex items-center gap-1">
-                    <input type="radio" name="foodType" value="Nonveg" checked={editForm.foodType === 'Nonveg'} onChange={() => setEditForm(prev => ({ ...prev, foodType: 'Nonveg' }))} /> Nonveg
+                    <input type="radio" name="foodType" value="nonveg" checked={editForm.foodType === 'nonveg'} onChange={e => setEditForm(prev => ({ ...prev, foodType: e.target.value as 'veg' | 'nonveg' | 'swaminarayan' | 'jain' }))} /> Nonveg
                   </label>
                   <label className="inline-flex items-center gap-1">
-                    <input type="radio" name="foodType" value="Swaminarayan" checked={editForm.foodType === 'Swaminarayan'} onChange={() => setEditForm(prev => ({ ...prev, foodType: 'Swaminarayan' }))} /> Swaminarayan
+                    <input type="radio" name="foodType" value="swaminarayan" checked={editForm.foodType === 'swaminarayan'} onChange={e => setEditForm(prev => ({ ...prev, foodType: e.target.value as 'veg' | 'nonveg' | 'swaminarayan' | 'jain' }))} /> Swaminarayan
                   </label>
                   <label className="inline-flex items-center gap-1">
-                    <input type="radio" name="foodType" value="Jain" checked={editForm.foodType === 'Jain'} onChange={() => setEditForm(prev => ({ ...prev, foodType: 'Jain' }))} /> Jain
+                    <input type="radio" name="foodType" value="jain" checked={editForm.foodType === 'jain'} onChange={e => setEditForm(prev => ({ ...prev, foodType: e.target.value as 'veg' | 'nonveg' | 'swaminarayan' | 'jain' }))} /> Jain
                   </label>
                 </div>
               </div>
@@ -1653,16 +1653,17 @@ export default function UserManagement() {
                   const entryType = user.entryType || 'O';
                   const adminName = user.addedBy || 'admin';
                   const customIndex = `${idx + 1}_${lang}_${entryType}_${adminName}`;
+                  const operatingHours = user.operatingHours || {};
                   return (
                     <tr key={user._id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleVendorRowClick(user)}>
                       <td className="px-4 py-3 whitespace-nowrap">{customIndex}</td>
                       <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900 truncate max-w-[140px]">{user.contactNumber}</td>
                       <td className="px-4 py-3 whitespace-nowrap truncate max-w-[180px]">{user.name}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">{user.operatingHours.openTime || 'N/A'}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">{user.operatingHours.closeTime || 'N/A'}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">{operatingHours.openTime || 'N/A'}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">{operatingHours.closeTime || 'N/A'}</td>
                       <td className="px-4 py-3 whitespace-nowrap truncate max-w-[120px]">{
-                        (user.operatingHours.days && user.operatingHours.days.length > 0)
-                          ? user.operatingHours.days
+                        (operatingHours.days && operatingHours.days.length > 0)
+                          ? operatingHours.days
                               .map((d: any) => {
                                 const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
                                 return typeof d === 'number' && d >= 0 && d <= 6 ? dayNames[d] : d;
@@ -1787,16 +1788,16 @@ export default function UserManagement() {
                     <label className="form-label">Food Type</label>
                     <div className="flex gap-4">
                       <label className="inline-flex items-center gap-1">
-                        <input type="radio" name="foodType" value="veg" checked={modalEditForm.foodType === 'veg'} onChange={() => setModalEditForm(prev => ({ ...prev, foodType: 'veg' }))} /> Veg
+                        <input type="radio" name="foodType" value="veg" checked={modalEditForm.foodType === 'veg'} onChange={e => setModalEditForm(prev => ({ ...prev, foodType: e.target.value as 'veg' | 'nonveg' | 'swaminarayan' | 'jain' }))} /> Veg
                       </label>
                       <label className="inline-flex items-center gap-1">
-                        <input type="radio" name="foodType" value="Nonveg" checked={modalEditForm.foodType === 'Nonveg'} onChange={() => setModalEditForm(prev => ({ ...prev, foodType: 'Nonveg' }))} /> Nonveg
+                        <input type="radio" name="foodType" value="nonveg" checked={modalEditForm.foodType === 'nonveg'} onChange={e => setModalEditForm(prev => ({ ...prev, foodType: e.target.value as 'veg' | 'nonveg' | 'swaminarayan' | 'jain' }))} /> Nonveg
                       </label>
                       <label className="inline-flex items-center gap-1">
-                        <input type="radio" name="foodType" value="Swaminarayan" checked={modalEditForm.foodType === 'Swaminarayan'} onChange={() => setModalEditForm(prev => ({ ...prev, foodType: 'Swaminarayan' }))} /> Swaminarayan
+                        <input type="radio" name="foodType" value="swaminarayan" checked={modalEditForm.foodType === 'swaminarayan'} onChange={e => setModalEditForm(prev => ({ ...prev, foodType: e.target.value as 'veg' | 'nonveg' | 'swaminarayan' | 'jain' }))} /> Swaminarayan
                       </label>
                       <label className="inline-flex items-center gap-1">
-                        <input type="radio" name="foodType" value="Jain" checked={modalEditForm.foodType === 'Jain'} onChange={() => setModalEditForm(prev => ({ ...prev, foodType: 'Jain' }))} /> Jain
+                        <input type="radio" name="foodType" value="jain" checked={modalEditForm.foodType === 'jain'} onChange={e => setModalEditForm(prev => ({ ...prev, foodType: e.target.value as 'veg' | 'nonveg' | 'swaminarayan' | 'jain' }))} /> Jain
                       </label>
                     </div>
                   </div>
