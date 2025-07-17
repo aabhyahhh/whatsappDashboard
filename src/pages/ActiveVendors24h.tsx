@@ -87,25 +87,27 @@ export default function ActiveVendors24h() {
       <div className="w-full max-w-6xl mx-auto bg-white p-6 rounded-lg shadow-md mt-8 border border-gray-200">
         <h2 className="text-2xl font-bold mb-6 text-center">Vendors Active in Last 24 Hours</h2>
         {/* Vendor stats summary */}
-        <div className="mb-6">
-          {statsLoading ? (
-            <div className="text-center text-gray-500">Loading vendor stats...</div>
-          ) : statsError ? (
-            <div className="text-center text-red-600">{statsError}</div>
-          ) : stats ? (
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-              <div className="mb-2 font-semibold">Active Vendors (Current Week, Monday to Monday):</div>
-              <ul className="mb-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
-                {stats.days.map(day => (
-                  <li key={day.date} className="text-sm">
-                    <span className="font-medium">{day.date}:</span> {day.count}
-                  </li>
-                ))}
-              </ul>
-              <div className="mb-1 text-sm font-medium">Total active this week: <span className="font-bold">{stats.week.count}</span></div>
-              <div className="text-sm font-medium">Total active this month: <span className="font-bold">{stats.month.count}</span></div>
-            </div>
-          ) : null}
+        <div className="mb-6 flex justify-center">
+          <div className="w-full max-w-2xl">
+            {statsLoading ? (
+              <div className="text-center text-gray-500">Loading vendor stats...</div>
+            ) : statsError ? (
+              <div className="text-center text-red-600">{statsError}</div>
+            ) : stats ? (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                <div className="mb-2 font-semibold">Active Vendors (Current Week, Monday to Monday):</div>
+                <ul className="mb-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 justify-center">
+                  {stats.days.map(day => (
+                    <li key={day.date} className="text-sm">
+                      <span className="font-medium">{day.date}:</span> {day.count}
+                    </li>
+                  ))}
+                </ul>
+                <div className="mb-1 text-sm font-medium">Total active this week: <span className="font-bold">{stats.week.count}</span></div>
+                <div className="text-sm font-medium">Total active this month: <span className="font-bold">{stats.month.count}</span></div>
+              </div>
+            ) : null}
+          </div>
         </div>
         {loading ? (
           <div className="text-center py-8">Loading...</div>
