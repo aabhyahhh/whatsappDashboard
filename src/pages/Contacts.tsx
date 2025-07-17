@@ -168,9 +168,6 @@ export default function Contacts() {
                       Phone Number
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Name
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Last Seen
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -189,51 +186,19 @@ export default function Contacts() {
                           <div className="flex-shrink-0 h-10 w-10">
                             <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center">
                               <span className="text-white font-medium">
-                                {contact.phone.slice(-2)}
+                                {contact.phone ? contact.phone.slice(-2) : ''}
                               </span>
                             </div>
                           </div>
                           <div className="ml-4">
                             <div className="text-sm font-medium text-gray-900">
                               {contact.phone}
+                              <span className="ml-2 text-gray-600">
+                                {contact.name ? `(${contact.name})` : <span className="italic text-gray-400">(no name)</span>}
+                              </span>
                             </div>
                           </div>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {editingContactId === contact._id ? (
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="text"
-                              className="border rounded px-2 py-1 text-sm"
-                              value={editingName}
-                              onChange={e => setEditingName(e.target.value)}
-                              autoFocus
-                            />
-                            <button
-                              className="text-green-600 hover:text-green-900 font-semibold"
-                              onClick={() => handleSaveName(contact._id)}
-                            >
-                              Save
-                            </button>
-                            <button
-                              className="text-gray-500 hover:text-gray-700"
-                              onClick={handleCancelEdit}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center space-x-2">
-                            <span>{contact.name || <span className="italic text-gray-400">(no name)</span>}</span>
-                            <button
-                              className="text-blue-500 hover:text-blue-700 text-xs underline"
-                              onClick={() => handleEditName(contact._id, contact.name || '')}
-                            >
-                              Edit
-                            </button>
-                          </div>
-                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {formatLastSeen(contact.lastSeen)}
@@ -290,7 +255,7 @@ export default function Contacts() {
                           <div className="flex-shrink-0 h-10 w-10">
                             <div className="h-10 w-10 rounded-full bg-green-500 flex items-center justify-center">
                               <span className="text-white font-medium">
-                                {user.contactNumber.slice(-2)}
+                                {user.contactNumber ? user.contactNumber.slice(-2) : ''}
                               </span>
                             </div>
                           </div>
