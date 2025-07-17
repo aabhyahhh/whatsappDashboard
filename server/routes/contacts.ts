@@ -15,10 +15,19 @@ router.get('/', async (_req: Request, res: Response) => {
 
         // Enhance each contact with vendor name from User collection
         const User = (await import('../models/User.js')).User;
+        const normalizePhone = (phone: string) => phone.replace(/^\+91/, '').replace(/^91/, '').replace(/\D/g, '');
         const contactsWithNames = await Promise.all(
             contacts.map(async (contact) => {
                 let name = '';
-                const user = await User.findOne({ contactNumber: contact.phone });
+                const normalizedPhone = normalizePhone(contact.phone);
+                const user = await User.findOne({
+                  $or: [
+                    { contactNumber: contact.phone },
+                    { contactNumber: '+91' + normalizedPhone },
+                    { contactNumber: '91' + normalizedPhone },
+                    { contactNumber: normalizedPhone }
+                  ]
+                });
                 if (user && user.name) name = user.name;
                 return { ...contact.toObject(), name };
             })
