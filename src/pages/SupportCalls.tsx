@@ -27,23 +27,11 @@ function getTimeLeft(timestamp: string) {
   return `${hours}h ${minutes}m ${seconds}s`;
 }
 
-function getCurrentUsername() {
-  const token = localStorage.getItem('token');
-  if (!token) return null;
-  try {
-    const decoded: any = JSON.parse(atob(token.split('.')[1]));
-    return decoded.username || null;
-  } catch {
-    return null;
-  }
-}
-
 export default function SupportCalls() {
   const [calls, setCalls] = useState<SupportCallEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const username = getCurrentUsername();
 
   useEffect(() => {
     async function fetchCalls() {
@@ -86,7 +74,7 @@ export default function SupportCalls() {
       if (!res.ok) throw new Error('Failed to mark as completed');
       const updated = await res.json();
       setCalls((prev) => prev.map((c) => c._id === id ? { ...c, ...updated } : c));
-    } catch (err) {
+    } catch {
       alert('Failed to mark as completed');
     } finally {
       setUpdatingId(null);

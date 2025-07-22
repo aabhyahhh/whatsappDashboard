@@ -1,13 +1,12 @@
 import { Router } from 'express';
-import type { Request, Response, NextFunction } from 'express';
+import type { Request, Response } from 'express';
 import { Message } from '../models/Message.js';
 import { Contact } from '../models/Contact.js';
 import { client } from '../twilio.js';
 import { User } from '../models/User.js';
-// @ts-ignore: Importing JS model with separate .d.ts for types
+
 import LoanReplyLog from '../models/LoanReplyLog.js';
 import SupportCallLog from '../models/SupportCallLog.js';
-import jwt from 'jsonwebtoken';
 
 const router = Router();
 
@@ -167,7 +166,7 @@ router.post('/', async (req: Request, res: Response) => {
         }
 
         // Create new message document
-        const messageData: any = {
+        const messageData: Record<string, unknown> = {
             from: From,
             to: To,
             body: Body || '[location message]', // Use a placeholder if Body is empty
@@ -245,12 +244,14 @@ router.post('/', async (req: Request, res: Response) => {
                 console.log('Attempting to send template message in response to greeting');
                 if (client) {
                     try {
-                        const msgPayload: any = {
+                        const msgPayload = {
                             from: `whatsapp:${To.replace('whatsapp:', '')}`,
                             to: From,
-                            contentSid: 'HX46464a13f80adebb4b9d552d63acfae9',
-                            contentVariables: JSON.stringify({})
-                        };
+                            contentSid: 'YOUR_CONTENT_SID',
+                            contentVariables: JSON.stringify({}),
+                            messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID, // optional
+                          };
+                          
                         if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
                             msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
                         }
@@ -290,7 +291,7 @@ router.post('/', async (req: Request, res: Response) => {
                             possibleNumbers.push(possibleNumbers[0].slice(-10));
                             // Try User collection first
                             const UserModel = (await import('../models/User.js')).User;
-                            let user = await UserModel.findOne({ contactNumber: { $in: possibleNumbers } });
+                            const user = await UserModel.findOne({ contactNumber: { $in: possibleNumbers } });
                             let name = null, contactNumber = null;
                             if (user) {
                                 name = user.name;
@@ -321,12 +322,14 @@ router.post('/', async (req: Request, res: Response) => {
                         } catch (err) {
                             console.error('❌ Failed to log loan reply:', err);
                         }
-                        const msgPayload: any = {
+                        const msgPayload = {
                             from: `whatsapp:${To.replace('whatsapp:', '')}`,
                             to: From,
-                            contentSid: 'HXcdbf14c73f068958f96efc216961834d',
-                            contentVariables: JSON.stringify({})
-                        };
+                            contentSid: 'YOUR_CONTENT_SID',
+                            contentVariables: JSON.stringify({}),
+                            messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID, // optional
+                          };
+                          
                         if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
                             msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
                         }
@@ -392,12 +395,14 @@ router.post('/', async (req: Request, res: Response) => {
             // Send the follow-up template message
             if (client) {
                 try {
-                    const msgPayload: any = {
+                    const msgPayload = {
                         from: `whatsapp:${To.replace('whatsapp:', '')}`,
                         to: From,
-                        contentSid: 'HXcdbf14c73f068958f96efc216961834d',
-                        contentVariables: JSON.stringify({})
-                    };
+                        contentSid: 'YOUR_CONTENT_SID',
+                        contentVariables: JSON.stringify({}),
+                        messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID, // optional
+                      };
+                      
                     if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
                         msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
                     }
@@ -507,12 +512,14 @@ router.post('/', async (req: Request, res: Response) => {
 
         if (isAadhaarButtonReply && client) {
             try {
-                const msgPayload: any = {
+                const msgPayload = {
                     from: `whatsapp:${To.replace('whatsapp:', '')}`,
                     to: From,
-                    contentSid: 'HX1a44edbb684afc1a8213054a4731e53d',
-                    contentVariables: JSON.stringify({})
-                };
+                    contentSid: 'YOUR_CONTENT_SID',
+                    contentVariables: JSON.stringify({}),
+                    messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID, // optional
+                  };
+                  
                 if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
                     msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
                 }
@@ -549,7 +556,7 @@ router.get('/loan-replies', async (_req, res) => {
   try {
     const logs = await LoanReplyLog.find().sort({ timestamp: -1 });
     res.json(logs);
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: 'Failed to fetch loan reply logs' });
   }
 });
@@ -565,15 +572,16 @@ router.get('/support-calls', async (_req, res) => {
       timestamp: { $gte: since }
     }).sort({ timestamp: -1 });
     res.json(logs);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch support call requests' });
-  }
+} catch (err) {
+    console.error('❌ Failed to update loan reply log for Aadhaar verification:', err);
+}
+
 });
 
 // PATCH endpoint to mark a support call as completed
-router.patch('/support-calls/:id/complete', async (req: Request, res: Response) => {
+router.patch('/support-calls/:id/complete', async (req, res) => {
     try {
-        if (!['admin', 'onground', 'super_admin'].includes(req.user?.role)) {
+        if (!req.user || !['admin', 'onground', 'super_admin'].includes(req.user.role)) {
             return res.status(403).json({ message: 'Access denied' });
         }
         const { id } = req.params;
@@ -581,7 +589,7 @@ router.patch('/support-calls/:id/complete', async (req: Request, res: Response) 
             id,
             {
                 completed: true,
-                completedBy: req.user.username,
+                completedBy: req.user.username || 'unknown',
                 completedAt: new Date(),
             },
             { new: true }
@@ -589,8 +597,9 @@ router.patch('/support-calls/:id/complete', async (req: Request, res: Response) 
         if (!updated) return res.status(404).json({ message: 'Support call log not found' });
         res.json(updated);
     } catch (err) {
-        res.status(500).json({ error: 'Failed to mark support call as completed' });
-    }
+        console.error('❌ Failed to send Aadhaar verification template message:', err);
+      }
+    
 });
 
 export default router;
