@@ -10,6 +10,9 @@ interface SupportCallEntry {
   vendorName: string;
   contactNumber: string;
   timestamp: string;
+  completed?: boolean;
+  completedBy?: string;
+  completedAt?: string;
 }
 
 function getTimeLeft(timestamp: string) {
@@ -24,10 +27,23 @@ function getTimeLeft(timestamp: string) {
   return `${hours}h ${minutes}m ${seconds}s`;
 }
 
+function getCurrentUsername() {
+  const token = localStorage.getItem('token');
+  if (!token) return null;
+  try {
+    const decoded: any = JSON.parse(atob(token.split('.')[1]));
+    return decoded.username || null;
+  } catch {
+    return null;
+  }
+}
+
 export default function SupportCalls() {
   const [calls, setCalls] = useState<SupportCallEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const username = getCurrentUsername();
 
   useEffect(() => {
     async function fetchCalls() {
@@ -56,9 +72,30 @@ export default function SupportCalls() {
     return () => clearInterval(interval);
   }, []);
 
+  const handleComplete = async (id: string) => {
+    setUpdatingId(id);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${apiBaseUrl}/api/webhook/support-calls/${id}/complete`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) throw new Error('Failed to mark as completed');
+      const updated = await res.json();
+      setCalls((prev) => prev.map((c) => c._id === id ? { ...c, ...updated } : c));
+    } catch (err) {
+      alert('Failed to mark as completed');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   return (
     <AdminLayout>
-      <div className="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow-md mt-8 border border-gray-200">
+      <div className="max-w-5xl mx-auto bg-white p-6 rounded-lg shadow-md mt-8 border border-gray-200">
         <h2 className="text-2xl font-bold mb-6 text-center">Vendors Requesting Support Calls (Next 24h)</h2>
         {loading ? (
           <div className="text-center py-8">Loading...</div>
@@ -76,6 +113,9 @@ export default function SupportCalls() {
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Contact Number</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Request Time</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Time Left</th>
+                  <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Call Completed</th>
+                  <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Completed By</th>
+                  <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Completed At</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -85,9 +125,16 @@ export default function SupportCalls() {
                     <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900">{call.vendorName}</td>
                     <td className="px-4 py-3 whitespace-nowrap">{call.contactNumber}</td>
                     <td className="px-4 py-3 whitespace-nowrap text-gray-500">{new Date(call.timestamp).toLocaleString()}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-blue-700 font-semibold">
-                      {getTimeLeft(call.timestamp)}
+                    <td className="px-4 py-3 whitespace-nowrap text-blue-700 font-semibold">{getTimeLeft(call.timestamp)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-center">
+                      {call.completed ? (
+                        <span title="Call Completed" style={{color: 'green', fontSize: '1.2em'}}>✅</span>
+                      ) : (
+                        <input type="checkbox" disabled={!!updatingId} checked={false} onChange={() => handleComplete(call._id)} />
+                      )}
                     </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-center">{call.completedBy || '-'}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-center">{call.completedAt ? new Date(call.completedAt).toLocaleString() : '-'}</td>
                   </tr>
                 ))}
               </tbody>

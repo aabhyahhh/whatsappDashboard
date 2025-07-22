@@ -1,11 +1,13 @@
 import { Router } from 'express';
-import type { Request, Response } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { Message } from '../models/Message.js';
 import { Contact } from '../models/Contact.js';
 import { client } from '../twilio.js';
 import { User } from '../models/User.js';
 // @ts-ignore: Importing JS model with separate .d.ts for types
 import LoanReplyLog from '../models/LoanReplyLog.js';
+import SupportCallLog from '../models/SupportCallLog.js';
+import jwt from 'jsonwebtoken';
 
 const router = Router();
 
@@ -407,6 +409,49 @@ router.post('/', async (req: Request, res: Response) => {
             }
         }
 
+        // Handle 'yes_support' button reply for support call tracking
+        const isSupportButton = req.body.ButtonPayload === 'yes_support';
+        if (isSupportButton) {
+            console.log("Received 'yes_support' button reply.");
+            try {
+                const phone = From.replace('whatsapp:', '');
+                const possibleNumbers = [phone];
+                if (phone.startsWith('+91')) possibleNumbers.push(phone.replace('+91', '91'));
+                if (phone.startsWith('+')) possibleNumbers.push(phone.substring(1));
+                possibleNumbers.push(phone.slice(-10));
+
+                // Find vendor name from User or Vendor
+                let name = null, contactNumber = null;
+                const user = await User.findOne({ contactNumber: { $in: possibleNumbers } });
+                if (user) {
+                    name = user.name;
+                    contactNumber = user.contactNumber;
+                } else {
+                    const VendorModel = (await import('../models/Vendor.js')).default;
+                    const vendor = await VendorModel.findOne({ contactNumber: { $in: possibleNumbers } });
+                    if (vendor) {
+                        name = vendor.name;
+                        contactNumber = vendor.contactNumber;
+                    }
+                }
+                if (name && contactNumber) {
+                    // Prevent duplicate logs for same contactNumber in last 24h
+                    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+                    const alreadyLogged = await SupportCallLog.findOne({ contactNumber, timestamp: { $gte: since } });
+                    if (!alreadyLogged) {
+                        await SupportCallLog.create({ vendorName: name, contactNumber });
+                        console.log('✅ Logged support call reply for:', name, contactNumber);
+                    } else {
+                        console.log('ℹ️ Already logged for support call reply in last 24h:', contactNumber);
+                    }
+                } else {
+                    console.log('No user or vendor found for contactNumber:', possibleNumbers);
+                }
+            } catch (err) {
+                console.error('❌ Failed to log support call reply:', err);
+            }
+        }
+
         // Handle 'verify_aadhar' button reply
         const isAadhaarButton = req.body.ButtonPayload === 'verify_aadhar';
         if (isAadhaarButton) {
@@ -516,13 +561,36 @@ router.get('/support-calls', async (_req, res) => {
     // Find logs where the reply was for support (id yes_support) in the last 24 hours
     // Assuming LoanReplyLog is also used for support replies, and we distinguish by a field or message type
     // If not, you may need to add a type field to LoanReplyLog. For now, filter by timestamp only.
-    const logs = await LoanReplyLog.find({
+    const logs = await SupportCallLog.find({
       timestamp: { $gte: since }
     }).sort({ timestamp: -1 });
     res.json(logs);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch support call requests' });
   }
+});
+
+// PATCH endpoint to mark a support call as completed
+router.patch('/support-calls/:id/complete', async (req: Request, res: Response) => {
+    try {
+        if (!['admin', 'onground', 'super_admin'].includes(req.user?.role)) {
+            return res.status(403).json({ message: 'Access denied' });
+        }
+        const { id } = req.params;
+        const updated = await SupportCallLog.findByIdAndUpdate(
+            id,
+            {
+                completed: true,
+                completedBy: req.user.username,
+                completedAt: new Date(),
+            },
+            { new: true }
+        );
+        if (!updated) return res.status(404).json({ message: 'Support call log not found' });
+        res.json(updated);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to mark support call as completed' });
+    }
 });
 
 export default router;
