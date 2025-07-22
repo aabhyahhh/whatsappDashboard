@@ -352,6 +352,88 @@ router.post('/', async (req: Request, res: Response) => {
             }
         }
 
+        // Handle 'Get Loan Support' button reply
+        const isLoanSupportButton = req.body.ButtonPayload === 'loan_support';
+        if (isLoanSupportButton) {
+            console.log("Received 'Get Loan Support' button reply.");
+            try {
+                // Log vendor name and contactNumber
+                const phone = From.replace('whatsapp:', '');
+                const possibleNumbers = [phone];
+                if (phone.startsWith('+91')) possibleNumbers.push(phone.replace('+91', '91'));
+                if (phone.startsWith('+')) possibleNumbers.push(phone.substring(1));
+                possibleNumbers.push(phone.slice(-10));
+
+                const user = await User.findOne({ contactNumber: { $in: possibleNumbers } });
+                let name = null, contactNumber = null;
+                if (user) {
+                    name = user.name;
+                    contactNumber = user.contactNumber;
+                }
+
+                if (name && contactNumber) {
+                    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+                    const alreadyLogged = await LoanReplyLog.findOne({ contactNumber, timestamp: { $gte: since } });
+                    if (!alreadyLogged) {
+                        await LoanReplyLog.create({ vendorName: name, contactNumber });
+                        console.log('✅ Logged loan support reply for:', name, contactNumber);
+                    } else {
+                        console.log('ℹ️ Already logged for loan support reply in last 24h:', contactNumber);
+                    }
+                } else {
+                    console.log('No user found for contactNumber:', possibleNumbers);
+                }
+            } catch (err) {
+                console.error('❌ Failed to log loan support reply:', err);
+            }
+
+            // Send the follow-up template message
+            if (client) {
+                try {
+                    const msgPayload: any = {
+                        from: `whatsapp:${To.replace('whatsapp:', '')}`,
+                        to: From,
+                        contentSid: 'HXcdbf14c73f068958f96efc216961834d',
+                        contentVariables: JSON.stringify({})
+                    };
+                    if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
+                        msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+                    }
+                    const twilioResp = await client.messages.create(msgPayload);
+                    console.log('✅ Triggered outbound template message HXcdbf14c73f068958f96efc216961834d in response to loan_support button. Twilio response:', twilioResp);
+                } catch (err) {
+                    console.error('❌ Failed to send loan support follow-up template message:', (err as Error)?.message || err, err);
+                }
+            }
+        }
+
+        // Handle 'verify_aadhar' button reply
+        const isAadhaarButton = req.body.ButtonPayload === 'verify_aadhar';
+        if (isAadhaarButton) {
+            console.log("Received 'verify_aadhar' button reply.");
+            try {
+                const phone = From.replace('whatsapp:', '');
+                const possibleNumbers = [phone];
+                if (phone.startsWith('+91')) possibleNumbers.push(phone.replace('+91', '91'));
+                if (phone.startsWith('+')) possibleNumbers.push(phone.substring(1));
+                possibleNumbers.push(phone.slice(-10));
+
+                const updatedLog = await LoanReplyLog.findOneAndUpdate(
+                    { contactNumber: { $in: possibleNumbers } },
+                    { aadharVerified: true },
+                    { new: true, sort: { timestamp: -1 } }
+                );
+
+                if (updatedLog) {
+                    console.log(`✅ Marked Aadhaar as verified for: ${updatedLog.contactNumber}`);
+                } else {
+                    console.log('No matching loan reply log found to update for Aadhaar verification.');
+                }
+            } catch (err) {
+                console.error('❌ Failed to update loan reply log for Aadhaar verification:', err);
+            }
+        }
+
         // Upsert contact in contacts collection
         const phone = From.replace('whatsapp:', ''); // Remove whatsapp: prefix if present
         await Contact.findOneAndUpdate(
@@ -421,35 +503,25 @@ router.post('/', async (req: Request, res: Response) => {
 router.get('/loan-replies', async (_req, res) => {
   try {
     const logs = await LoanReplyLog.find().sort({ timestamp: -1 });
-    // For each log, check if there is a message from this contactNumber with Aadhaar verification
-    const results = await Promise.all(logs.map(async (log: any) => {
-      // Find any inbound message from this contactNumber with button reply for Aadhaar verification
-      // We assume Twilio sends button replies as body: 'Yes, I will verify Aadhar' or similar, or as a payload field
-      // Adjust the query as needed for your actual Twilio payload
-      const possibleNumbers = [log.contactNumber];
-      if (log.contactNumber.startsWith('+91')) possibleNumbers.push(log.contactNumber.replace('+91', '91'));
-      if (log.contactNumber.startsWith('+')) possibleNumbers.push(log.contactNumber.substring(1));
-      possibleNumbers.push(log.contactNumber.slice(-10));
-      // Look for a message with body or payload indicating Aadhaar verification
-      const verified = await Message.findOne({
-        from: { $in: possibleNumbers.map(n => `whatsapp:${n}`) },
-        direction: 'inbound',
-        $or: [
-          { body: /yes[\s,\-_.]*i.*will.*verify.*aadhar/i },
-          { body: /yes[\s,\-_.]*aadhar/i },
-          { body: /aadhaar.*verified/i },
-          { body: /verify_aadhar/i },
-          // Add more patterns if needed
-        ]
-      });
-      return {
-        ...log.toObject(),
-        aadharVerified: !!verified
-      };
-    }));
-    res.json(results);
+    res.json(logs);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch loan reply logs' });
+  }
+});
+
+// Add endpoint to fetch support call requests in the last 24 hours
+router.get('/support-calls', async (_req, res) => {
+  try {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    // Find logs where the reply was for support (id yes_support) in the last 24 hours
+    // Assuming LoanReplyLog is also used for support replies, and we distinguish by a field or message type
+    // If not, you may need to add a type field to LoanReplyLog. For now, filter by timestamp only.
+    const logs = await LoanReplyLog.find({
+      timestamp: { $gte: since }
+    }).sort({ timestamp: -1 });
+    res.json(logs);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch support call requests' });
   }
 });
 

@@ -10,6 +10,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
 import LoanReplyLog from './pages/LoanReplyLog';
 import ActiveVendors24h from './pages/ActiveVendors24h';
+import SupportCalls from './pages/SupportCalls';
 
 function App() {
   return (
@@ -39,6 +40,11 @@ function App() {
         <Route path="/dashboard/active-vendors-24h" element={
           <ProtectedRoute>
             <ActiveVendors24h />
+          </ProtectedRoute>
+        } />
+        <Route path="/support-calls" element={
+          <ProtectedRoute>
+            <SupportCalls />
           </ProtectedRoute>
         } />
         <Route path="/admin/users" element={
