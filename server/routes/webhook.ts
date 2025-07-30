@@ -416,8 +416,16 @@ router.post('/', async (req: Request, res: Response) => {
 
         // Handle 'yes_support' button reply for support call tracking
         const isSupportButton = req.body.ButtonPayload === 'yes_support';
-        if (isSupportButton) {
-            console.log("Received 'yes_support' button reply.");
+        const isYesText = typeof Body === 'string' && Body.trim().toLowerCase() === 'yes';
+        const isTemplateButton = req.body.ButtonPayload === 'Yes' || req.body.ButtonText === 'Yes';
+        if (isSupportButton || isYesText || isTemplateButton) {
+            console.log("Received 'yes_support' button reply or 'Yes' text.");
+            console.log("ButtonPayload:", req.body.ButtonPayload);
+            console.log("ButtonText:", req.body.ButtonText);
+            console.log("Body:", Body);
+            console.log("isSupportButton:", isSupportButton);
+            console.log("isYesText:", isYesText);
+            console.log("isTemplateButton:", isTemplateButton);
             try {
                 const phone = From.replace('whatsapp:', '');
                 const possibleNumbers = [phone];
@@ -572,10 +580,10 @@ router.get('/support-calls', async (_req, res) => {
       timestamp: { $gte: since }
     }).sort({ timestamp: -1 });
     res.json(logs);
-} catch (err) {
-    console.error('❌ Failed to update loan reply log for Aadhaar verification:', err);
-}
-
+  } catch (err) {
+    console.error('❌ Failed to fetch support call logs:', err);
+    res.status(500).json({ error: 'Failed to fetch support call logs' });
+  }
 });
 
 // PATCH endpoint to mark a support call as completed
