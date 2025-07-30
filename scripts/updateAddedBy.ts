@@ -11,7 +11,7 @@ async function main() {
     { $or: [ { addedBy: { $exists: false } }, { addedBy: null }, { addedBy: '' }, { addedBy: 'System' } ] },
     { $set: { addedBy: 'admin' } }
   );
-  console.log(`Updated ${result.modifiedCount || result.nModified} users with addedBy = 'admin'`);
+  console.log(`Updated ${result.modifiedCount} users with addedBy = 'admin'`);
   await mongoose.disconnect();
 }
 

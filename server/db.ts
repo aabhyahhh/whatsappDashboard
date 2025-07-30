@@ -1,27 +1,40 @@
 import mongoose from 'mongoose';
 
-// TODO: Replace this with your actual MongoDB Atlas connection string
-// You can get this from MongoDB Atlas dashboard:
-// 1. Click "Connect" on your cluster
-// 2. Choose "Connect your application"
-// 3. Copy the connection string and replace <username>, <password>, <cluster>, and <database>
-// Example: mongodb+srv://myuser:mypassword@cluster0.abc123.mongodb.net/whatsapp?retryWrites=true&w=majority
-const MONGODB_URI = process.env.MONGODB_URI;
+// Environment-based database configuration
+const getMongoURI = () => {
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    if (isProduction) {
+        // Production: Use MONGODB_URI (restricted access)
+        const productionURI = process.env.MONGODB_URI;
+        if (!productionURI) {
+            console.error('❌ MONGODB_URI is required for production environment');
+            process.exit(1);
+        }
+        console.log('🔒 Using production database (restricted access)');
+        return productionURI;
+    } else {
+        // Development: Use MONGODB_URI_DEV (0.0.0.0 access for development)
+        const devURI = process.env.MONGODB_URI_DEV || process.env.MONGODB_URI || 'mongodb://localhost:27017/whatsapp_dev';
+        console.log('🛠️ Using development database (0.0.0.0 access)');
+        return devURI;
+    }
+};
 
-if (!MONGODB_URI) {
-    console.error('❌ MONGODB_URI is not defined in environment variables');
-    console.error('Please create a .env file with your MongoDB connection string:');
-    console.error('MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/<database>?retryWrites=true&w=majority');
-    process.exit(1);
-}
+const MONGO_URI = getMongoURI();
 
-// Connection options - removed deprecated options
-const options = {} as mongoose.ConnectOptions;
+// Connection options - simplified for development
+const options: mongoose.ConnectOptions = {
+    // Basic options
+    maxPoolSize: 10,
+    serverSelectionTimeoutMS: 10000,
+    socketTimeoutMS: 45000,
+};
 
 // Function to connect to MongoDB
 export const connectDB = async () => {
     try {
-        await mongoose.connect(MONGODB_URI, options);
+        await mongoose.connect(MONGO_URI, options);
         console.log('✅ MongoDB connected successfully');
         
         const db = mongoose.connection.db;

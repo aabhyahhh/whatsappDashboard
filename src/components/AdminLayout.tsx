@@ -28,8 +28,17 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     const token = localStorage.getItem('token');
     if (token) {
       try {
-        const decodedToken: any = jwtDecode(token);
-        setUserRole(decodedToken.role);
+        const decodedToken: unknown = jwtDecode(token);
+        if (
+          typeof decodedToken === 'object' &&
+          decodedToken !== null &&
+          'role' in decodedToken &&
+          typeof (decodedToken as { role: unknown }).role === 'string'
+        ) {
+          setUserRole((decodedToken as { role: string }).role);
+        } else {
+          setUserRole(null);
+        }
       } catch (error) {
         console.error('Error decoding token:', error);
         localStorage.removeItem('token');
@@ -120,6 +129,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       path: '/loan-replies',
       icon: '💸',
       show: userRole === 'admin' || userRole === 'super_admin'
+    },
+    {
+      name: 'Support Calls (24h)',
+      path: '/support-calls',
+      icon: '📞',
+      show: userRole === 'admin' || userRole === 'onground' || userRole === 'super_admin'
     },
     {
       name: 'Active Vendors (24h)',

@@ -1,0 +1,403 @@
+✅ MongoDB connected successfully
+📁 Connected to database: test
+📚 Available collections: [
+  'messages',
+  'vendorlocations',
+  'operating hours',
+  'reviews',
+  'loanreplylogs',
+  'users',
+  'verifications',
+  'contacts',
+  'vendorimages',
+  'supporttickets',
+  'admins',
+  'vendors'
+]
+Found 420 users to message.
+✅ Sent template to 9265466535
+✅ Sent template to 9724582149
+✅ Sent template to 9824938624
+✅ Sent template to 9549202397
+✅ Sent template to 7990874770
+✅ Sent template to 9081277786
+✅ Sent template to 9998147174
+✅ Sent template to +918866359219
+✅ Sent template to 9824138851
+✅ Sent template to 9913786663
+✅ Sent template to 8160048448
+✅ Sent template to 9265740813
+✅ Sent template to 9724477100
+✅ Sent template to 9624442157
+✅ Sent template to 9925799590
+✅ Sent template to 8128311702
+✅ Sent template to 7041859966
+✅ Sent template to 7600357813
+✅ Sent template to 7600357813
+✅ Sent template to 8696645638
+✅ Sent template to 8696645638
+✅ Sent template to 9157576181
+✅ Sent template to 7874623548
+✅ Sent template to 9893525715
+✅ Sent template to 8490909073
+✅ Sent template to 8490909073
+❌ Failed to send to 1234567890: The 'To' number 1234567890 is not a valid phone number.
+❌ Failed to send to 1234567890: The 'To' number 1234567890 is not a valid phone number.
+✅ Sent template to 9998842848
+✅ Sent template to 9157750316
+✅ Sent template to 9870803700
+✅ Sent template to 7096558607
+✅ Sent template to 8128551630
+✅ Sent template to 8128097870
+✅ Sent template to 7069295111
+✅ Sent template to 8777787411
+✅ Sent template to 7874345757
+✅ Sent template to 6395111826
+✅ Sent template to 9662965020
+✅ Sent template to 8401807018
+✅ Sent template to +919510603493
+✅ Sent template to +919511562108
+✅ Sent template to 8959184078
+✅ Sent template to 9409280630
+✅ Sent template to 9313744911
+✅ Sent template to 8450998362
+✅ Sent template to 9898159062
+Skipping user with invalid contactNumber: {
+  location: { type: 'Point', coordinates: [ 0, 0 ] },
+  _id: new ObjectId('685507ff32861594fca8efe2'),
+  name: 'Royal Belgian Waffle',
+  contactNumber: '01',
+  mapsLink: 'https://www.google.com/maps/place/23-6,+New+Ranip+Rd,+New+Ranip,+Ahmedabad,+Gujarat+382470/@23.0887246,72.5596544,19z/data=!3m1!4b1!4m6!3m5!1s0x395e830c3a0b16cd:0x9f55e02c639f7632!8m2!3d23.0887246!4d72.5596544!16s%2Fg%2F11rf03q9mw?authuser=0&entry=ttu&g_ep=EgoyMDI1MDYxNy4wIKXMDSoASAFQAw%3D%3D',
+  operatingHours: {
+    openTime: '19:00',
+    closeTime: '23:00',
+    days: [
+      0, 2, 4, 6,
+      1, 3, 5
+    ]
+  },
+  bestDishes: [ { name: 'Dark Chocolate', price: 60 } ],
+  menuLink: '',
+  foodType: 'veg',
+  profilePictureUrl: '',
+  createdAt: 2025-06-20T07:04:31.728Z,
+  updatedAt: 2025-07-09T11:35:58.945Z,
+  __v: 0,
+  whatsappConsent: true,
+  comments: '',
+  addedBy: 'admin',
+  entryType: 'M',
+  primaryLanguage: 'English',
+  vendorIndex: '49*EN*M*System',
+  foodCategories: [ 'Dessert' ],
+  onboardingType: 'manual entry',
+  preferredLanguages: [ 'Hindi' ],
+  profilePictures: [],
+  stallType: 'fixed'
+}
+✅ Sent template to 7275026115
+✅ Sent template to 9157308478
+✅ Sent template to 9909702977
+✅ Sent template to +919909702977
+✅ Sent template to 7016691823
+✅ Sent template to 9016641759
+Skipping user with invalid contactNumber: {
+  location: { type: 'Point', coordinates: [ 0, 0 ] },
+  _id: new ObjectId('68550ced32861594fca8effe'),
+  name: 'Shri Ambika Dal Vada',
+  contactNumber: '02',
+  mapsLink: 'https://www.google.com/maps/place/132+Feet+Ring+Rd,+Sastri+Nagar,+Hridaya+Kunj,+Ranip,+Ahmedabad,+Gujarat+380027/@23.0683862,72.5807628,18z/data=!3m1!4b1!4m6!3m5!1s0x395e8388b97b5e73:0xb4990f03643e845d!8m2!3d23.0683862!4d72.5807628!16s%2Fg%2F11g5_yzlcg?authuser=0&entry=ttu&g_ep=EgoyMDI1MDYxNy4wIKXMDSoASAFQAw%3D%3D',
+  operatingHours: {
+    openTime: '11:00',
+    closeTime: '19:00',
+    days: [
+      0, 1, 2, 3,
+      4, 5, 6
+    ]
+  },
+  bestDishes: [
+    { name: 'Bhajiya', price: null },
+    { name: 'Dal vada', price: null }
+  ],
+  menuLink: '',
+  foodType: 'swaminarayan',
+  profilePictureUrl: '',
+  createdAt: 2025-06-20T07:25:33.770Z,
+  updatedAt: 2025-07-11T05:52:11.735Z,
+  __v: 0,
+  whatsappConsent: true,
+  comments: '',
+  addedBy: 'admin',
+  entryType: 'M',
+  primaryLanguage: 'English',
+  vendorIndex: '56*EN*M*System',
+  foodCategories: [ 'Gujju Snacks' ],
+  onboardingType: 'manual entry',
+  preferredLanguages: [ 'Hindi' ],
+  profilePictures: [],
+  stallType: 'fixed'
+}
+✅ Sent template to 9665267764
+✅ Sent template to 9898145265
+Skipping user with invalid contactNumber: {
+  location: { type: 'Point', coordinates: [ 0, 0 ] },
+  _id: new ObjectId('68550ee032861594fca8f00a'),
+  name: 'Birasha Bhel Pakodi Centre',
+  contactNumber: '890623569',
+  mapsLink: 'https://www.google.com/maps/place/132+Feet+Ring+Rd,+Hridaya+Kunj,+Ranip,+Ahmedabad,+Gujarat+380027/@23.0683897,72.5800918,18z/data=!3m1!4b1!4m6!3m5!1s0x395e8388b97b5e73:0xb4990f03643e845d!8m2!3d23.0683884!4d72.5807748!16s%2Fg%2F11g5_yzlcg?authuser=0&entry=ttu&g_ep=EgoyMDI1MDEyMS4wIKXMDSoASAFQAw%3D%3D',
+  operatingHours: {
+    openTime: '00:00',
+    closeTime: '00:00',
+    days: [
+      0, 1, 2, 3,
+      4, 5, 6
+    ]
+  },
+  bestDishes: [ { name: 'Bhel puri', price: null } ],
+  menuLink: '',
+  foodType: 'veg',
+  profilePictureUrl: '',
+  createdAt: 2025-06-20T07:33:52.888Z,
+  updatedAt: 2025-07-11T05:55:01.295Z,
+  __v: 0,
+  whatsappConsent: true,
+  comments: '',
+  addedBy: 'admin',
+  entryType: 'M',
+  primaryLanguage: 'English',
+  vendorIndex: '59*EN*M*System',
+  foodCategories: [ 'Pani Puri' ],
+  onboardingType: 'manual entry',
+  preferredLanguages: [ 'Hindi' ],
+  profilePictures: [],
+  stallType: 'fixed'
+}
+✅ Sent template to 7990372517
+Skipping user with invalid contactNumber: {
+  location: { type: 'Point', coordinates: [ 0, 0 ] },
+  _id: new ObjectId('68550f8432861594fca8f012'),
+  name: 'Shri Ram Bhel Pakodi Centre',
+  contactNumber: '03',
+  mapsLink: 'https://www.google.com/maps/place/%E0%AA%A8%E0%AA%BE%E0%AA%A8%E0%AA%BE+%E0%AA%95%E0%AB%8B%E0%AA%AE%E0%AB%8D%E0%AA%AA%E0%AA%B2%E0%AB%87%E0%AA%95%E0%AB%8D%E0%AA%B7/@23.0674374,72.5693907,18z/data=!3m1!4b1!4m6!3m5!1s0x395e838184d6d075:0x9424ba55f4401eb3!8m2!3d23.0674358!4d72.5702272!16s%2Fg%2F11vy2gr7sn?authuser=0&entry=ttu&g_ep=EgoyMDI1MDEyMS4wIKXMDSoASAFQAw%3D%3D',
+  operatingHours: {
+    openTime: '12:00 AM',
+    closeTime: '12:00 PM',
+    days: [
+      0, 1, 2, 3,
+      4, 5, 6
+    ]
+  },
+  bestDishes: [
+    { name: 'Pani puri', price: null },
+    { name: 'Dahi puri', price: null }
+  ],
+  menuLink: '',
+  foodType: 'veg',
+  profilePictureUrl: '',
+  createdAt: 2025-06-20T07:36:36.147Z,
+  updatedAt: 2025-07-11T05:57:26.122Z,
+  __v: 0,
+  whatsappConsent: true,
+  comments: '',
+  addedBy: 'admin',
+  entryType: 'M',
+  primaryLanguage: 'English',
+  vendorIndex: '61*EN*M*System',
+  foodCategories: [ 'Snacks (Samosa, Vada Pav, etc.)' ],
+  onboardingType: 'manual entry',
+  preferredLanguages: [ 'Hindi' ],
+  profilePictures: [],
+  stallType: 'fixed'
+}
+✅ Sent template to 8318987862
+Skipping user with invalid contactNumber: {
+  location: { type: 'Point', coordinates: [ 0, 0 ] },
+  _id: new ObjectId('6855104f32861594fca8f01a'),
+  name: "Momo's Centre",
+  contactNumber: '786303450',
+  mapsLink: 'https://www.google.com/maps/place/Champak+Nagar,+Nava+Vadaj,+Ahmedabad,+Gujarat+380013/@23.0672794,72.5691482,19z/data=!3m1!4b1!4m6!3m5!1s0x395e8381f290ac99:0x69bcf75ddbf0c404!8m2!3d23.0672794!4d72.5691482!16s%2Fg%2F11c632q_v0?authuser=0&entry=ttu&g_ep=EgoyMDI1MDYxNy4wIKXMDSoASAFQAw%3D%3D',
+  operatingHours: {
+    openTime: '12:00 AM',
+    closeTime: '12:00 PM',
+    days: [
+      0, 1, 2, 3,
+      4, 5, 6
+    ]
+  },
+  bestDishes: [
+    { name: 'Veg Momo', price: null },
+    { name: 'Paneer Momo', price: null }
+  ],
+  menuLink: '',
+  foodType: 'veg',
+  profilePictureUrl: '',
+  createdAt: 2025-06-20T07:39:59.556Z,
+  updatedAt: 2025-07-11T05:58:47.226Z,
+  __v: 0,
+  whatsappConsent: true,
+  comments: '',
+  addedBy: 'admin',
+  entryType: 'M',
+  primaryLanguage: 'English',
+  vendorIndex: '63*EN*M*System',
+  foodCategories: [ 'Korean' ],
+  onboardingType: 'manual entry',
+  preferredLanguages: [ 'Hindi' ],
+  profilePictures: [],
+  stallType: 'fixed'
+}
+✅ Sent template to 9662075711
+✅ Sent template to 9179472817
+✅ Sent template to 9294513414
+✅ Sent template to 9171332776
+✅ Sent template to 9998645101
+✅ Sent template to 9725117525
+✅ Sent template to 7984585069
+✅ Sent template to 7383385205
+✅ Sent template to 8320766558
+✅ Sent template to 6363238216
+✅ Sent template to 7984112636
+✅ Sent template to 94095704648
+✅ Sent template to 8578967132
+✅ Sent template to 7856253564
+✅ Sent template to 6353809672
+✅ Sent template to 8128586040
+✅ Sent template to 8460864575
+✅ Sent template to 8488880208
+✅ Sent template to 7778879082
+✅ Sent template to 7383215130
+✅ Sent template to 9712131555
+✅ Sent template to 9324196725
+✅ Sent template to 7698960597
+✅ Sent template to 8128642120
+✅ Sent template to 8128602824
+✅ Sent template to 9512372873
+✅ Sent template to 8200261376
+✅ Sent template to 9998980010
+✅ Sent template to +917575087747
+✅ Sent template to +917575087747
+✅ Sent template to +919327575566
+✅ Sent template to +917503449744
+✅ Sent template to +919327008983
+✅ Sent template to +919979894998
+✅ Sent template to +917990031791
+✅ Sent template to +919924005077
+✅ Sent template to +919924005077
+✅ Sent template to +919173777368
+✅ Sent template to +919974870876
+✅ Sent template to +919558076907
+✅ Sent template to +919898360543
+✅ Sent template to +917021522724
+✅ Sent template to +918809416504
+✅ Sent template to +919998426334
+✅ Sent template to +919601738734
+✅ Sent template to +917600892061
+✅ Sent template to +919624415415
+✅ Sent template to +919909249133
+✅ Sent template to +91997545465
+✅ Sent template to +91998966247
+✅ Sent template to +919979091536
+✅ Sent template to +91704101670
+✅ Sent template to +919601903797
+✅ Sent template to +917600791744
+✅ Sent template to +919206979105
+✅ Sent template to +919304631743
+✅ Sent template to +918409967460
+✅ Sent template to +919998842848
+✅ Sent template to +917621866987
+✅ Sent template to +917877082809
+✅ Sent template to +917851049301
+✅ Sent template to +916376844341
+✅ Sent template to +919016830064
+✅ Sent template to +919522012061
+✅ Sent template to +917600964993
+✅ Sent template to +919520814018
+✅ Sent template to +917518270497
+✅ Sent template to +916264940700
+✅ Sent template to +919216746703
+✅ Sent template to +917624064183
+✅ Sent template to +919054408650
+✅ Sent template to +919351946046
+✅ Sent template to +917898842428
+✅ Sent template to +919913457800
+✅ Sent template to +919161915734
+✅ Sent template to +919329897770
+✅ Sent template to +917607096667
+✅ Sent template to +916354916926
+✅ Sent template to +917990476720
+✅ Sent template to +917023072690
+✅ Sent template to +919978086360
+✅ Sent template to +918824575315
+✅ Sent template to +917742115829
+✅ Sent template to +917568477619
+✅ Sent template to +918460919256
+✅ Sent template to +917023546027
+✅ Sent template to +916375236187
+✅ Sent template to +919737987571
+✅ Sent template to +919712928252
+✅ Sent template to +919974370839
+✅ Sent template to +918128177233
+✅ Sent template to +919712875198
+✅ Sent template to +919824231862
+✅ Sent template to +917023970033
+✅ Sent template to +919510447745
+✅ Sent template to +919687270512
+✅ Sent template to +919687270512
+✅ Sent template to +919724860761
+✅ Sent template to +919978519552
+✅ Sent template to +918488845672
+✅ Sent template to +918829889121
+✅ Sent template to +918758351326
+✅ Sent template to +917383693708
+✅ Sent template to +919016148210
+✅ Sent template to +917874283731
+✅ Sent template to +919825718092
+✅ Sent template to +918003947599
+✅ Sent template to +917046526593
+✅ Sent template to +919974620020
+✅ Sent template to +918460238203
+✅ Sent template to +919898769649
+✅ Sent template to +919227034017
+✅ Sent template to +919265013008
+✅ Sent template to +919974895289
+✅ Sent template to +919974895289
+✅ Sent template to +919974895289
+✅ Sent template to +918140443375
+✅ Sent template to +919173777368
+✅ Sent template to +919116927558
+✅ Sent template to +919104686929
+✅ Sent template to +919974366236
+✅ Sent template to +919601311027
+✅ Sent template to +919510480347
+✅ Sent template to +916351143648
+✅ Sent template to +917567214621
+✅ Sent template to +919274005884
+✅ Sent template to +919904482616
+✅ Sent template to +919898929351
+✅ Sent template to +919898929351
+✅ Sent template to +918128760753
+✅ Sent template to +917851961843
+✅ Sent template to +919257963395
+✅ Sent template to +919998869432
+✅ Sent template to +917600003806
+✅ Sent template to +919981612427
+✅ Sent template to +919712277724
+✅ Sent template to +917879704485
+✅ Sent template to +918000450854
+✅ Sent template to +917067310822
+✅ Sent template to +918077756675
+✅ Sent template to +919265479683
+✅ Sent template to +917863014826
+✅ Sent template to +919875163286
+✅ Sent template to +918160181679
+✅ Sent template to +918733877439
+✅ Sent template to +917509758503
+✅ Sent template to +919685455882
+✅ Sent template to +919752990074
+✅ Sent template to +918490803729
+✅ Sent template to +918849081925
+✅ Sent template to +917574004758
+✅ Sent template to +918799152897
+✅ Sent template to +918128180850
+✅ Sent template to +918490854558
+✅ Sent template to +917990472729
