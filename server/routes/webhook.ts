@@ -1,12 +1,45 @@
 import { Router } from 'express';
-import type { Request, Response } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { Message } from '../models/Message.js';
 import { Contact } from '../models/Contact.js';
 import { client } from '../twilio.js';
 import { User } from '../models/User.js';
+import jwt from 'jsonwebtoken';
 
 import LoanReplyLog from '../models/LoanReplyLog.js';
 import SupportCallLog from '../models/SupportCallLog.js';
+
+// JWT secret
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
+// Extend Request interface to include user
+declare global {
+    namespace Express {
+        interface Request {
+            user?: { id: string; username: string; role: string };
+        }
+    }
+}
+
+// Middleware to verify JWT
+const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (token == null) {
+        res.sendStatus(401); // No token
+        return;
+    }
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) {
+            res.sendStatus(403); // Invalid token
+            return;
+        }
+        req.user = user as { id: string; username: string; role: string };
+        next();
+    });
+};
 
 const router = Router();
 
@@ -460,6 +493,43 @@ router.post('/', async (req: Request, res: Response) => {
                 } else {
                     console.log('No user or vendor found for contactNumber:', possibleNumbers);
                 }
+
+                // Send follow-up template message
+                if (client) {
+                    try {
+                        const msgPayload = {
+                            from: `whatsapp:${To.replace('whatsapp:', '')}`,
+                            to: From,
+                            contentSid: 'HXd71a47a5df1f4c784fc2f8155bb349ca',
+                            contentVariables: JSON.stringify({}),
+                            messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID,
+                        };
+                        
+                        if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
+                            msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+                        }
+                        const twilioResp = await client.messages.create(msgPayload);
+                        console.log('✅ Sent follow-up template message HXd71a47a5df1f4c784fc2f8155bb349ca in response to yes_support. Twilio response:', twilioResp);
+                        
+                        // Save the outbound template message to MongoDB for chat display
+                        try {
+                            await Message.create({
+                                from: msgPayload.from,
+                                to: msgPayload.to,
+                                body: '[Support call follow-up template sent]',
+                                direction: 'outbound',
+                                timestamp: new Date(),
+                            });
+                            console.log('✅ Outbound support follow-up template message saved to DB:', msgPayload.to);
+                        } catch (err) {
+                            console.error('❌ Failed to save outbound support follow-up template message:', err);
+                        }
+                    } catch (err) {
+                        console.error('❌ Failed to send support follow-up template message:', (err as Error)?.message || err, err);
+                    }
+                } else {
+                    console.warn('⚠️ Twilio client not initialized, cannot send support follow-up template message.');
+                }
             } catch (err) {
                 console.error('❌ Failed to log support call reply:', err);
             }
@@ -587,7 +657,7 @@ router.get('/support-calls', async (_req, res) => {
 });
 
 // PATCH endpoint to mark a support call as completed
-router.patch('/support-calls/:id/complete', async (req, res) => {
+router.patch('/support-calls/:id/complete', authenticateToken, async (req, res) => {
     try {
         if (!req.user || !['admin', 'onground', 'super_admin'].includes(req.user.role)) {
             return res.status(403).json({ message: 'Access denied' });
@@ -605,9 +675,9 @@ router.patch('/support-calls/:id/complete', async (req, res) => {
         if (!updated) return res.status(404).json({ message: 'Support call log not found' });
         res.json(updated);
     } catch (err) {
-        console.error('❌ Failed to send Aadhaar verification template message:', err);
-      }
-    
+        console.error('❌ Failed to mark support call as completed:', err);
+        res.status(500).json({ error: 'Failed to mark support call as completed' });
+    }
 });
 
 export default router;

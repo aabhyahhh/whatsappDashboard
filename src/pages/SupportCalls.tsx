@@ -27,6 +27,17 @@ function getTimeLeft(timestamp: string) {
   return `${hours}h ${minutes}m ${seconds}s`;
 }
 
+function getTimeTaken(timestamp: string, completedAt?: string) {
+  if (!completedAt) return '-';
+  const start = new Date(timestamp);
+  const end = new Date(completedAt);
+  const diff = end.getTime() - start.getTime();
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+  return `${hours}h ${minutes}m ${seconds}s`;
+}
+
 export default function SupportCalls() {
   const [calls, setCalls] = useState<SupportCallEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,6 +112,7 @@ export default function SupportCalls() {
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Contact Number</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Request Time</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Time Left</th>
+                  <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Time Taken</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Call Completed</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Completed By</th>
                   <th className="px-4 py-3 font-semibold text-gray-700 whitespace-nowrap">Completed At</th>
@@ -113,7 +125,9 @@ export default function SupportCalls() {
                     <td className="px-4 py-3 whitespace-nowrap font-medium text-gray-900">{call.vendorName}</td>
                     <td className="px-4 py-3 whitespace-nowrap">{call.contactNumber}</td>
                     <td className="px-4 py-3 whitespace-nowrap text-gray-500">{new Date(call.timestamp).toLocaleString()}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-blue-700 font-semibold">{getTimeLeft(call.timestamp)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-blue-700 font-semibold">
+                      {call.completed ? getTimeTaken(call.timestamp, call.completedAt) : getTimeLeft(call.timestamp)}
+                    </td>
                     <td className="px-4 py-3 whitespace-nowrap text-center">
                       {call.completed ? (
                         <span title="Call Completed" style={{color: 'green', fontSize: '1.2em'}}>✅</span>
