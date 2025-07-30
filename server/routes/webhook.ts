@@ -682,7 +682,7 @@ router.patch('/support-calls/:id/complete', authenticateToken, async (req, res) 
         });
         
         // GET endpoint to fetch inactive vendors
-        router.get('/inactive-vendors', async (req, res) => {
+        router.get('/inactive-vendors', async (_req, res) => {
             try {
                 const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
                 
