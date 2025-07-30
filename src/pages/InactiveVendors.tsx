@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import AdminLayout from '../components/AdminLayout';
+
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
 interface InactiveVendor {
   _id: string;
@@ -23,7 +26,7 @@ export default function InactiveVendors() {
   const fetchInactiveVendors = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/webhook/inactive-vendors');
+      const response = await fetch(`${apiBaseUrl}/api/webhook/inactive-vendors`);
       if (!response.ok) {
         throw new Error('Failed to fetch inactive vendors');
       }
@@ -38,7 +41,7 @@ export default function InactiveVendors() {
 
   const handleSendReminder = async (vendorId: string) => {
     try {
-      const response = await fetch(`/api/webhook/send-reminder/${vendorId}`, {
+      const response = await fetch(`${apiBaseUrl}/api/webhook/send-reminder/${vendorId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -99,8 +102,7 @@ export default function InactiveVendors() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
+    <AdminLayout>
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
@@ -275,14 +277,12 @@ export default function InactiveVendors() {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        {!vendor.reminderSentAt && (
-                          <button
-                            onClick={() => handleSendReminder(vendor._id)}
-                            className="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-md text-sm font-medium transition-colors"
-                          >
-                            Send Reminder
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleSendReminder(vendor._id)}
+                          className="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-md text-sm font-medium transition-colors"
+                        >
+                          Send Reminder
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -291,7 +291,6 @@ export default function InactiveVendors() {
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </AdminLayout>
   );
 } 

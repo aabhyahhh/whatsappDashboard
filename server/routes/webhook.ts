@@ -696,14 +696,37 @@ router.patch('/support-calls/:id/complete', authenticateToken, async (req, res) 
                     reminderMap.set(log.contactNumber, log.sentAt);
                 });
                 
-                // Format the response
-                const inactiveVendors = inactiveContacts.map(contact => ({
-                    _id: contact._id,
-                    phone: contact.phone,
-                    name: (contact as any).name || 'Unknown Vendor',
-                    lastSeen: contact.lastSeen,
-                    lastMessage: (contact as any).lastMessage || 'No recent messages',
-                    reminderSentAt: reminderMap.get(contact.phone) || null
+                // Format the response with vendor names
+                const inactiveVendors = await Promise.all(inactiveContacts.map(async (contact) => {
+                    // Try to find vendor name from User or Vendor models
+                    const possibleNumbers = [contact.phone];
+                    if (contact.phone.startsWith('+91')) possibleNumbers.push(contact.phone.replace('+91', '91'));
+                    if (contact.phone.startsWith('+')) possibleNumbers.push(contact.phone.substring(1));
+                    possibleNumbers.push(contact.phone.slice(-10));
+
+                    let vendorName = 'Unknown Vendor';
+                    
+                    // Check User model first
+                    const user = await User.findOne({ contactNumber: { $in: possibleNumbers } });
+                    if (user) {
+                        vendorName = user.name;
+                    } else {
+                        // Check Vendor model
+                        const VendorModel = (await import('../models/Vendor.js')).default;
+                        const vendor = await VendorModel.findOne({ contactNumber: { $in: possibleNumbers } });
+                        if (vendor) {
+                            vendorName = vendor.name;
+                        }
+                    }
+
+                    return {
+                        _id: contact._id,
+                        phone: contact.phone,
+                        name: vendorName,
+                        lastSeen: contact.lastSeen,
+                        lastMessage: (contact as any).lastMessage || 'No recent messages',
+                        reminderSentAt: reminderMap.get(contact.phone) || null
+                    };
                 }));
                 
                 res.json(inactiveVendors);
