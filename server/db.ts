@@ -23,12 +23,18 @@ const getMongoURI = () => {
 
 const MONGO_URI = getMongoURI();
 
-// Connection options - simplified for development
+// Connection options - optimized for production
 const options: mongoose.ConnectOptions = {
-    // Basic options
     maxPoolSize: 10,
-    serverSelectionTimeoutMS: 10000,
+    serverSelectionTimeoutMS: 30000, // Increased for production
     socketTimeoutMS: 45000,
+    connectTimeoutMS: 30000,
+    // Production-specific options
+    ...(process.env.NODE_ENV === 'production' && {
+        ssl: true,
+        retryWrites: true,
+        w: 'majority'
+    })
 };
 
 // Function to connect to MongoDB

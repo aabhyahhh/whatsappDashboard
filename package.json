@@ -7,7 +7,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "auth-server": "tsx server/auth.ts"
+    "auth-server": "tsx server/auth.ts",
+    "start": "tsx server/auth.ts"
   },
   "dependencies": {
     "@types/bcryptjs": "^2.4.6",
