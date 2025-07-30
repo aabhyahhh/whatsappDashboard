@@ -1653,7 +1653,7 @@ export default function UserManagement() {
                   const entryType = user.entryType || 'O';
                   const adminName = user.addedBy || 'admin';
                   const customIndex = `${idx + 1}_${lang}_${entryType}_${adminName}`;
-                  const operatingHours = user.operatingHours || {};
+                  const operatingHours = user.operatingHours || { openTime: '', closeTime: '', days: [] };
                   return (
                     <tr key={user._id} className="hover:bg-gray-50 cursor-pointer" onClick={() => handleVendorRowClick(user)}>
                       <td className="px-4 py-3 whitespace-nowrap">{customIndex}</td>
@@ -1715,15 +1715,15 @@ export default function UserManagement() {
                   </div>
                   <div className="form-group">
                     <label className="form-label">Open Time</label>
-                    <div>{selectedVendor.operatingHours.openTime || 'N/A'}</div>
+                    <div>{selectedVendor.operatingHours?.openTime || 'N/A'}</div>
                   </div>
                   <div className="form-group">
                     <label className="form-label">Close Time</label>
-                    <div>{selectedVendor.operatingHours.closeTime || 'N/A'}</div>
+                    <div>{selectedVendor.operatingHours?.closeTime || 'N/A'}</div>
                   </div>
                   <div className="form-group full-width">
                     <label className="form-label">Operating Days</label>
-                    <div>{selectedVendor.operatingHours.days?.map(day => getDayName(day)).join(', ') || 'Not specified'}</div>
+                    <div>{selectedVendor.operatingHours?.days?.map(day => getDayName(day)).join(', ') || 'Not specified'}</div>
                   </div>
                   <div className="form-group full-width">
                     <label className="form-label">Best Dishes</label>

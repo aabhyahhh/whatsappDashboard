@@ -8,6 +8,7 @@ import jwt from 'jsonwebtoken';
 
 import LoanReplyLog from '../models/LoanReplyLog.js';
 import SupportCallLog from '../models/SupportCallLog.js';
+import SupportCallReminderLog from '../models/SupportCallReminderLog.js';
 
 // JWT secret
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -678,6 +679,99 @@ router.patch('/support-calls/:id/complete', authenticateToken, async (req, res) 
         console.error('❌ Failed to mark support call as completed:', err);
         res.status(500).json({ error: 'Failed to mark support call as completed' });
     }
-});
+        });
+        
+        // GET endpoint to fetch inactive vendors
+        router.get('/inactive-vendors', async (_req, res) => {
+            try {
+                const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+                
+                // Find contacts not seen in 3+ days
+                const inactiveContacts = await Contact.find({ lastSeen: { $lte: threeDaysAgo } });
+                
+                // Get reminder logs to check which vendors have been sent reminders
+                const reminderLogs = await SupportCallReminderLog.find({});
+                const reminderMap = new Map();
+                reminderLogs.forEach((log: any) => {
+                    reminderMap.set(log.contactNumber, log.sentAt);
+                });
+                
+                // Format the response with vendor names
+                const inactiveVendors = await Promise.all(inactiveContacts.map(async (contact) => {
+                    // Try to find vendor name from User or Vendor models
+                    const possibleNumbers = [contact.phone];
+                    if (contact.phone.startsWith('+91')) possibleNumbers.push(contact.phone.replace('+91', '91'));
+                    if (contact.phone.startsWith('+')) possibleNumbers.push(contact.phone.substring(1));
+                    possibleNumbers.push(contact.phone.slice(-10));
 
-export default router;
+                    let vendorName = 'Unknown Vendor';
+                    
+                    // Check User model first
+                    const user = await User.findOne({ contactNumber: { $in: possibleNumbers } });
+                    if (user) {
+                        vendorName = user.name;
+                    } else {
+                        // Check Vendor model
+                        const VendorModel = (await import('../models/Vendor.js')).default;
+                        const vendor = await VendorModel.findOne({ contactNumber: { $in: possibleNumbers } });
+                        if (vendor) {
+                            vendorName = vendor.name;
+                        }
+                    }
+
+                    return {
+                        _id: contact._id,
+                        phone: contact.phone,
+                        name: vendorName,
+                        lastSeen: contact.lastSeen,
+                        lastMessage: (contact as any).lastMessage || 'No recent messages',
+                        reminderSentAt: reminderMap.get(contact.phone) || null
+                    };
+                }));
+                
+                res.json(inactiveVendors);
+            } catch (err) {
+                console.error('❌ Failed to fetch inactive vendors:', err);
+                res.status(500).json({ error: 'Failed to fetch inactive vendors' });
+            }
+        });
+        
+        // POST endpoint to send reminder to a specific vendor
+        router.post('/send-reminder/:vendorId', async (req, res) => {
+            try {
+                const { vendorId } = req.params;
+                
+                // Find the contact
+                const contact = await Contact.findById(vendorId);
+                if (!contact) {
+                    return res.status(404).json({ error: 'Vendor not found' });
+                }
+                
+                // Send the reminder message
+                if (!client) {
+                    return res.status(500).json({ error: 'Twilio client not initialized' });
+                }
+                
+                const message = await client.messages.create({
+                    from: `whatsapp:${twilioNumber}`,
+                    to: `whatsapp:${contact.phone}`,
+                    contentSid: 'HX4c78928e13eda15597c00ea0915f1f77',
+                    contentVariables: JSON.stringify({})
+                });
+                
+                // Log the reminder
+                await SupportCallReminderLog.create({
+                    contactNumber: contact.phone,
+                    sentAt: new Date()
+                });
+                
+                console.log(`✅ Reminder sent to ${contact.phone}: ${message.sid}`);
+                res.json({ success: true, messageSid: message.sid });
+                
+            } catch (err) {
+                console.error('❌ Failed to send reminder:', err);
+                res.status(500).json({ error: 'Failed to send reminder' });
+            }
+        });
+        
+        export default router;
