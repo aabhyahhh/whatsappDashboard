@@ -233,9 +233,6 @@ export default function InactiveVendors() {
                             <div className="text-sm font-medium text-gray-900">
                               {vendor.name || 'Unknown Vendor'}
                             </div>
-                            <div className="text-sm text-gray-500">
-                              {vendor.lastMessage || 'No recent messages'}
-                            </div>
                           </div>
                         </div>
                       </td>
