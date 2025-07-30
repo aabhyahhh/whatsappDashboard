@@ -756,7 +756,7 @@ export default function UserManagement() {
                         return;
                       }
                       const formData = new FormData();
-                      files.forEach(file => formData.append('images', file));
+                      files.forEach((file: File) => formData.append('images', file));
                       const res = await fetch(`${apiBaseUrl}/api/users/upload-images`, {
                         method: 'POST',
                         body: formData,
@@ -1215,7 +1215,7 @@ export default function UserManagement() {
                         return;
                       }
                       const formData = new FormData();
-                      files.forEach(file => formData.append('images', file));
+                      files.forEach((file: File) => formData.append('images', file));
                       const res = await fetch(`${apiBaseUrl}/api/users/upload-images`, {
                         method: 'POST',
                         body: formData,
@@ -1813,7 +1813,7 @@ export default function UserManagement() {
                       const files = Array.from(e.target.files || []);
                       if (files.length > 10) { alert('You can upload a maximum of 10 images.'); return; }
                       const formData = new FormData();
-                      files.forEach(file => formData.append('images', file));
+                      files.forEach((file: File) => formData.append('images', file));
                       const res = await fetch(`${apiBaseUrl}/api/users/upload-images`, {
                         method: 'POST',
                         body: formData,
