@@ -11,6 +11,7 @@ import './App.css';
 import LoanReplyLog from './pages/LoanReplyLog';
 import ActiveVendors24h from './pages/ActiveVendors24h';
 import SupportCalls from './pages/SupportCalls';
+import InactiveVendors from './pages/InactiveVendors';
 
 function App() {
   return (
@@ -45,6 +46,11 @@ function App() {
         <Route path="/support-calls" element={
           <ProtectedRoute>
             <SupportCalls />
+          </ProtectedRoute>
+        } />
+        <Route path="/inactive-vendors" element={
+          <ProtectedRoute>
+            <InactiveVendors />
           </ProtectedRoute>
         } />
         <Route path="/admin/users" element={

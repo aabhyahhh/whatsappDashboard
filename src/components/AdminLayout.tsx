@@ -137,6 +137,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       show: userRole === 'admin' || userRole === 'onground' || userRole === 'super_admin'
     },
     {
+      name: 'Inactive Vendors',
+      path: '/inactive-vendors',
+      icon: '⏸️',
+      show: userRole === 'admin' || userRole === 'onground' || userRole === 'super_admin'
+    },
+    {
       name: 'Active Vendors (24h)',
       path: '/dashboard/active-vendors-24h',
       icon: '⏰',
