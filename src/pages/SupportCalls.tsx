@@ -95,13 +95,15 @@ export default function SupportCalls() {
   return (
     <AdminLayout>
       <div className="max-w-5xl mx-auto bg-white p-6 rounded-lg shadow-md mt-8 border border-gray-200">
-        <h2 className="text-2xl font-bold mb-6 text-center">Vendors Requesting Support Calls (Next 24h)</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-4 text-center">
+          Vendors Requesting Support Calls
+        </h2>
         {loading ? (
           <div className="text-center py-8">Loading...</div>
         ) : error ? (
           <div className="text-center text-red-600 py-8">{error}</div>
         ) : calls.length === 0 ? (
-          <div className="text-center text-gray-500 py-8">No vendors have requested support calls in the last 24 hours.</div>
+          <div className="text-center text-gray-500 py-8">No vendors have requested support calls.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 text-sm text-left">

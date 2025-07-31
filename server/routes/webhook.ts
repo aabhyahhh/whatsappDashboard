@@ -643,13 +643,8 @@ router.get('/loan-replies', async (_req, res) => {
 // Add endpoint to fetch support call requests in the last 24 hours
 router.get('/support-calls', async (_req, res) => {
   try {
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    // Find logs where the reply was for support (id yes_support) in the last 24 hours
-    // Assuming LoanReplyLog is also used for support replies, and we distinguish by a field or message type
-    // If not, you may need to add a type field to LoanReplyLog. For now, filter by timestamp only.
-    const logs = await SupportCallLog.find({
-      timestamp: { $gte: since }
-    }).sort({ timestamp: -1 });
+    // Fetch all support call logs, not just from last 24 hours
+    const logs = await SupportCallLog.find({}).sort({ timestamp: -1 });
     res.json(logs);
   } catch (err) {
     console.error('❌ Failed to fetch support call logs:', err);

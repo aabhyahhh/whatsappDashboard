@@ -1,10 +1,17 @@
 import schedule from 'node-schedule';
+import mongoose from 'mongoose';
 import { Contact } from '../models/Contact.js';
 import { client } from '../twilio.js';
 import SupportCallReminderLog from '../models/SupportCallReminderLog.js';
 
 const MESSAGE_TEMPLATE_ID = 'HX4c78928e13eda15597c00ea0915f1f77';
 const TWILIO_NUMBER = process.env.TWILIO_PHONE_NUMBER;
+const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/whatsapp';
+
+// Connect to MongoDB if not already connected
+if (mongoose.connection.readyState === 0) {
+  mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
+}
 
 // Helper to send WhatsApp template message
 async function sendSupportReminder(phone) {

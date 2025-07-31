@@ -131,7 +131,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       show: userRole === 'admin' || userRole === 'super_admin'
     },
     {
-      name: 'Support Calls (24h)',
+      name: 'Support Calls',
       path: '/support-calls',
       icon: '📞',
       show: userRole === 'admin' || userRole === 'onground' || userRole === 'super_admin'
