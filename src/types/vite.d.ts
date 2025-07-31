@@ -1,5 +1,13 @@
 declare module 'vite' {
-  export function defineConfig(config: any): any;
+  interface UserConfig {
+    plugins?: any[];
+    resolve?: {
+      alias?: Record<string, string>;
+    };
+  }
+
+  function defineConfig(config: UserConfig): any;
+  export { defineConfig };
 }
 
 declare module '@vitejs/plugin-react' {
