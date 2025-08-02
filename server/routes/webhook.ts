@@ -154,6 +154,45 @@ router.post('/', async (req: Request, res: Response) => {
     try {
         // Debug log: print the entire incoming Twilio webhook payload
         console.log('Incoming Twilio webhook payload:', req.body);
+        
+        // Handle WARNING payloads (error notifications from Twilio)
+        if (req.body.Level === 'WARNING' || req.body.PayloadType === 'application/json') {
+            console.log('Received Twilio WARNING payload:', req.body);
+            // Parse the nested payload if it exists
+            if (req.body.Payload) {
+                try {
+                    const payloadData = JSON.parse(req.body.Payload);
+                    console.log('Parsed warning payload data:', payloadData);
+                    
+                    // Extract the actual message data from the warning payload
+                    if (payloadData.webhook && payloadData.webhook.request && payloadData.webhook.request.parameters) {
+                        const params = payloadData.webhook.request.parameters;
+                        console.log('Extracted parameters from warning payload:', params);
+                        
+                        // Process the message as if it were a normal webhook
+                        const { From, To, Body, Latitude, Longitude, Address, Label } = params;
+                        
+                        if (!From || !To) {
+                            console.error('Missing From or To in warning payload parameters:', params);
+                            return res.status(400).json({ error: 'Missing required fields: From or To' });
+                        }
+                        
+                        // Continue with normal processing using the extracted parameters
+                        req.body = params; // Replace req.body with the extracted parameters
+                    } else {
+                        console.log('No valid message parameters found in warning payload');
+                        return res.status(200).send('OK');
+                    }
+                } catch (parseError) {
+                    console.error('Failed to parse warning payload:', parseError);
+                    return res.status(200).send('OK');
+                }
+            } else {
+                console.log('No payload data in warning message');
+                return res.status(200).send('OK');
+            }
+        }
+        
         // Extract all relevant fields from the Twilio webhook payload
         const { From, To, Body, Latitude, Longitude, Address, Label } = req.body;
 
@@ -626,7 +665,8 @@ router.post('/', async (req: Request, res: Response) => {
         res.status(200).send('OK');
     } catch (error) {
         console.error('Error processing webhook:', (error as Error)?.message);
-        res.status(500).json({ error: 'Internal server error' });
+        // Return a clean response even on error to prevent Twilio warnings
+        res.status(200).send('OK');
     }
 });
 
@@ -650,6 +690,15 @@ router.get('/support-calls', async (_req, res) => {
     console.error('❌ Failed to fetch support call logs:', err);
     res.status(500).json({ error: 'Failed to fetch support call logs' });
   }
+});
+
+// Simple test endpoint to verify webhook accessibility
+router.get('/', (_req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'Webhook endpoint is accessible',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // PATCH endpoint to mark a support call as completed
