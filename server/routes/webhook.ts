@@ -5,6 +5,12 @@ import { Contact } from '../models/Contact.js';
 import { client } from '../twilio.js';
 import { User } from '../models/User.js';
 import jwt from 'jsonwebtoken';
+import twilio from 'twilio';
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Explicitly load environment variables
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 import LoanReplyLog from '../models/LoanReplyLog.js';
 import SupportCallLog from '../models/SupportCallLog.js';
@@ -45,6 +51,31 @@ const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
 const router = Router();
 
 const twilioNumber = process.env.TWILIO_PHONE_NUMBER;
+
+// Helper function to get a working Twilio client
+const getTwilioClient = () => {
+  if (client) {
+    return client;
+  }
+  
+  // Fallback: initialize client directly
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  
+  if (accountSid && authToken) {
+    try {
+      const fallbackClient = twilio(accountSid, authToken);
+      console.log('✅ Created fallback Twilio client');
+      return fallbackClient;
+    } catch (error) {
+      console.error('❌ Failed to create fallback Twilio client:', error);
+      return null;
+    }
+  }
+  
+  console.error('❌ No Twilio credentials available for fallback');
+  return null;
+};
 
 // Helper function to extract coordinates from Google Maps URL
 function extractCoordinatesFromGoogleMaps(url: string): { latitude: number; longitude: number } | null {
@@ -315,10 +346,11 @@ router.post('/', async (req: Request, res: Response) => {
             // Match greetings: hi, hello, hey, heyy, heyyy, etc.
             if (/^(hi+|hello+|hey+)$/.test(normalized)) {
                 console.log('Attempting to send template message in response to greeting');
-                if (client) {
+                const twilioClient = getTwilioClient();
+                if (twilioClient) {
                     try {
                         console.log('🔍 Attempting to send template message...');
-                        console.log('Client exists:', !!client);
+                        console.log('Client exists:', !!twilioClient);
                         console.log('From:', From);
                         console.log('To:', To);
                         
@@ -335,7 +367,7 @@ router.post('/', async (req: Request, res: Response) => {
                         }
                         
                         console.log('📤 Message payload:', JSON.stringify(msgPayload, null, 2));
-                        const twilioResp = await client.messages.create(msgPayload);
+                        const twilioResp = await twilioClient.messages.create(msgPayload);
                         console.log('✅ Triggered outbound template message HX46464a13f80adebb4b9d552d63acfae9 in response to greeting. Twilio response:', twilioResp);
 
                         // Save the outbound template message to MongoDB for chat display
@@ -361,7 +393,8 @@ router.post('/', async (req: Request, res: Response) => {
             // Match 'loan' in any case, as a whole word
             if (/\bloan\b/i.test(Body)) {
                 console.log('Attempting to send template message in response to loan keyword');
-                if (client) {
+                const twilioClient = getTwilioClient();
+                if (twilioClient) {
                     try {
                         // Log vendor name and contactNumber
                         try {
@@ -413,7 +446,7 @@ router.post('/', async (req: Request, res: Response) => {
                         if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
                             msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
                         }
-                        const twilioResp = await client.messages.create(msgPayload);
+                        const twilioResp = await twilioClient.messages.create(msgPayload);
                         console.log('✅ Triggered outbound template message HXcdbf14c73f068958f96efc216961834d in response to loan keyword. Twilio response:', twilioResp);
                         // Save the outbound template message to MongoDB for chat display
                         try {
@@ -473,7 +506,8 @@ router.post('/', async (req: Request, res: Response) => {
             }
 
             // Send the follow-up template message
-            if (client) {
+            const twilioClient = getTwilioClient();
+            if (twilioClient) {
                 try {
                     const msgPayload = {
                         from: `whatsapp:${To.replace('whatsapp:', '')}`,
@@ -486,7 +520,7 @@ router.post('/', async (req: Request, res: Response) => {
                     if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
                         msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
                     }
-                    const twilioResp = await client.messages.create(msgPayload);
+                    const twilioResp = await twilioClient.messages.create(msgPayload);
                     console.log('✅ Triggered outbound template message HXcdbf14c73f068958f96efc216961834d in response to loan_support button. Twilio response:', twilioResp);
                 } catch (err) {
                     console.error('❌ Failed to send loan support follow-up template message:', (err as Error)?.message || err, err);
@@ -542,7 +576,8 @@ router.post('/', async (req: Request, res: Response) => {
                 }
 
                 // Send follow-up template message
-                if (client) {
+                const twilioClient = getTwilioClient();
+                if (twilioClient) {
                     try {
                         const msgPayload = {
                             from: `whatsapp:${To.replace('whatsapp:', '')}`,
@@ -555,7 +590,7 @@ router.post('/', async (req: Request, res: Response) => {
                         if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
                             msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
                         }
-                        const twilioResp = await client.messages.create(msgPayload);
+                        const twilioResp = await twilioClient.messages.create(msgPayload);
                         console.log('✅ Sent follow-up template message HXd71a47a5df1f4c784fc2f8155bb349ca in response to yes_support. Twilio response:', twilioResp);
                         
                         // Save the outbound template message to MongoDB for chat display
@@ -648,20 +683,25 @@ router.post('/', async (req: Request, res: Response) => {
                 if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
                     msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
                 }
-                const twilioResp = await client.messages.create(msgPayload);
-                console.log('✅ Triggered Aadhaar verification template message HX1a44edbb684afc1a8213054a4731e53d. Twilio response:', twilioResp);
-                // Optionally, save the outbound message to MongoDB for chat display
-                try {
-                    await Message.create({
-                        from: msgPayload.from,
-                        to: msgPayload.to,
-                        body: '[Aadhaar verification template sent]',
-                        direction: 'outbound',
-                        timestamp: new Date(),
-                    });
-                    console.log('✅ Outbound Aadhaar verification template message saved to DB:', msgPayload.to);
-                } catch (err) {
-                    console.error('❌ Failed to save outbound Aadhaar verification template message:', err);
+                const twilioClient = getTwilioClient();
+                if (twilioClient) {
+                    const twilioResp = await twilioClient.messages.create(msgPayload);
+                    console.log('✅ Triggered Aadhaar verification template message HX1a44edbb684afc1a8213054a4731e53d. Twilio response:', twilioResp);
+                    // Optionally, save the outbound message to MongoDB for chat display
+                    try {
+                        await Message.create({
+                            from: msgPayload.from,
+                            to: msgPayload.to,
+                            body: '[Aadhaar verification template sent]',
+                            direction: 'outbound',
+                            timestamp: new Date(),
+                        });
+                        console.log('✅ Outbound Aadhaar verification template message saved to DB:', msgPayload.to);
+                    } catch (err) {
+                        console.error('❌ Failed to save outbound Aadhaar verification template message:', err);
+                    }
+                } else {
+                    console.error('❌ Twilio client not available for Aadhaar verification template');
                 }
             } catch (err) {
                 console.error('❌ Failed to send Aadhaar verification template message:', (err as Error)?.message || err, err);
@@ -799,11 +839,12 @@ router.patch('/support-calls/:id/complete', authenticateToken, async (req, res) 
                 }
                 
                 // Send the reminder message
-                if (!client) {
+                const twilioClient = getTwilioClient();
+                if (!twilioClient) {
                     return res.status(500).json({ error: 'Twilio client not initialized' });
                 }
                 
-                const message = await client.messages.create({
+                const message = await twilioClient.messages.create({
                     from: `whatsapp:${twilioNumber}`,
                     to: `whatsapp:${contact.phone}`,
                     contentSid: 'HX4c78928e13eda15597c00ea0915f1f77',
