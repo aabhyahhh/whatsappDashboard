@@ -7,6 +7,9 @@ import { client, createFreshClient } from '../twilio.js'; // Import both
 import { User } from '../models/User.js';
 import jwt from 'jsonwebtoken';
 import twilio from 'twilio';
+import SupportCallLog from '../models/SupportCallLog.js';
+import LoanReplyLog from '../models/LoanReplyLog.js';
+import Vendor from '../models/Vendor.js';
 
 // ... other imports remain the same
 
@@ -278,6 +281,119 @@ router.post('/test-send', async (req, res) => {
       code: (error as any)?.code 
     });
   }
+});
+
+// Support calls routes
+router.get('/support-calls', async (req: Request, res: Response) => {
+    try {
+        // Get support calls from the last 24 hours
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const supportCalls = await SupportCallLog.find({
+            timestamp: { $gte: twentyFourHoursAgo }
+        }).sort({ timestamp: -1 });
+        
+        res.json(supportCalls);
+    } catch (error) {
+        console.error('Error fetching support calls:', error);
+        res.status(500).json({ error: 'Failed to fetch support calls' });
+    }
+});
+
+router.patch('/support-calls/:id/complete', async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { completedBy } = req.body;
+        
+        const supportCall = await SupportCallLog.findByIdAndUpdate(
+            id,
+            {
+                completed: true,
+                completedBy: completedBy || 'Unknown',
+                completedAt: new Date()
+            },
+            { new: true }
+        );
+        
+        if (!supportCall) {
+            return res.status(404).json({ error: 'Support call not found' });
+        }
+        
+        res.json(supportCall);
+    } catch (error) {
+        console.error('Error completing support call:', error);
+        res.status(500).json({ error: 'Failed to complete support call' });
+    }
+});
+
+// Loan replies route
+router.get('/loan-replies', async (req: Request, res: Response) => {
+    try {
+        // Get loan replies from the last 24 hours
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const loanReplies = await LoanReplyLog.find({
+            timestamp: { $gte: twentyFourHoursAgo }
+        }).sort({ timestamp: -1 });
+        
+        res.json(loanReplies);
+    } catch (error) {
+        console.error('Error fetching loan replies:', error);
+        res.status(500).json({ error: 'Failed to fetch loan replies' });
+    }
+});
+
+// Inactive vendors route
+router.get('/inactive-vendors', async (req: Request, res: Response) => {
+    try {
+        // Get vendors who haven't been active in the last 7 days
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        const inactiveVendors = await Vendor.find({
+            lastSeen: { $lt: sevenDaysAgo }
+        }).sort({ lastSeen: -1 });
+        
+        res.json(inactiveVendors);
+    } catch (error) {
+        console.error('Error fetching inactive vendors:', error);
+        res.status(500).json({ error: 'Failed to fetch inactive vendors' });
+    }
+});
+
+// Send reminder to inactive vendor
+router.post('/send-reminder/:vendorId', async (req: Request, res: Response) => {
+    try {
+        const { vendorId } = req.params;
+        
+        const vendor = await Vendor.findById(vendorId);
+        if (!vendor) {
+            return res.status(404).json({ error: 'Vendor not found' });
+        }
+        
+        // Send reminder message via Twilio
+        const twilioClient = getTwilioClient();
+        if (!twilioClient) {
+            return res.status(500).json({ error: 'Twilio client not available' });
+        }
+        
+        const messagePayload = {
+            from: twilioNumber,
+            to: `whatsapp:${vendor.phone}`,
+            body: "🔔 Reminder: Don't forget to stay active on Laari Khojo! Your customers are waiting for you."
+        };
+        
+        const result = await twilioClient.messages.create(messagePayload);
+        
+        // Update vendor's last reminder sent
+        vendor.lastReminderSent = new Date();
+        await vendor.save();
+        
+        res.json({ 
+            success: true, 
+            messageSid: result.sid,
+            vendor: vendor
+        });
+    } catch (error) {
+        console.error('Error sending reminder:', error);
+        res.status(500).json({ error: 'Failed to send reminder' });
+    }
 });
 
 // ... rest of the routes remain the same
