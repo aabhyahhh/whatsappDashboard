@@ -286,16 +286,27 @@ router.post('/test-send', async (req, res) => {
 // Support calls routes
 router.get('/support-calls', async (req: Request, res: Response) => {
     try {
-        // Get support calls from the last 24 hours
-        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        // Get support calls from the last 7 days (extended from 24 hours)
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         const supportCalls = await SupportCallLog.find({
-            timestamp: { $gte: twentyFourHoursAgo }
+            timestamp: { $gte: sevenDaysAgo }
         }).sort({ timestamp: -1 });
         
         res.json(supportCalls);
     } catch (error) {
         console.error('Error fetching support calls:', error);
         res.status(500).json({ error: 'Failed to fetch support calls' });
+    }
+});
+
+// Debug endpoint to see all support calls (without 24-hour filter)
+router.get('/support-calls-all', async (req: Request, res: Response) => {
+    try {
+        const allSupportCalls = await SupportCallLog.find({}).sort({ timestamp: -1 });
+        res.json(allSupportCalls);
+    } catch (error) {
+        console.error('Error fetching all support calls:', error);
+        res.status(500).json({ error: 'Failed to fetch all support calls' });
     }
 });
 
