@@ -1,9 +1,4 @@
 import twilio from 'twilio';
-import dotenv from 'dotenv';
-import path from 'path';
-
-// Explicitly load environment variables
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
@@ -14,6 +9,8 @@ console.log('Auth Token exists:', !!authToken);
 console.log('Account SID length:', accountSid?.length || 0);
 console.log('Auth Token length:', authToken?.length || 0);
 console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('Account SID first 10 chars:', accountSid?.substring(0, 10) || 'N/A');
+console.log('Auth Token first 10 chars:', authToken?.substring(0, 10) || 'N/A');
 
 let client: twilio.Twilio | null = null;
 

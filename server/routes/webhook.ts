@@ -6,11 +6,6 @@ import { client } from '../twilio.js';
 import { User } from '../models/User.js';
 import jwt from 'jsonwebtoken';
 import twilio from 'twilio';
-import dotenv from 'dotenv';
-import path from 'path';
-
-// Explicitly load environment variables
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 import LoanReplyLog from '../models/LoanReplyLog.js';
 import SupportCallLog from '../models/SupportCallLog.js';
@@ -55,12 +50,19 @@ const twilioNumber = process.env.TWILIO_PHONE_NUMBER;
 // Helper function to get a working Twilio client
 const getTwilioClient = () => {
   if (client) {
+    console.log('✅ Using existing Twilio client');
     return client;
   }
   
   // Fallback: initialize client directly
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
+  
+  console.log('🔍 Fallback Twilio client check:');
+  console.log('Account SID exists:', !!accountSid);
+  console.log('Auth Token exists:', !!authToken);
+  console.log('Account SID length:', accountSid?.length || 0);
+  console.log('Auth Token length:', authToken?.length || 0);
   
   if (accountSid && authToken) {
     try {
@@ -358,7 +360,6 @@ router.post('/', async (req: Request, res: Response) => {
                             from: `whatsapp:${To.replace('whatsapp:', '')}`,
                             to: From,
                             contentSid: 'HX46464a13f80adebb4b9d552d63acfae9',
-                            contentVariables: JSON.stringify({}),
                             messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID, // optional
                           };
                           
@@ -383,8 +384,20 @@ router.post('/', async (req: Request, res: Response) => {
                         } catch (err) {
                             console.error('❌ Failed to save outbound template message:', err);
                         }
-                    } catch (err) {
-                        console.error('❌ Failed to send outbound template message:', (err as Error)?.message || err, err);
+                    } catch (templateError) {
+                        console.error('❌ Template message failed, trying simple text message:', templateError);
+                        try {
+                            // Fallback to simple text message
+                            const simpleMsgPayload = {
+                                from: `whatsapp:${To.replace('whatsapp:', '')}`,
+                                to: From,
+                                body: '👋 Namaste from Laari Khojo! Thanks for reaching out!'
+                            };
+                            const simpleResp = await twilioClient.messages.create(simpleMsgPayload);
+                            console.log('✅ Sent fallback text message:', simpleResp);
+                        } catch (simpleError) {
+                            console.error('❌ Both template and simple message failed:', simpleError);
+                        }
                     }
                 } else {
                     console.warn('⚠️ Twilio client not initialized, cannot send outbound template message.');
@@ -439,7 +452,6 @@ router.post('/', async (req: Request, res: Response) => {
                             from: `whatsapp:${To.replace('whatsapp:', '')}`,
                             to: From,
                             contentSid: 'HXcdbf14c73f068958f96efc216961834d',
-                            contentVariables: JSON.stringify({}),
                             messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID, // optional
                           };
                           
@@ -509,13 +521,12 @@ router.post('/', async (req: Request, res: Response) => {
             const twilioClient = getTwilioClient();
             if (twilioClient) {
                 try {
-                    const msgPayload = {
-                        from: `whatsapp:${To.replace('whatsapp:', '')}`,
-                        to: From,
-                        contentSid: 'YOUR_CONTENT_SID',
-                        contentVariables: JSON.stringify({}),
-                        messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID, // optional
-                      };
+                                            const msgPayload = {
+                            from: `whatsapp:${To.replace('whatsapp:', '')}`,
+                            to: From,
+                            contentSid: 'HX4c78928e13eda15597c00ea0915f1f77',
+                            messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID, // optional
+                          };
                       
                     if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
                         msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
@@ -583,7 +594,6 @@ router.post('/', async (req: Request, res: Response) => {
                             from: `whatsapp:${To.replace('whatsapp:', '')}`,
                             to: From,
                             contentSid: 'HX4c78928e13eda15597c00ea0915f1f77',
-                            contentVariables: JSON.stringify({}),
                             messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID,
                         };
                         
@@ -676,7 +686,6 @@ router.post('/', async (req: Request, res: Response) => {
                     from: `whatsapp:${To.replace('whatsapp:', '')}`,
                     to: From,
                     contentSid: 'HX53634524df0195b948e15de6fd0c602c',
-                    contentVariables: JSON.stringify({}),
                     messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID, // optional
                   };
                   
@@ -746,6 +755,37 @@ router.get('/', (_req, res) => {
     message: 'Webhook endpoint is accessible',
     timestamp: new Date().toISOString()
   });
+});
+
+// Test endpoint to verify Twilio credentials
+router.get('/test-twilio', async (_req, res) => {
+  try {
+    const twilioClient = getTwilioClient();
+    if (!twilioClient) {
+      return res.status(500).json({ 
+        error: 'Twilio client not available',
+        accountSid: !!process.env.TWILIO_ACCOUNT_SID,
+        authToken: !!process.env.TWILIO_AUTH_TOKEN
+      });
+    }
+    
+    // Try to fetch account info to test credentials
+    const account = await twilioClient.api.accounts(process.env.TWILIO_ACCOUNT_SID).fetch();
+    res.json({ 
+      success: true, 
+      accountSid: account.sid,
+      accountName: account.friendlyName,
+      status: account.status
+    });
+  } catch (error) {
+    console.error('❌ Twilio credentials test failed:', error);
+    res.status(500).json({ 
+      error: 'Twilio credentials test failed',
+      message: (error as Error)?.message,
+      accountSid: !!process.env.TWILIO_ACCOUNT_SID,
+      authToken: !!process.env.TWILIO_AUTH_TOKEN
+    });
+  }
 });
 
 // PATCH endpoint to mark a support call as completed
