@@ -317,10 +317,15 @@ router.post('/', async (req: Request, res: Response) => {
                 console.log('Attempting to send template message in response to greeting');
                 if (client) {
                     try {
+                        console.log('🔍 Attempting to send template message...');
+                        console.log('Client exists:', !!client);
+                        console.log('From:', From);
+                        console.log('To:', To);
+                        
                         const msgPayload = {
                             from: `whatsapp:${To.replace('whatsapp:', '')}`,
                             to: From,
-                            contentSid: 'YOUR_CONTENT_SID',
+                            contentSid: 'HX46464a13f80adebb4b9d552d63acfae9',
                             contentVariables: JSON.stringify({}),
                             messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID, // optional
                           };
@@ -328,6 +333,8 @@ router.post('/', async (req: Request, res: Response) => {
                         if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
                             msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
                         }
+                        
+                        console.log('📤 Message payload:', JSON.stringify(msgPayload, null, 2));
                         const twilioResp = await client.messages.create(msgPayload);
                         console.log('✅ Triggered outbound template message HX46464a13f80adebb4b9d552d63acfae9 in response to greeting. Twilio response:', twilioResp);
 
@@ -398,7 +405,7 @@ router.post('/', async (req: Request, res: Response) => {
                         const msgPayload = {
                             from: `whatsapp:${To.replace('whatsapp:', '')}`,
                             to: From,
-                            contentSid: 'YOUR_CONTENT_SID',
+                            contentSid: 'HXcdbf14c73f068958f96efc216961834d',
                             contentVariables: JSON.stringify({}),
                             messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID, // optional
                           };
@@ -540,7 +547,7 @@ router.post('/', async (req: Request, res: Response) => {
                         const msgPayload = {
                             from: `whatsapp:${To.replace('whatsapp:', '')}`,
                             to: From,
-                            contentSid: 'HXd71a47a5df1f4c784fc2f8155bb349ca',
+                            contentSid: 'HX4c78928e13eda15597c00ea0915f1f77',
                             contentVariables: JSON.stringify({}),
                             messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID,
                         };
@@ -633,7 +640,7 @@ router.post('/', async (req: Request, res: Response) => {
                 const msgPayload = {
                     from: `whatsapp:${To.replace('whatsapp:', '')}`,
                     to: From,
-                    contentSid: 'YOUR_CONTENT_SID',
+                    contentSid: 'HX53634524df0195b948e15de6fd0c602c',
                     contentVariables: JSON.stringify({}),
                     messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID, // optional
                   };
