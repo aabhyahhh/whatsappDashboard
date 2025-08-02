@@ -355,16 +355,154 @@ router.get('/loan-replies', async (req: Request, res: Response) => {
 // Inactive vendors route
 router.get('/inactive-vendors', async (req: Request, res: Response) => {
     try {
-        // Get vendors who haven't been active in the last 7 days
-        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        const inactiveVendors = await Vendor.find({
-            lastSeen: { $lt: sevenDaysAgo }
+        // Get contacts who haven't been active in the last 3 days
+        const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+        
+        // Find contacts who haven't been active recently
+        const inactiveContacts = await Contact.find({
+            lastSeen: { $lt: threeDaysAgo }
         }).sort({ lastSeen: -1 });
         
-        res.json(inactiveVendors);
+        // For each inactive contact, check if they received the specific message template
+        const inactiveVendorsWithDetails = [];
+        
+        for (const contact of inactiveContacts) {
+            // Check if they received the template message (using the actual template ID found in database)
+            const receivedTemplate = await Message.findOne({
+                to: contact.phone,
+                direction: 'outbound',
+                body: { $regex: /HXbdb716843483717790c45c951b71701e/ }
+            });
+            
+            if (receivedTemplate) {
+                // Check if they responded after receiving the template
+                const responseAfterTemplate = await Message.findOne({
+                    from: contact.phone,
+                    direction: 'inbound',
+                    timestamp: { $gt: receivedTemplate.timestamp }
+                });
+                
+                // If no response after template, they're truly inactive
+                if (!responseAfterTemplate) {
+                    inactiveVendorsWithDetails.push({
+                        _id: contact._id,
+                        phone: contact.phone,
+                        lastSeen: contact.lastSeen,
+                        templateReceivedAt: receivedTemplate.timestamp,
+                        daysInactive: Math.floor((Date.now() - contact.lastSeen.getTime()) / (1000 * 60 * 60 * 24))
+                    });
+                }
+            }
+        }
+        
+        res.json(inactiveVendorsWithDetails);
     } catch (error) {
         console.error('Error fetching inactive vendors:', error);
         res.status(500).json({ error: 'Failed to fetch inactive vendors' });
+    }
+});
+
+// Debug endpoint to check for messages with the specific template
+router.get('/debug-template-messages', async (req: Request, res: Response) => {
+    try {
+        // Check for messages containing the template ID
+        const templateMessages = await Message.find({
+            body: { $regex: /HX4c78928e13eda15597c00ea0915f1f77/ }
+        }).sort({ timestamp: -1 });
+        
+        res.json({
+            totalTemplateMessages: templateMessages.length,
+            messages: templateMessages
+        });
+    } catch (error) {
+        console.error('Error fetching template messages:', error);
+        res.status(500).json({ error: 'Failed to fetch template messages' });
+    }
+});
+
+// Debug endpoint to check all messages
+router.get('/debug-all-messages', async (req: Request, res: Response) => {
+    try {
+        const allMessages = await Message.find({}).sort({ timestamp: -1 }).limit(10);
+        
+        res.json({
+            totalMessages: await Message.countDocuments(),
+            recentMessages: allMessages
+        });
+    } catch (error) {
+        console.error('Error fetching all messages:', error);
+        res.status(500).json({ error: 'Failed to fetch all messages' });
+    }
+});
+
+// Debug endpoint to check for any template-like messages
+router.get('/debug-template-patterns', async (req: Request, res: Response) => {
+    try {
+        // Check for messages that might be templates
+        const templatePatterns = await Message.find({
+            $or: [
+                { body: { $regex: /HX/ } },
+                { body: { $regex: /template/ } },
+                { body: { $regex: /reminder/ } },
+                { direction: 'outbound' }
+            ]
+        }).sort({ timestamp: -1 }).limit(20);
+        
+        res.json({
+            totalTemplatePatterns: templatePatterns.length,
+            messages: templatePatterns
+        });
+    } catch (error) {
+        console.error('Error fetching template patterns:', error);
+        res.status(500).json({ error: 'Failed to fetch template patterns' });
+    }
+});
+
+// Debug endpoint to check inactive contacts logic
+router.get('/debug-inactive-contacts', async (req: Request, res: Response) => {
+    try {
+        const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+        
+        // Find contacts who haven't been active recently
+        const inactiveContacts = await Contact.find({
+            lastSeen: { $lt: threeDaysAgo }
+        }).sort({ lastSeen: -1 });
+        
+        // Check which ones received support call templates
+        const contactsWithTemplates = [];
+        
+        for (const contact of inactiveContacts) {
+            const receivedTemplate = await Message.findOne({
+                to: contact.phone,
+                direction: 'outbound',
+                body: { $regex: /Support call follow-up template sent/ }
+            });
+            
+            if (receivedTemplate) {
+                const responseAfterTemplate = await Message.findOne({
+                    from: contact.phone,
+                    direction: 'inbound',
+                    timestamp: { $gt: receivedTemplate.timestamp }
+                });
+                
+                contactsWithTemplates.push({
+                    contact: contact,
+                    templateReceived: !!receivedTemplate,
+                    templateTimestamp: receivedTemplate?.timestamp,
+                    respondedAfterTemplate: !!responseAfterTemplate,
+                    responseTimestamp: responseAfterTemplate?.timestamp
+                });
+            }
+        }
+        
+        res.json({
+            threeDaysAgo: threeDaysAgo,
+            totalInactiveContacts: inactiveContacts.length,
+            contactsWithTemplates: contactsWithTemplates
+        });
+    } catch (error) {
+        console.error('Error debugging inactive contacts:', error);
+        res.status(500).json({ error: 'Failed to debug inactive contacts' });
     }
 });
 
