@@ -20,7 +20,7 @@ router.get('/', async (_req: Request, res: Response) => {
             contacts.map(async (contact) => {
                 let name = '';
                 const normalizedPhone = normalizePhone(contact.phone);
-                const user = await User.findOne({
+                const vendor = await User.findOne({
                   $or: [
                     { contactNumber: contact.phone },
                     { contactNumber: '+91' + normalizedPhone },
@@ -28,7 +28,7 @@ router.get('/', async (_req: Request, res: Response) => {
                     { contactNumber: normalizedPhone }
                   ]
                 });
-                if (user && user.name) name = user.name;
+                if (vendor && vendor.name) name = vendor.name;
                 return { ...contact.toObject(), name };
             })
         );

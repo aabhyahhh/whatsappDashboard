@@ -384,10 +384,15 @@ router.get('/inactive-vendors', async (req: Request, res: Response) => {
                 
                 // If no response after template, they're truly inactive
                 if (!responseAfterTemplate) {
+                    // Find the corresponding vendor to get the name
+                    const vendor = await User.findOne({ contactNumber: contact.phone });
+                    
                     inactiveVendorsWithDetails.push({
                         _id: contact._id,
                         phone: contact.phone,
+                        name: vendor ? vendor.name : null,
                         lastSeen: contact.lastSeen,
+                        lastMessage: '', // You can add this if needed
                         templateReceivedAt: receivedTemplate.timestamp,
                         daysInactive: Math.floor((Date.now() - contact.lastSeen.getTime()) / (1000 * 60 * 60 * 24))
                     });

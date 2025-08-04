@@ -16,6 +16,9 @@ import vendorRoutes from './routes/vendor.js';
 // Import and start the support call reminder scheduler
 import './scheduler/supportCallReminder.js';
 
+// Import and start the vendor reminders cron job
+import './vendorRemindersCron.js';
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
