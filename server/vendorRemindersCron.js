@@ -67,8 +67,7 @@ const checkAndSendReminders = async () => {
             console.log(`📱 ${user.name} (${user.contactNumber}): Open at ${openTime.format('HH:mm')}, Diff: ${diff} minutes`);
           }
 
-          // Only send reminders if vendor hasn't opened yet (diff > 0)
-          // 15-minute window before openTime (send only at exactly 15 minutes before)
+          // Send reminder 15 minutes before opening time
           if (diff === 15) {
             if (!(await hasReminderSentToday(user.contactNumber, 15))) {
               try {
@@ -97,9 +96,15 @@ const checkAndSendReminders = async () => {
             }
           }
 
-          // At openTime (diff == 0) - only if vendor hasn't opened yet
+          // Send reminder at opening time (diff == 0) - only if vendor hasn't shared location yet
           if (diff === 0) {
-            if (!(await hasReminderSentToday(user.contactNumber, 0))) {
+            // Check if vendor has already shared location today
+            const hasLocation = await hasLocationToday(user.contactNumber);
+            
+            if (hasLocation) {
+              console.log(`⏩ Skipping open-time reminder for ${user.contactNumber} - location already shared today`);
+              skippedCount++;
+            } else if (!(await hasReminderSentToday(user.contactNumber, 0))) {
               try {
                 await client.messages.create({
                   from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
