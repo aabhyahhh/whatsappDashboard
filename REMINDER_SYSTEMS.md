@@ -13,8 +13,9 @@ Send daily reminder messages to vendors before their opening time to encourage t
 - **Template**: `HXbdb716843483717790c45c951b71701e`
 - **Schedule**: Runs every minute via cron job
 - **Trigger Conditions**:
-  - 15 minutes before opening time
-  - At opening time (exactly)
+  - **Exactly 15 minutes before opening time** (not continuously)
+  - **Exactly at opening time** (not continuously)
+  - **Prevents duplicate sends** within 24 hours
 - **Target**: Vendors with `whatsappConsent: true` and valid operating hours
 
 ### Features
@@ -157,9 +158,24 @@ tail -f server.log | grep -E "(reminder|Reminder)"
 npx tsx scripts/test-reminder-systems.ts
 ```
 
-## 8. Status
+## 8. Recent Fixes
 
-✅ **Daily Vendor Reminders**: Fully implemented and active
+### Fixed: Continuous Message Issue (August 2025)
+**Problem**: Daily reminder messages were being sent continuously every 2-3 minutes instead of only at the specified times.
+
+**Solution**: 
+- Changed timing logic from `diff <= 15 && diff > 0` to `diff === 15`
+- Now sends reminders ONLY at exactly 15 minutes before opening time
+- Sends reminders ONLY at exactly opening time (diff === 0)
+- Added better logging to show only relevant vendors (within 20 minutes of opening)
+
+**Result**: Messages are now sent only twice per vendor per day:
+1. Exactly 15 minutes before opening time
+2. Exactly at opening time
+
+## 9. Status
+
+✅ **Daily Vendor Reminders**: Fully implemented and active (FIXED)
 ✅ **Support Call Reminders**: Fully implemented and active
 ✅ **System Integration**: Both systems properly integrated
 ✅ **Error Handling**: Comprehensive error handling implemented

@@ -61,10 +61,15 @@ const checkAndSendReminders = async () => {
           });
           
           const diff = openTime.diff(now, 'minutes');
-          console.log(`📱 ${user.name} (${user.contactNumber}): Open at ${openTime.format('HH:mm')}, Diff: ${diff} minutes`);
+          
+          // Only log if the vendor is close to opening time (within 20 minutes)
+          if (diff >= -5 && diff <= 20) {
+            console.log(`📱 ${user.name} (${user.contactNumber}): Open at ${openTime.format('HH:mm')}, Diff: ${diff} minutes`);
+          }
 
-          // 15-minute window before openTime (send if within 15 minutes before openTime)
-          if (diff <= 15 && diff > 0) {
+          // Only send reminders if vendor hasn't opened yet (diff > 0)
+          // 15-minute window before openTime (send only at exactly 15 minutes before)
+          if (diff === 15) {
             if (!(await hasReminderSentToday(user.contactNumber, 15))) {
               try {
                 await client.messages.create({
@@ -92,7 +97,7 @@ const checkAndSendReminders = async () => {
             }
           }
 
-          // At openTime (diff == 0)
+          // At openTime (diff == 0) - only if vendor hasn't opened yet
           if (diff === 0) {
             if (!(await hasReminderSentToday(user.contactNumber, 0))) {
               try {
