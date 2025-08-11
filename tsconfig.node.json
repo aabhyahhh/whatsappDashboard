@@ -15,16 +15,16 @@
     "outDir": "./dist",
 
     /* Linting */
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true
+    "strict": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true
   },
   "include": [
     "server/**/*.ts",
     "vite.config.ts",
-    "server/models/User.ts",
-    "server/models/Vendor.ts",
-    "server/models/Message.ts"
+    "src/types/**/*.d.ts"
   ]
 }

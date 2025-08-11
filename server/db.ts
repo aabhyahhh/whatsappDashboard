@@ -1,27 +1,14 @@
 import mongoose from 'mongoose';
 
-// Environment-based database configuration
-const getMongoURI = () => {
-    const isProduction = process.env.NODE_ENV === 'production';
-    
-    if (isProduction) {
-        // Production: Use MONGODB_URI (restricted access)
-        const productionURI = process.env.MONGODB_URI;
-        if (!productionURI) {
-            console.error('❌ MONGODB_URI is required for production environment');
-            process.exit(1);
-        }
-        console.log('🔒 Using production database (restricted access)');
-        return productionURI;
-    } else {
-        // Development: Use MONGODB_URI_DEV (0.0.0.0 access for development)
-        const devURI = process.env.MONGODB_URI_DEV || process.env.MONGODB_URI || 'mongodb://localhost:27017/whatsapp_dev';
-        console.log('🛠️ Using development database (0.0.0.0 access)');
-        return devURI;
-    }
-};
+// Single database configuration for both development and production
+const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/whatsapp';
 
-const MONGO_URI = getMongoURI();
+if (!process.env.MONGODB_URI) {
+    console.error('❌ MONGODB_URI is not defined in environment variables');
+    console.error('Please create a .env file with your MongoDB connection string:');
+    console.error('MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/<database>?retryWrites=true&w=majority');
+    process.exit(1);
+}
 
 // Connection options - optimized for production
 const options: mongoose.ConnectOptions = {
@@ -43,15 +30,14 @@ export const connectDB = async () => {
         await mongoose.connect(MONGO_URI, options);
         console.log('✅ MongoDB connected successfully');
         
-        const db = mongoose.connection.db;
-        if (!db) throw new Error('Database connection not established');
-        
         // Log the database name
-        console.log(`📁 Connected to database: ${db.databaseName}`);
+        console.log(`📁 Connected to database: ${mongoose.connection.db?.databaseName || 'unknown'}`);
         
         // Optional: Log all collections in the database
-        const collections = await db.listCollections().toArray();
-        console.log('📚 Available collections:', collections.map(c => c.name));
+        if (mongoose.connection.db) {
+            const collections = await mongoose.connection.db.listCollections().toArray();
+            console.log('📚 Available collections:', collections.map(c => c.name));
+        }
         
     } catch (error) {
         console.error('❌ MongoDB connection error:', error);
