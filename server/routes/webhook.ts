@@ -89,6 +89,109 @@ const sendTwilioMessage = async (messagePayload: any, templateType: string) => {
   }
 };
 
+// Helper function to extract coordinates from Google Maps URL
+function extractCoordinatesFromGoogleMaps(url: string): { latitude: number; longitude: number } | null {
+    try {
+        // Handle Google Maps URLs with ?q=lat,lng format
+        const qParamMatch = url.match(/[?&]q=([^&]+)/);
+        if (qParamMatch) {
+            const coords = qParamMatch[1].split(',');
+            if (coords.length === 2) {
+                const lat = parseFloat(coords[0]);
+                const lng = parseFloat(coords[1]);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    return { latitude: lat, longitude: lng };
+                }
+            }
+        }
+
+        // Handle Google Maps URLs with @lat,lng format
+        const atParamMatch = url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+        if (atParamMatch) {
+            const lat = parseFloat(atParamMatch[1]);
+            const lng = parseFloat(atParamMatch[2]);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                return { latitude: lat, longitude: lng };
+            }
+        }
+
+        // Handle Google Maps URLs with /@lat,lng format
+        const slashAtMatch = url.match(/\/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+        if (slashAtMatch) {
+            const lat = parseFloat(slashAtMatch[1]);
+            const lng = parseFloat(slashAtMatch[2]);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                return { latitude: lat, longitude: lng };
+            }
+        }
+
+        return null;
+    } catch (error) {
+        console.error('Error extracting coordinates from Google Maps URL:', (error as Error)?.message);
+        return null;
+    }
+}
+
+// Helper function to extract coordinates from WhatsApp location sharing
+function extractCoordinatesFromWhatsAppLocation(body: string): { latitude: number; longitude: number } | null {
+    try {
+        // WhatsApp location sharing typically includes coordinates in the message body
+        // Look for patterns like "Location: lat, lng" or similar
+        const locationMatch = body.match(/Location:\s*(-?\d+\.\d+),\s*(-?\d+\.\d+)/i);
+        if (locationMatch) {
+            const lat = parseFloat(locationMatch[1]);
+            const lng = parseFloat(locationMatch[2]);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                return { latitude: lat, longitude: lng };
+            }
+        }
+
+        // Look for coordinates in various formats
+        const coordPatterns = [
+            /(-?\d+\.\d+),\s*(-?\d+\.\d+)/,  // lat, lng
+            /lat[itude]*:\s*(-?\d+\.\d+).*?lng[itude]*:\s*(-?\d+\.\d+)/i,  // lat: x, lng: y
+            /coordinates?:\s*(-?\d+\.\d+),\s*(-?\d+\.\d+)/i,  // coordinates: lat, lng
+        ];
+
+        for (const pattern of coordPatterns) {
+            const match = body.match(pattern);
+            if (match) {
+                const lat = parseFloat(match[1]);
+                const lng = parseFloat(match[2]);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    return { latitude: lat, longitude: lng };
+                }
+            }
+        }
+
+        return null;
+    } catch (error) {
+        console.error('Error extracting coordinates from WhatsApp location:', (error as Error)?.message);
+        return null;
+    }
+}
+
+// Helper function to check if message contains location data
+function extractLocationFromMessage(body: string): { latitude: number; longitude: number } | null {
+    // Check for Google Maps links
+    if (body.includes('maps.google.com') || body.includes('goo.gl/maps') || body.includes('maps.app.goo.gl')) {
+        const coords = extractCoordinatesFromGoogleMaps(body);
+        if (coords) {
+            console.log('📍 Extracted coordinates from Google Maps link:', coords);
+            return coords;
+        }
+    }
+
+    // Check for WhatsApp location sharing
+    const whatsappCoords = extractCoordinatesFromWhatsAppLocation(body);
+    if (whatsappCoords) {
+        console.log('📍 Extracted coordinates from WhatsApp location:', whatsappCoords);
+        return whatsappCoords;
+    }
+
+    return null;
+}
+
 // Main webhook handler
 router.post('/', async (req: Request, res: Response) => {
     try {
@@ -141,7 +244,26 @@ router.post('/', async (req: Request, res: Response) => {
             return res.status(200).send('OK');
         }
 
-        // ... location extraction logic remains the same ...
+        let location: { latitude: number; longitude: number } | null = null;
+        let address = undefined;
+        let label = undefined;
+
+        // 1. Prefer Twilio's native location fields
+        if (hasCoordinates) {
+            const lat = parseFloat(Latitude);
+            const lng = parseFloat(Longitude);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                location = { latitude: lat, longitude: lng };
+                address = Address;
+                label = Label;
+                console.log('📍 Extracted coordinates from Twilio location fields:', location);
+            }
+        }
+
+        // 2. If not present, try to extract from message body
+        if (!location && hasBody) {
+            location = extractLocationFromMessage(Body);
+        }
 
         // Save message
         const messageData: Record<string, unknown> = {
@@ -151,6 +273,13 @@ router.post('/', async (req: Request, res: Response) => {
             direction: 'inbound',
             timestamp: new Date(),
         };
+
+        // Always add location, address, and label if extracted
+        if (location) {
+            messageData.location = location;
+            if (address) messageData.address = address;
+            if (label) messageData.label = label;
+        }
 
         console.log('Saving message with data:', messageData);
         const message = new Message(messageData);
@@ -165,6 +294,50 @@ router.post('/', async (req: Request, res: Response) => {
             address: message.get('address') || undefined,
             label: message.get('label') || undefined,
         });
+
+        // Update User's and Vendor's location and mapsLink if possible
+        if (location) {
+            try {
+                // Remove 'whatsapp:' prefix if present
+                const phone = From.replace('whatsapp:', '');
+                console.log('Looking up user with contactNumber:', phone);
+                
+                // Find all users with this contactNumber (in all fallback forms)
+                const userNumbers = [phone];
+                if (phone.startsWith('+91')) userNumbers.push(phone.replace('+91', '91'));
+                if (phone.startsWith('+')) userNumbers.push(phone.substring(1));
+                userNumbers.push(phone.slice(-10));
+                
+                const users = await User.find({ contactNumber: { $in: userNumbers } });
+                console.log('Users found:', users.length);
+                
+                for (const user of users) {
+                    user.location = {
+                        type: 'Point',
+                        coordinates: [location.longitude, location.latitude],
+                    };
+                    user.mapsLink = `https://maps.google.com/?q=${location.latitude},${location.longitude}`;
+                    await user.save();
+                    console.log(`✅ Updated user location for ${user.contactNumber}`);
+                }
+                
+                // Also update Vendor location if a vendor with this contactNumber exists
+                const VendorModel = (await import('../models/Vendor.js')).default;
+                const vendors = await VendorModel.find({ contactNumber: { $in: userNumbers } });
+                
+                for (const vendor of vendors) {
+                    vendor.location = {
+                        type: 'Point',
+                        coordinates: [location.longitude, location.latitude],
+                    };
+                    vendor.mapsLink = `https://maps.google.com/?q=${location.latitude},${location.longitude}`;
+                    await vendor.save();
+                    console.log(`✅ Updated vendor location for ${vendor.contactNumber}`);
+                }
+            } catch (err) {
+                console.error('❌ Failed to update user or vendor location:', err);
+            }
+        }
 
         // FIXED: Handle greeting with improved message sending
         if (hasBody && typeof Body === 'string') {
