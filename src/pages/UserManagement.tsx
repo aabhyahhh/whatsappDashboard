@@ -232,6 +232,7 @@ export default function UserManagement() {
 
       const data: User[] = await response.json();
       setUsers(data);
+      setLastRefreshTime(new Date());
       console.log("Fetched users data:", data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unknown error occurred');
@@ -243,6 +244,15 @@ export default function UserManagement() {
   useEffect(() => {
     fetchUsers();
   }, [navigate]);
+
+  // Add auto-refresh every 30 seconds to catch location updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchUsers();
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     applyFilters(users);
@@ -551,6 +561,7 @@ export default function UserManagement() {
   // Add a state for 24 hours open in Add User, Edit User, and modal edit forms:
   const [modalIs24HoursOpen, setModalIs24HoursOpen] = useState(false);
   const [editIs24HoursOpen, setEditIs24HoursOpen] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
 
   const handleVendorRowClick = (user: User) => {
     setSelectedVendor(user);
@@ -662,15 +673,27 @@ export default function UserManagement() {
   return (
     <AdminLayout>
       <div className="w-full px-2 md:px-6 py-4 flex flex-col">
-        <h1 className="text-3xl font-bold mb-6 text-gray-800">User Management</h1>
-
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold text-gray-800">User Management</h1>
+          <div className="flex gap-2 items-center">
+            <div className="text-sm text-gray-600 mr-2">
+              Last updated: {lastRefreshTime.toLocaleTimeString()}
+            </div>
+            <button
+              onClick={fetchUsers}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
+            >
+              🔄 Refresh
+            </button>
         <button
           onClick={() => setShowAddForm(!showAddForm)}
-          className={`bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mb-4 self-start ${!['admin','super_admin','onground'].includes(userRole || '') ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded ${!['admin','super_admin','onground'].includes(userRole || '') ? 'opacity-50 cursor-not-allowed' : ''}`}
           disabled={!['admin','super_admin','onground'].includes(userRole || '')}
         >
           {showAddForm ? 'Hide Add User Form' : 'Add New User'}
         </button>
+          </div>
+        </div>
 
         {showAddForm && ['admin','super_admin','onground'].includes(userRole || '') && (
           <div className="bg-white p-6 rounded-lg shadow-md mb-4 w-full max-w-2xl mx-auto border border-gray-200">

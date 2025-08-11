@@ -255,6 +255,75 @@ router.post('/', async (req, res) => {
                 }
             }
         }
+        
+        // Handle loan keyword
+        if (hasBody && typeof Body === 'string' && /\bloan\b/i.test(Body)) {
+            console.log('Attempting to send template message in response to loan keyword');
+            
+            // Log the loan reply
+            try {
+                const phone = From.replace('whatsapp:', '');
+                const userNumbers = [phone];
+                if (phone.startsWith('+91')) userNumbers.push(phone.replace('+91', '91'));
+                if (phone.startsWith('+')) userNumbers.push(phone.substring(1));
+                userNumbers.push(phone.slice(-10));
+                
+                // Find user/vendor name
+                let vendorName = '';
+                const user = await User.findOne({ contactNumber: { $in: userNumbers } });
+                if (user && user.name) {
+                    vendorName = user.name;
+                } else {
+                    const VendorModel = (await import('../models/Vendor.js')).default;
+                    const vendor = await VendorModel.findOne({ contactNumber: { $in: userNumbers } });
+                    if (vendor && vendor.name) {
+                        vendorName = vendor.name;
+                    }
+                }
+                
+                // Check if already logged for this contactNumber and timestamp (within 1 minute)
+                const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
+                const LoanReplyLogModel = (await import('../models/LoanReplyLog.js')).default;
+                const existingLog = await LoanReplyLogModel.findOne({
+                    contactNumber: phone,
+                    timestamp: { $gte: oneMinuteAgo }
+                });
+                
+                if (!existingLog) {
+                    await LoanReplyLogModel.create({
+                        vendorName: vendorName || 'Unknown',
+                        contactNumber: phone,
+                        timestamp: new Date(),
+                        aadharVerified: user?.aadharNumber ? true : false
+                    });
+                    console.log(`✅ Logged loan reply from ${vendorName || 'Unknown'} (${phone})`);
+                } else {
+                    console.log(`ℹ️ Loan reply already logged for ${phone} within last minute`);
+                }
+            } catch (err) {
+                console.error('❌ Failed to log loan reply:', err);
+            }
+            
+            // Send loan template message
+            if (client) {
+                try {
+                    const msgPayload = {
+                        from: `whatsapp:${To.replace('whatsapp:', '')}`,
+                        to: From,
+                        contentSid: 'HXcdbf14c73f068958f96efc216961834d',
+                        contentVariables: JSON.stringify({})
+                    };
+                    if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
+                        msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+                    }
+                    const twilioResp = await client.messages.create(msgPayload);
+                    console.log('✅ Triggered loan template message. Twilio response:', twilioResp);
+                } catch (err) {
+                    console.error('❌ Failed to send loan template message:', err?.message || err);
+                }
+            }
+        }
+        
         // Upsert contact in contacts collection
         const phone = From.replace('whatsapp:', ''); // Remove whatsapp: prefix if present
         await Contact.findOneAndUpdate({ phone: phone }, {

@@ -379,6 +379,48 @@ router.post('/', async (req: Request, res: Response) => {
             if (/\bloan\b/i.test(Body)) {
                 console.log('Attempting to send template message in response to loan keyword');
                 
+                // Log the loan reply
+                try {
+                    const phone = From.replace('whatsapp:', '');
+                    const userNumbers = [phone];
+                    if (phone.startsWith('+91')) userNumbers.push(phone.replace('+91', '91'));
+                    if (phone.startsWith('+')) userNumbers.push(phone.substring(1));
+                    userNumbers.push(phone.slice(-10));
+                    
+                    // Find user/vendor name
+                    let vendorName = '';
+                    const user = await User.findOne({ contactNumber: { $in: userNumbers } });
+                    if (user && user.name) {
+                        vendorName = user.name;
+                    } else {
+                        const vendor = await Vendor.findOne({ contactNumber: { $in: userNumbers } });
+                        if (vendor && vendor.name) {
+                            vendorName = vendor.name;
+                        }
+                    }
+                    
+                    // Check if already logged for this contactNumber and timestamp (within 1 minute)
+                    const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
+                    const existingLog = await LoanReplyLog.findOne({
+                        contactNumber: phone,
+                        timestamp: { $gte: oneMinuteAgo }
+                    });
+                    
+                    if (!existingLog) {
+                        await LoanReplyLog.create({
+                            vendorName: vendorName || 'Unknown',
+                            contactNumber: phone,
+                            timestamp: new Date(),
+                            aadharVerified: user?.aadharNumber ? true : false
+                        });
+                        console.log(`✅ Logged loan reply from ${vendorName || 'Unknown'} (${phone})`);
+                    } else {
+                        console.log(`ℹ️ Loan reply already logged for ${phone} within last minute`);
+                    }
+                } catch (err) {
+                    console.error('❌ Failed to log loan reply:', err);
+                }
+                
                 const msgPayload = {
                     from: To,
                     to: From,
@@ -512,16 +554,24 @@ router.patch('/support-calls/:id/complete', async (req: Request, res: Response) 
 // Loan replies route
 router.get('/loan-replies', async (req: Request, res: Response) => {
     try {
-        // Get loan replies from the last 24 hours
-        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        const loanReplies = await LoanReplyLog.find({
-            timestamp: { $gte: twentyFourHoursAgo }
-        }).sort({ timestamp: -1 });
+        // Get ALL loan replies without any time restriction
+        const loanReplies = await LoanReplyLog.find({}).sort({ timestamp: -1 });
         
         res.json(loanReplies);
     } catch (error) {
         console.error('Error fetching loan replies:', error);
         res.status(500).json({ error: 'Failed to fetch loan replies' });
+    }
+});
+
+// Debug endpoint to see all loan replies (without time filter)
+router.get('/loan-replies-all', async (req: Request, res: Response) => {
+    try {
+        const allLoanReplies = await LoanReplyLog.find({}).sort({ timestamp: -1 });
+        res.json(allLoanReplies);
+    } catch (error) {
+        console.error('Error fetching all loan replies:', error);
+        res.status(500).json({ error: 'Failed to fetch all loan replies' });
     }
 });
 
