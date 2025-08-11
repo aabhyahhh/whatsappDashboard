@@ -501,11 +501,8 @@ router.post('/test-send', async (req, res) => {
 // Support calls routes
 router.get('/support-calls', async (req: Request, res: Response) => {
     try {
-        // Get support calls from the last 7 days (extended from 24 hours)
-        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        const supportCalls = await SupportCallLog.find({
-            timestamp: { $gte: sevenDaysAgo }
-        }).sort({ timestamp: -1 });
+        // Get ALL support calls without any time restriction
+        const supportCalls = await SupportCallLog.find({}).sort({ timestamp: -1 });
         
         res.json(supportCalls);
     } catch (error) {

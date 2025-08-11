@@ -344,4 +344,72 @@ router.post('/', async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
+// Support calls routes
+router.get('/support-calls', async (req, res) => {
+    try {
+        // Get ALL support calls without any time restriction
+        const SupportCallLog = (await import('../models/SupportCallLog.js')).default;
+        const supportCalls = await SupportCallLog.find({}).sort({ timestamp: -1 });
+        
+        res.json(supportCalls);
+    } catch (error) {
+        console.error('Error fetching support calls:', error);
+        res.status(500).json({ error: 'Failed to fetch support calls' });
+    }
+});
+
+// Debug endpoint to see all support calls (without time filter)
+router.get('/support-calls-all', async (req, res) => {
+    try {
+        const SupportCallLog = (await import('../models/SupportCallLog.js')).default;
+        const allSupportCalls = await SupportCallLog.find({}).sort({ timestamp: -1 });
+        res.json(allSupportCalls);
+    } catch (error) {
+        console.error('Error fetching all support calls:', error);
+        res.status(500).json({ error: 'Failed to fetch all support calls' });
+    }
+});
+
+router.patch('/support-calls/:id/complete', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { completedBy } = req.body;
+        const SupportCallLog = (await import('../models/SupportCallLog.js')).default;
+        
+        const supportCall = await SupportCallLog.findByIdAndUpdate(
+            id,
+            {
+                completed: true,
+                completedBy: completedBy || 'Unknown',
+                completedAt: new Date()
+            },
+            { new: true }
+        );
+        
+        if (!supportCall) {
+            return res.status(404).json({ error: 'Support call not found' });
+        }
+        
+        res.json(supportCall);
+    } catch (error) {
+        console.error('Error completing support call:', error);
+        res.status(500).json({ error: 'Failed to complete support call' });
+    }
+});
+
+// Loan replies route
+router.get('/loan-replies', async (req, res) => {
+    try {
+        // Get ALL loan replies without any time restriction
+        const LoanReplyLog = (await import('../models/LoanReplyLog.js')).default;
+        const loanReplies = await LoanReplyLog.find({}).sort({ timestamp: -1 });
+        
+        res.json(loanReplies);
+    } catch (error) {
+        console.error('Error fetching loan replies:', error);
+        res.status(500).json({ error: 'Failed to fetch loan replies' });
+    }
+});
+
 export default router;

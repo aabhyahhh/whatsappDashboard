@@ -96,7 +96,7 @@ export default function SupportCalls() {
     <AdminLayout>
       <div className="max-w-5xl mx-auto bg-white p-6 rounded-lg shadow-md mt-8 border border-gray-200">
         <h2 className="text-xl font-semibold text-gray-900 mb-4 text-center">
-          Vendors Requesting Support Calls
+          All Support Call Requests
         </h2>
         {loading ? (
           <div className="text-center py-8">Loading...</div>
