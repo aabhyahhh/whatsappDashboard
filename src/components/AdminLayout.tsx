@@ -148,6 +148,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       icon: '⏰',
       show: true
     },
+    {
+      name: 'Message Health',
+      path: '/message-health',
+      icon: '🏥',
+      show: userRole === 'admin' || userRole === 'super_admin'
+    },
   ];
 
   return (

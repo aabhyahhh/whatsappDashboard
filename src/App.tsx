@@ -12,6 +12,7 @@ import LoanReplyLog from './pages/LoanReplyLog';
 import ActiveVendors24h from './pages/ActiveVendors24h';
 import SupportCalls from './pages/SupportCalls';
 import InactiveVendors from './pages/InactiveVendors';
+import MessageHealth from './pages/MessageHealth';
 
 function App() {
   return (
@@ -66,6 +67,11 @@ function App() {
         <Route path="/loan-replies" element={
           <ProtectedRoute>
             <LoanReplyLog />
+          </ProtectedRoute>
+        } />
+        <Route path="/message-health" element={
+          <ProtectedRoute>
+            <MessageHealth />
           </ProtectedRoute>
         } />
         <Route path="/" element={<Navigate to="/login" replace />} />

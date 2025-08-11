@@ -30,8 +30,8 @@ async function sendSupportReminder(phone, vendorName = null) {
   }
 }
 
-// Schedule: every hour at minute 5
-schedule.scheduleJob('5 * * * *', async () => {
+// Schedule: every day at 10:00 AM
+schedule.scheduleJob('0 10 * * *', async () => {
   console.log('[SupportCallReminder] Running inactive vendor check...');
   const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
   
@@ -48,6 +48,13 @@ schedule.scheduleJob('5 * * * *', async () => {
       const vendor = await User.findOne({ contactNumber: contact.phone });
       const vendorName = vendor ? vendor.name : null;
       
+      // Only send to registered vendors
+      if (!vendor) {
+        console.log(`⏩ Skipping ${contact.phone} - not a registered vendor`);
+        skippedCount++;
+        continue;
+      }
+      
       // Avoid duplicate sends within 24h
       const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
       const alreadySent = await SupportCallReminderLog.findOne({ 
@@ -62,8 +69,9 @@ schedule.scheduleJob('5 * * * *', async () => {
           sentAt: new Date()
         });
         sentCount++;
+        console.log(`✅ Sent support reminder to ${vendorName} (${contact.phone})`);
       } else {
-        console.log(`⏩ Skipping ${vendorName || contact.phone} (${contact.phone}), already sent in last 24h.`);
+        console.log(`⏩ Skipping ${vendorName} (${contact.phone}), already sent in last 24h.`);
         skippedCount++;
       }
     }
@@ -75,4 +83,4 @@ schedule.scheduleJob('5 * * * *', async () => {
   }
 });
 
-console.log('✅ Support call reminder scheduler started (runs every hour at minute 5)'); 
+console.log('✅ Support call reminder scheduler started (runs daily at 10:00 AM)'); 

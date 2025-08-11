@@ -561,6 +561,100 @@ router.get('/loan-replies', async (req: Request, res: Response) => {
     }
 });
 
+// Message health check route
+router.get('/message-health', async (req: Request, res: Response) => {
+    try {
+        const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+        
+        // Get all outbound messages in the last 48 hours
+        const outboundMessages = await Message.find({
+            direction: 'outbound',
+            timestamp: { $gte: fortyEightHoursAgo }
+        }).sort({ timestamp: -1 });
+        
+        // Define message types and their template IDs
+        const messageTypes = {
+            'Vendor Reminder': 'HXbdb716843483717790c45c951b71701e',
+            'Support Call Reminder': 'HX4c78928e13eda15597c00ea0915f1f77',
+            'Loan Support': 'HXcdbf14c73f068958f96efc216961834d',
+            'Welcome Message': 'HXc2e10711c3a3cbb31203854bccc39d2d',
+            'Greeting Response': 'HX46464a13f80adebb4b9d552d63acfae9',
+            'Loan Support Template': 'HXf4635b59c1abf466a77814b40dc1c362',
+            'General Template': 'HX5364d2f0c0cce7ac9e38673572a45d15'
+        };
+        
+        // Categorize messages by type
+        const categorizedMessages: any = {};
+        const unknownMessages: any[] = [];
+        
+        for (const message of outboundMessages) {
+            let categorized = false;
+            
+            // Check if message body contains template ID
+            for (const [type, templateId] of Object.entries(messageTypes)) {
+                if (message.body && message.body.includes(templateId)) {
+                    if (!categorizedMessages[type]) {
+                        categorizedMessages[type] = [];
+                    }
+                    categorizedMessages[type].push({
+                        to: message.to,
+                        timestamp: message.timestamp,
+                        body: message.body.substring(0, 100) + '...'
+                    });
+                    categorized = true;
+                    break;
+                }
+            }
+            
+            if (!categorized) {
+                unknownMessages.push({
+                    to: message.to,
+                    timestamp: message.timestamp,
+                    body: message.body
+                });
+            }
+        }
+        
+        // Get support call reminder logs
+        const supportCallLogs = await SupportCallReminderLog.find({
+            sentAt: { $gte: fortyEightHoursAgo }
+        }).sort({ sentAt: -1 });
+        
+        // Get loan reply logs
+        const loanReplyLogs = await LoanReplyLog.find({
+            timestamp: { $gte: fortyEightHoursAgo }
+        }).sort({ timestamp: -1 });
+        
+        // Calculate statistics
+        const stats = {
+            totalOutboundMessages: outboundMessages.length,
+            totalSupportCallReminders: supportCallLogs.length,
+            totalLoanReplies: loanReplyLogs.length,
+            messageTypes: Object.keys(categorizedMessages).map(type => ({
+                type,
+                count: categorizedMessages[type]?.length || 0
+            })),
+            unknownMessagesCount: unknownMessages.length
+        };
+        
+        res.json({
+            stats,
+            categorizedMessages,
+            unknownMessages: unknownMessages.slice(0, 10), // Limit to first 10
+            supportCallLogs: supportCallLogs.slice(0, 10),
+            loanReplyLogs: loanReplyLogs.slice(0, 10),
+            timeRange: {
+                from: fortyEightHoursAgo,
+                to: new Date()
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error fetching message health data:', error);
+        res.status(500).json({ error: 'Failed to fetch message health data' });
+    }
+});
+
 // Debug endpoint to see all loan replies (without time filter)
 router.get('/loan-replies-all', async (req: Request, res: Response) => {
     try {
