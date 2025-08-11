@@ -8,6 +8,7 @@ import { User } from '../models/User.js';
 import jwt from 'jsonwebtoken';
 import twilio from 'twilio';
 import SupportCallLog from '../models/SupportCallLog.js';
+import SupportCallReminderLog from '../models/SupportCallReminderLog.js';
 import LoanReplyLog from '../models/LoanReplyLog.js';
 import Vendor from '../models/Vendor.js';
 
