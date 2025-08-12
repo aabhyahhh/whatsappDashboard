@@ -667,56 +667,142 @@ router.get('/loan-replies-all', async (req: Request, res: Response) => {
     }
 });
 
-// Inactive vendors route
+// Inactive vendors route - OPTIMIZED VERSION
 router.get('/inactive-vendors', async (req: Request, res: Response) => {
     try {
+        const startTime = Date.now();
+        
+        // Get query parameters for pagination
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = Math.min(parseInt(req.query.limit as string) || 50, 100); // Max 100 per page
+        const skip = (page - 1) * limit;
+        
         // Get contacts who haven't been active in the last 3 days
         const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
         
-        // Find contacts who haven't been active recently
-        const inactiveContacts = await Contact.find({
-            lastSeen: { $lt: threeDaysAgo }
-        }).sort({ lastSeen: -1 });
+        console.log(`🔍 Fetching inactive vendors - Page: ${page}, Limit: ${limit}`);
         
-        // For each inactive contact, check if they are registered vendors and get reminder status
-        const inactiveVendorsWithDetails = [];
-        
-        for (const contact of inactiveContacts) {
-            // Find the corresponding vendor to get the name
-            const vendor = await User.findOne({ contactNumber: contact.phone });
-            
-            // Only include if they are registered vendors
-            if (vendor) {
-                // Calculate days inactive
-                const daysInactive = Math.floor((Date.now() - contact.lastSeen.getTime()) / (1000 * 60 * 60 * 24));
-                
-                // Check if they received the support call reminder template
-                const receivedTemplate = await Message.findOne({
-                    to: contact.phone,
-                    direction: 'outbound',
-                    body: { $regex: /HX4c78928e13eda15597c00ea0915f1f77/ }
-                });
-                
-                // Check if reminder was sent in the last 24 hours
-                const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-                const recentReminder = await SupportCallReminderLog.findOne({
-                    contactNumber: contact.phone,
-                    sentAt: { $gte: twentyFourHoursAgo }
-                });
-                
-                inactiveVendorsWithDetails.push({
-                    _id: contact._id,
-                    phone: contact.phone,
-                    name: vendor.name,
-                    lastSeen: contact.lastSeen,
-                    daysInactive: daysInactive,
-                    reminderSentAt: recentReminder ? recentReminder.sentAt : null,
-                    reminderStatus: recentReminder ? 'Sent' : 'Not sent'
-                });
+        // OPTIMIZATION 1: Use aggregation pipeline for better performance
+        const inactiveVendors = await Contact.aggregate([
+            // Step 1: Find inactive contacts
+            {
+                $match: {
+                    lastSeen: { $lt: threeDaysAgo }
+                }
+            },
+            // Step 2: Lookup vendor information
+            {
+                $lookup: {
+                    from: 'users', // MongoDB collection name for User model
+                    localField: 'phone',
+                    foreignField: 'contactNumber',
+                    as: 'vendor'
+                }
+            },
+            // Step 3: Unwind vendor array (since lookup returns array)
+            {
+                $unwind: '$vendor'
+            },
+            // Step 4: Lookup recent reminder logs
+            {
+                $lookup: {
+                    from: 'supportcallreminderlogs', // MongoDB collection name
+                    let: { contactPhone: '$phone' },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ['$contactNumber', '$$contactPhone'] },
+                                        { $gte: ['$sentAt', twentyFourHoursAgo] }
+                                    ]
+                                }
+                            }
+                        },
+                        { $sort: { sentAt: -1 } },
+                        { $limit: 1 }
+                    ],
+                    as: 'recentReminder'
+                }
+            },
+            // Step 5: Calculate days inactive
+            {
+                $addFields: {
+                    daysInactive: {
+                        $floor: {
+                            $divide: [
+                                { $subtract: [new Date(), '$lastSeen'] },
+                                1000 * 60 * 60 * 24
+                            ]
+                        }
+                    },
+                    reminderStatus: {
+                        $cond: {
+                            if: { $gt: [{ $size: '$recentReminder' }, 0] },
+                            then: 'Sent',
+                            else: 'Not sent'
+                        }
+                    },
+                    reminderSentAt: {
+                        $ifNull: [
+                            { $arrayElemAt: ['$recentReminder.sentAt', 0] },
+                            null
+                        ]
+                    }
+                }
+            },
+            // Step 6: Project only needed fields
+            {
+                $project: {
+                    _id: 1,
+                    phone: 1,
+                    lastSeen: 1,
+                    daysInactive: 1,
+                    reminderStatus: 1,
+                    reminderSentAt: 1,
+                    name: '$vendor.name'
+                }
+            },
+            // Step 7: Sort by last seen (most recent first)
+            {
+                $sort: { lastSeen: -1 }
+            },
+            // Step 8: Apply pagination
+            {
+                $skip: skip
+            },
+            {
+                $limit: limit
             }
-        }
+        ]);
         
-        res.json(inactiveVendorsWithDetails);
+        // Get total count for pagination info
+        const totalCount = await Contact.countDocuments({
+            lastSeen: { $lt: threeDaysAgo }
+        });
+        
+        const endTime = Date.now();
+        const duration = endTime - startTime;
+        
+        console.log(`✅ Inactive vendors fetched in ${duration}ms - Found: ${inactiveVendors.length}/${totalCount}`);
+        
+        res.json({
+            vendors: inactiveVendors,
+            pagination: {
+                page,
+                limit,
+                total: totalCount,
+                pages: Math.ceil(totalCount / limit),
+                hasNext: page * limit < totalCount,
+                hasPrev: page > 1
+            },
+            performance: {
+                duration: `${duration}ms`,
+                optimized: true
+            }
+        });
+        
     } catch (error) {
         console.error('Error fetching inactive vendors:', error);
         res.status(500).json({ error: 'Failed to fetch inactive vendors' });

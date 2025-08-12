@@ -1,18 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
+import { useContacts } from '../contexts/ContactsContext';
+
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
 interface AdminLayoutProps {
   children: React.ReactNode;
-}
-
-interface Contact {
-  _id: string;
-  phone: string;
-  lastSeen: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
@@ -20,9 +14,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const location = useLocation();
   const [userRole, setUserRole] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [contactsLoading, setContactsLoading] = useState(true);
-  const [contactsError, setContactsError] = useState<string | null>(null);
+  
+  // Use cached contacts from context instead of fetching directly
+  const { contacts, loading: contactsLoading, error: contactsError } = useContacts();
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -48,30 +42,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       navigate('/login');
     }
   }, [navigate]);
-
-  // Fetch contacts for sidebar
-  useEffect(() => {
-    const fetchContacts = async () => {
-      try {
-        setContactsLoading(true);
-        const response = await fetch(`${apiBaseUrl}/api/contacts`);
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch contacts');
-        }
-        
-        const data = await response.json();
-        setContacts(data);
-      } catch (error) {
-        console.error('Error fetching contacts:', error);
-        setContactsError('Failed to load contacts');
-      } finally {
-        setContactsLoading(false);
-      }
-    };
-
-    fetchContacts();
-  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('token');

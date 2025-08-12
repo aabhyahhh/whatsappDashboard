@@ -17,35 +17,72 @@ interface InactiveVendor {
   templateReceivedAt?: string;
 }
 
+interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  pages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
+interface ApiResponse {
+  vendors: InactiveVendor[];
+  pagination: PaginationInfo;
+  performance?: {
+    duration: string;
+    optimized: boolean;
+  };
+}
+
 export default function InactiveVendors() {
   const [vendors, setVendors] = useState<InactiveVendor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sendingReminders, setSendingReminders] = useState<Set<string>>(new Set());
+  const [pagination, setPagination] = useState<PaginationInfo | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [performance, setPerformance] = useState<string>('');
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchInactiveVendors();
-  }, []);
+    fetchInactiveVendors(currentPage);
+  }, [currentPage]);
 
-  const fetchInactiveVendors = async () => {
+  const fetchInactiveVendors = async (page: number = 1) => {
     try {
       setLoading(true);
-      const response = await fetch(`${apiBaseUrl}/api/webhook/inactive-vendors`);
+      const startTime = Date.now();
+      
+      const response = await fetch(`${apiBaseUrl}/api/webhook/inactive-vendors?page=${page}&limit=50`);
       if (!response.ok) {
         throw new Error('Failed to fetch inactive vendors');
       }
-      const data = await response.json();
       
-      // Transform the data to handle both old and new API formats
-      const transformedData = data.map((vendor: any) => ({
-        ...vendor,
-        // If reminderStatus is missing, try to determine it from templateReceivedAt
-        reminderStatus: vendor.reminderStatus || (vendor.templateReceivedAt ? 'Sent' : 'Not sent'),
-        reminderSentAt: vendor.reminderSentAt || vendor.templateReceivedAt
-      }));
+      const data: ApiResponse = await response.json();
+      const endTime = Date.now();
       
-      setVendors(transformedData);
+      // Handle both old and new API formats
+      if (data.vendors && data.pagination) {
+        // New optimized API format
+        setVendors(data.vendors);
+        setPagination(data.pagination);
+        setPerformance(data.performance?.duration || `${endTime - startTime}ms`);
+      } else {
+        // Old API format - transform the data
+        const transformedData = (data as any).map((vendor: any) => ({
+          ...vendor,
+          reminderStatus: vendor.reminderStatus || (vendor.templateReceivedAt ? 'Sent' : 'Not sent'),
+          reminderSentAt: vendor.reminderSentAt || vendor.templateReceivedAt
+        }));
+        
+        setVendors(transformedData);
+        setPagination(null);
+        setPerformance(`${endTime - startTime}ms`);
+      }
+      
+      console.log(`📊 Fetched ${vendors.length} vendors in ${performance}`);
+      
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -96,6 +133,10 @@ export default function InactiveVendors() {
         return newSet;
       });
     }
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
   };
 
   const formatDate = (dateString: string) => {
@@ -150,6 +191,11 @@ export default function InactiveVendors() {
               <p className="text-gray-600 mt-2">
                 Vendors who haven't responded to support reminders
               </p>
+              {performance && (
+                <p className="text-sm text-green-600 mt-1">
+                  ⚡ Loaded in {performance} (optimized)
+                </p>
+              )}
             </div>
             <div className="flex space-x-4">
               <button
@@ -159,7 +205,7 @@ export default function InactiveVendors() {
                 View Support Calls
               </button>
               <button
-                onClick={fetchInactiveVendors}
+                onClick={() => fetchInactiveVendors(currentPage)}
                 className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
               >
                 Refresh
@@ -179,7 +225,9 @@ export default function InactiveVendors() {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Inactive</p>
-                <p className="text-2xl font-bold text-gray-900">{vendors.length}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {pagination ? pagination.total : vendors.length}
+                </p>
               </div>
             </div>
           </div>
@@ -221,6 +269,11 @@ export default function InactiveVendors() {
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">
             <h2 className="text-lg font-medium text-gray-900">Inactive Vendor List</h2>
+            {pagination && (
+              <p className="text-sm text-gray-500 mt-1">
+                Showing {((pagination.page - 1) * pagination.limit) + 1} - {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} vendors
+              </p>
+            )}
           </div>
           
           {vendors.length === 0 ? (
@@ -232,111 +285,148 @@ export default function InactiveVendors() {
               <p className="mt-1 text-sm text-gray-500">All vendors are active or have responded to reminders.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Vendor
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Phone
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Last Seen
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Days Inactive
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Reminder Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {vendors.map((vendor) => (
-                    <tr key={vendor._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10">
-                            <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                              <span className="text-sm font-medium text-gray-700">
-                                {vendor.name ? vendor.name.charAt(0).toUpperCase() : 'V'}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
-                              {vendor.name || 'Unknown Vendor'}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {vendor.phone}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(vendor.lastSeen)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          (vendor.daysInactive || getDaysInactive(vendor.lastSeen)) > 7 
-                            ? 'bg-red-100 text-red-800' 
-                            : (vendor.daysInactive || getDaysInactive(vendor.lastSeen)) > 3 
-                            ? 'bg-yellow-100 text-yellow-800' 
-                            : 'bg-green-100 text-green-800'
-                        }`}>
-                          {vendor.daysInactive || getDaysInactive(vendor.lastSeen)} days
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {vendor.reminderStatus === 'Sent' ? (
-                          <div className="flex items-center">
-                            <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                            <span className="text-sm text-gray-900">Sent</span>
-                            {vendor.reminderSentAt && (
-                              <span className="text-xs text-gray-500 ml-1">
-                                {formatDate(vendor.reminderSentAt)}
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="flex items-center">
-                            <svg className="w-4 h-4 text-gray-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                            </svg>
-                            <span className="text-sm text-gray-500">Not sent</span>
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button
-                          onClick={() => handleSendReminder(vendor._id)}
-                          disabled={vendor.reminderStatus === 'Sent' || sendingReminders.has(vendor._id)}
-                          className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                            vendor.reminderStatus === 'Sent' || sendingReminders.has(vendor._id)
-                              ? 'text-gray-400 bg-gray-100 cursor-not-allowed'
-                              : 'text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100'
-                          }`}
-                        >
-                          {sendingReminders.has(vendor._id) 
-                            ? 'Sending...' 
-                            : vendor.reminderStatus === 'Sent' 
-                            ? 'Reminder Sent' 
-                            : 'Send Reminder'
-                          }
-                        </button>
-                      </td>
+            <>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Vendor
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Phone
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Last Seen
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Days Inactive
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Reminder Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {vendors.map((vendor) => (
+                      <tr key={vendor._id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-10 w-10">
+                              <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
+                                <span className="text-sm font-medium text-gray-700">
+                                  {vendor.name ? vendor.name.charAt(0).toUpperCase() : 'V'}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">
+                                {vendor.name || 'Unknown Vendor'}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {vendor.phone}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatDate(vendor.lastSeen)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            (vendor.daysInactive || getDaysInactive(vendor.lastSeen)) > 7 
+                              ? 'bg-red-100 text-red-800' 
+                              : (vendor.daysInactive || getDaysInactive(vendor.lastSeen)) > 3 
+                              ? 'bg-yellow-100 text-yellow-800' 
+                              : 'bg-green-100 text-green-800'
+                          }`}>
+                            {vendor.daysInactive || getDaysInactive(vendor.lastSeen)} days
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {vendor.reminderStatus === 'Sent' ? (
+                            <div className="flex items-center">
+                              <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                              <span className="text-sm text-gray-900">Sent</span>
+                              {vendor.reminderSentAt && (
+                                <span className="text-xs text-gray-500 ml-1">
+                                  {formatDate(vendor.reminderSentAt)}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex items-center">
+                              <svg className="w-4 h-4 text-gray-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                              </svg>
+                              <span className="text-sm text-gray-500">Not sent</span>
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <button
+                            onClick={() => handleSendReminder(vendor._id)}
+                            disabled={vendor.reminderStatus === 'Sent' || sendingReminders.has(vendor._id)}
+                            className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                              vendor.reminderStatus === 'Sent' || sendingReminders.has(vendor._id)
+                                ? 'text-gray-400 bg-gray-100 cursor-not-allowed'
+                                : 'text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100'
+                            }`}
+                          >
+                            {sendingReminders.has(vendor._id) 
+                              ? 'Sending...' 
+                              : vendor.reminderStatus === 'Sent' 
+                              ? 'Reminder Sent' 
+                              : 'Send Reminder'
+                            }
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Pagination */}
+              {pagination && pagination.pages > 1 && (
+                <div className="px-6 py-4 border-t border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-gray-700">
+                      Page {pagination.page} of {pagination.pages}
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handlePageChange(pagination.page - 1)}
+                        disabled={!pagination.hasPrev}
+                        className={`px-3 py-1 rounded-md text-sm font-medium ${
+                          pagination.hasPrev
+                            ? 'text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100'
+                            : 'text-gray-400 bg-gray-100 cursor-not-allowed'
+                        }`}
+                      >
+                        Previous
+                      </button>
+                      <button
+                        onClick={() => handlePageChange(pagination.page + 1)}
+                        disabled={!pagination.hasNext}
+                        className={`px-3 py-1 rounded-md text-sm font-medium ${
+                          pagination.hasNext
+                            ? 'text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100'
+                            : 'text-gray-400 bg-gray-100 cursor-not-allowed'
+                        }`}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
     </AdminLayout>
