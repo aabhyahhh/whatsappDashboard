@@ -1,6 +1,10 @@
-const cron = require('node-cron');
-const { exec } = require('child_process');
-const path = require('path');
+import cron from 'node-cron';
+import { exec } from 'child_process';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Configuration
 const CAMPAIGN_DURATION_DAYS = 7;

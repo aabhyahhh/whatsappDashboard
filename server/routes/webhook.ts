@@ -323,19 +323,9 @@ router.post('/', async (req: Request, res: Response) => {
                     console.log(`✅ Updated user location for ${user.contactNumber}`);
                 }
                 
-                // Also update Vendor location if a vendor with this contactNumber exists
-                const VendorModel = (await import('../models/Vendor.js')).default;
-                const vendors = await VendorModel.find({ contactNumber: { $in: userNumbers } });
-                
-                for (const vendor of vendors) {
-                    vendor.location = {
-                        type: 'Point',
-                        coordinates: [location.longitude, location.latitude],
-                    };
-                    vendor.mapsLink = `https://maps.google.com/?q=${location.latitude},${location.longitude}`;
-                    await vendor.save();
-                    console.log(`✅ Updated vendor location for ${vendor.contactNumber}`);
-                }
+                // Note: All vendors are stored in the users collection
+                // The location update above already handles updating the vendor's location
+                console.log(`✅ Vendor location updated in users collection for ${users.length} user(s)`);
             } catch (err) {
                 console.error('❌ Failed to update user or vendor location:', err);
             }
