@@ -106,7 +106,7 @@ router.post('/', async (req, res) => {
         // Debug log: print the entire incoming Twilio webhook payload
         console.log('Incoming Twilio webhook payload:', req.body);
         // Extract all relevant fields from the Twilio webhook payload
-        const { From, To, Body, Latitude, Longitude, Address, Label } = req.body;
+        const { From, To, Body, Latitude, Longitude, Address, Label, ButtonPayload } = req.body;
         // Basic validation - must have From and To, and either Body or coordinates
         if (!From || !To) {
             console.error('Missing From or To in webhook payload:', req.body);

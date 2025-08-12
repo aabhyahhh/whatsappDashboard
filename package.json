@@ -14,7 +14,8 @@
     "test:location-api": "tsx scripts/test-location-api.ts",
     "test:duplicate-prevention": "tsx scripts/test-duplicate-prevention.ts",
     "check:models": "node scripts/check-model-patterns.js",
-    "test:coordinate-validation": "tsx scripts/test-coordinate-validation.ts"
+    "test:coordinate-validation": "tsx scripts/test-coordinate-validation.ts",
+    "test:webhook-response": "tsx scripts/test-webhook-response.ts"
   },
   "dependencies": {
     "axios": "^1.6.0",
