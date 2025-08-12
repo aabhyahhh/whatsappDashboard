@@ -10,12 +10,14 @@ if (!process.env.MONGODB_URI) {
     process.exit(1);
 }
 
-// Connection options - optimized for production
+// Connection options - optimized for performance
 const options: mongoose.ConnectOptions = {
-    maxPoolSize: 10,
-    serverSelectionTimeoutMS: 30000, // Increased for production
-    socketTimeoutMS: 45000,
-    connectTimeoutMS: 30000,
+    maxPoolSize: 20, // Increased pool size for better concurrency
+    minPoolSize: 5,  // Maintain minimum connections
+    serverSelectionTimeoutMS: 10000, // Reduced for faster failure detection
+    socketTimeoutMS: 30000, // Reduced for faster timeouts
+    connectTimeoutMS: 10000, // Reduced for faster connection
+    maxIdleTimeMS: 30000, // Close idle connections after 30 seconds
     // Production-specific options
     ...(process.env.NODE_ENV === 'production' && {
         ssl: true,

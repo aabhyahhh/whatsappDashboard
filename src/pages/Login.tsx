@@ -14,11 +14,14 @@ export default function Login() {
     setError('');
     setIsLoading(true);
 
+    const startTime = Date.now();
+
     try {
       const response = await fetch(`${apiBaseUrl}/api/auth`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache'
         },
         body: JSON.stringify({ username, password }),
       });
@@ -29,12 +32,17 @@ export default function Login() {
         throw new Error(data.error || 'Login failed');
       }
 
-      // Store the token (we'll handle this properly in Task 5)
+      // Store the token
       localStorage.setItem('token', data.token);
       
-      // Redirect to dashboard (we'll implement this in Task 6)
+      const totalTime = Date.now() - startTime;
+      console.log(`✅ Login completed in ${totalTime}ms`);
+      
+      // Redirect to dashboard
       navigate('/dashboard');
     } catch (err) {
+      const totalTime = Date.now() - startTime;
+      console.error(`❌ Login failed after ${totalTime}ms:`, err);
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setIsLoading(false);

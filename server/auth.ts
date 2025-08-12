@@ -3,6 +3,7 @@ import express from 'express';
 import type { Request, Response, RequestHandler } from 'express';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 import { connectDB } from './db.js';
 import { Admin } from './models/Admin.js';
 import adminRoutes from './routes/admin.js';
@@ -26,18 +27,48 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 // Connect to MongoDB
 connectDB().catch(console.error);
 
-// Middleware
+// Middleware - Optimized CORS for better performance
 app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'https://whatsappdashboard-1.onrender.com',
-    'https://whatsappdashboard.onrender.com',
-    'https://admin.laarikhojo.in'
-  ],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'https://whatsappdashboard-1.onrender.com',
+      'https://whatsappdashboard.onrender.com',
+      'https://admin.laarikhojo.in',
+      'https://www.admin.laarikhojo.in'
+    ];
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('🚫 CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cache-Control'],
+  exposedHeaders: ['Content-Length', 'X-Requested-With'],
+  maxAge: 86400 // Cache preflight for 24 hours
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Handle preflight requests
+app.options('*', cors());
+
+// Add CORS headers to all responses
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin);
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  next();
+});
 
 // Use admin routes
 app.use('/api/admin', adminRoutes);
@@ -65,31 +96,71 @@ app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', message: 'Auth server is running' });
 });
 
+// Optimized dashboard stats endpoint - single request for all stats
+app.get('/api/dashboard-stats', async (req, res) => {
+    try {
+        const startTime = Date.now();
+        
+        // Import models dynamically
+        const { User } = await import('./models/User.js');
+        const { Message } = await import('./models/Message.js');
+        
+        // Run all queries in parallel for better performance
+        const [totalVendors, totalIncomingMessages, totalOpenVendors, activeVendors24h] = await Promise.all([
+            User.countDocuments(),
+            Message.countDocuments({ direction: 'inbound' }),
+            User.countDocuments({ status: 'open' }),
+            Message.distinct('from', {
+                direction: 'inbound',
+                timestamp: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
+            }).then(users => users.length)
+        ]);
+        
+        const totalTime = Date.now() - startTime;
+        console.log(`📊 Dashboard stats fetched in ${totalTime}ms`);
+        
+        res.json({
+            totalVendors,
+            totalIncomingMessages,
+            totalOpenVendors,
+            activeVendors24h
+        });
+    } catch (error) {
+        console.error('Error fetching dashboard stats:', error);
+        res.status(500).json({ error: 'Failed to fetch dashboard stats' });
+    }
+});
+
 interface LoginRequest {
     username: string;
     password: string;
 }
 
-// Login endpoint
+// Login endpoint - Optimized for performance
 app.post('/api/auth', (async (req: Request<{}, {}, LoginRequest>, res: Response) => {
     try {
         const { username, password } = req.body;
 
-        // Find admin by username
-        const admin = await Admin.findOne({ username });
+        // Add request timing for debugging
+        const startTime = Date.now();
+
+        // Find admin by username with projection to only get needed fields
+        const admin = await Admin.findOne(
+            { username }, 
+            'username password role _id lastLogin'
+        ).lean(); // Use lean() for better performance
+
         if (!admin) {
+            console.log(`❌ Login failed: User '${username}' not found (${Date.now() - startTime}ms)`);
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
         // Verify password
-        const isValidPassword = await admin.comparePassword(password);
+        const isValidPassword = await bcrypt.compare(password, admin.password);
         if (!isValidPassword) {
+            console.log(`❌ Login failed: Invalid password for user '${username}' (${Date.now() - startTime}ms)`);
             return res.status(401).json({ error: 'Invalid credentials' });
         }
-
-        // Update last login
-        admin.lastLogin = new Date();
-        await admin.save();
 
         // Generate JWT token
         const token = jwt.sign(
@@ -101,6 +172,16 @@ app.post('/api/auth', (async (req: Request<{}, {}, LoginRequest>, res: Response)
             JWT_SECRET,
             { expiresIn: '24h' }
         );
+
+        // Update last login asynchronously (don't wait for it)
+        Admin.findByIdAndUpdate(
+            admin._id, 
+            { lastLogin: new Date() },
+            { new: false }
+        ).catch(err => console.error('Failed to update last login:', err));
+
+        const totalTime = Date.now() - startTime;
+        console.log(`✅ Login successful for '${username}' (${totalTime}ms)`);
 
         res.json({ token });
     } catch (error) {

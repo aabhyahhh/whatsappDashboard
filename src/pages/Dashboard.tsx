@@ -23,25 +23,29 @@ export default function Dashboard() {
     async function fetchStats() {
       try {
         setLoading(true);
-        // Fetch total vendors
-        const vendorsRes = await fetch(`${apiBaseUrl}/api/vendor`);
-        const vendors = await vendorsRes.json();
-        // Fetch total incoming messages
-        const messagesRes = await fetch(`${apiBaseUrl}/api/messages/inbound-count`);
-        const messagesData = await messagesRes.json();
-        // Fetch total open vendors
-        const openVendorsRes = await fetch(`${apiBaseUrl}/api/vendor/open-count`);
-        const openVendorsData = await openVendorsRes.json();
-        // Fetch active vendors in last 24h
-        const activeVendorsRes = await fetch(`${apiBaseUrl}/api/messages/active-vendors-24h`);
-        const activeVendorsData = await activeVendorsRes.json();
-        setStats({
-          totalVendors: Array.isArray(vendors) ? vendors.length : 0,
-          totalIncomingMessages: messagesData.count || 0,
-          totalOpenVendors: openVendorsData.count || 0
+        
+        // Use optimized single endpoint for all dashboard stats
+        const response = await fetch(`${apiBaseUrl}/api/dashboard-stats`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Cache-Control': 'no-cache'
+          }
         });
-        setActiveVendors24h(activeVendorsData.count || 0);
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch dashboard stats');
+        }
+
+        const data = await response.json();
+        
+        setStats({
+          totalVendors: data.totalVendors || 0,
+          totalIncomingMessages: data.totalIncomingMessages || 0,
+          totalOpenVendors: data.totalOpenVendors || 0
+        });
+        setActiveVendors24h(data.activeVendors24h || 0);
       } catch (err) {
+        console.error('Error fetching dashboard stats:', err);
         setStats({ totalVendors: 0, totalIncomingMessages: 0, totalOpenVendors: 0 });
         setActiveVendors24h(0);
       } finally {

@@ -305,6 +305,69 @@ router.post('/', async (req, res) => {
                     console.error('❌ Error handling support request:', err);
                 }
             }
+            
+            // Handle "yes_verify_aadhar" button response
+            if (ButtonPayload === 'yes_verify_aadhar' || ButtonPayload === 'Yes, I will verify Aadhar') {
+                console.log('✅ Vendor clicked Aadhaar verification button');
+                
+                try {
+                    const phone = From.replace('whatsapp:', '');
+                    const userNumbers = [phone];
+                    if (phone.startsWith('+91')) userNumbers.push(phone.replace('+91', '91'));
+                    if (phone.startsWith('+')) userNumbers.push(phone.substring(1));
+                    userNumbers.push(phone.slice(-10));
+                    
+                    // Find user/vendor
+                    const user = await User.findOne({ contactNumber: { $in: userNumbers } });
+                    if (user) {
+                        // Update Aadhaar verification status
+                        user.aadharVerified = true;
+                        user.aadharVerificationDate = new Date();
+                        await user.save();
+                        console.log(`✅ Updated Aadhaar verification status for ${user.name} (${phone}) via button click`);
+                    }
+                    
+                    // Send visual confirmation message with tick mark
+                    if (client) {
+                        try {
+                            const visualConfirmationPayload = {
+                                from: `whatsapp:${To.replace('whatsapp:', '')}`,
+                                to: From,
+                                body: `✅ *Aadhaar Verification Successful!*\n\n🎉 Your Aadhaar verification has been registered successfully!\n\n📅 Verified on: ${new Date().toLocaleDateString('en-IN')}\n⏰ Time: ${new Date().toLocaleTimeString('en-IN')}\n\n✅ Status: *VERIFIED*\n\nThank you for completing the verification process! 🙏\n\nआपका आधार सत्यापन सफलतापूर्वक पंजीकृत हो गया है! ✅`
+                            };
+                            
+                            if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
+                                visualConfirmationPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+                            }
+                            
+                            const visualConfirmationResp = await client.messages.create(visualConfirmationPayload);
+                            console.log('✅ Sent visual Aadhaar verification confirmation via button:', visualConfirmationResp.sid);
+                            
+                            // Save the visual confirmation message to DB
+                            await Message.create({
+                                from: visualConfirmationPayload.from,
+                                to: visualConfirmationPayload.to,
+                                body: visualConfirmationPayload.body,
+                                direction: 'outbound',
+                                timestamp: new Date(),
+                                meta: {
+                                    type: 'aadhaar_verification_button_confirmation',
+                                    vendorPhone: phone,
+                                    verificationDate: new Date(),
+                                    trigger: 'button_click'
+                                }
+                            });
+                            console.log('✅ Visual Aadhaar verification confirmation via button saved to DB');
+                            
+                        } catch (visualErr) {
+                            console.error('❌ Failed to send visual Aadhaar verification confirmation via button:', visualErr);
+                        }
+                    }
+                    
+                } catch (err) {
+                    console.error('❌ Error handling Aadhaar verification button:', err);
+                }
+            }
         }
         
         // If the inbound message is a greeting (hi, hello, hey, etc.), send the template message
@@ -510,7 +573,7 @@ router.post('/', async (req, res) => {
                         await Message.create({
                             from: msgPayload.from,
                             to: msgPayload.to,
-                            body: "Aadhaar verification confirmation message sent",
+                            body: "✅ Aadhaar verification confirmation message sent",
                             direction: 'outbound',
                             timestamp: new Date(),
                             meta: {
@@ -521,6 +584,40 @@ router.post('/', async (req, res) => {
                         console.log('✅ Aadhaar verification confirmation message saved to DB');
                     } catch (err) {
                         console.error('❌ Failed to save Aadhaar verification confirmation message:', err);
+                    }
+                    
+                    // Send an additional visual confirmation message with tick mark
+                    try {
+                        const visualConfirmationPayload = {
+                            from: `whatsapp:${To.replace('whatsapp:', '')}`,
+                            to: From,
+                            body: `✅ *Aadhaar Verification Successful!*\n\n🎉 Your Aadhaar verification has been registered successfully!\n\n📅 Verified on: ${new Date().toLocaleDateString('en-IN')}\n⏰ Time: ${new Date().toLocaleTimeString('en-IN')}\n\n✅ Status: *VERIFIED*\n\nThank you for completing the verification process! 🙏\n\nआपका आधार सत्यापन सफलतापूर्वक पंजीकृत हो गया है! ✅`
+                        };
+                        
+                        if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
+                            visualConfirmationPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+                        }
+                        
+                        const visualConfirmationResp = await client.messages.create(visualConfirmationPayload);
+                        console.log('✅ Sent visual Aadhaar verification confirmation:', visualConfirmationResp.sid);
+                        
+                        // Save the visual confirmation message to DB
+                        await Message.create({
+                            from: visualConfirmationPayload.from,
+                            to: visualConfirmationPayload.to,
+                            body: visualConfirmationPayload.body,
+                            direction: 'outbound',
+                            timestamp: new Date(),
+                            meta: {
+                                type: 'aadhaar_verification_visual_confirmation',
+                                vendorPhone: From.replace('whatsapp:', ''),
+                                verificationDate: new Date()
+                            }
+                        });
+                        console.log('✅ Visual Aadhaar verification confirmation saved to DB');
+                        
+                    } catch (visualErr) {
+                        console.error('❌ Failed to send visual Aadhaar verification confirmation:', visualErr);
                     }
                 } catch (err) {
                     console.error('❌ Failed to send Aadhaar verification confirmation message:', err?.message || err);

@@ -16,7 +16,10 @@
     "check:models": "node scripts/check-model-patterns.js",
     "test:coordinate-validation": "tsx scripts/test-coordinate-validation.ts",
     "test:webhook-response": "tsx scripts/test-webhook-response.ts",
-    "test:aadhaar-verification": "tsx scripts/test-aadhaar-verification.ts"
+    "test:aadhaar-verification": "tsx scripts/test-aadhaar-verification.ts",
+    "test:cors": "tsx scripts/test-cors.ts",
+    "test:aadhaar-tick-mark": "tsx scripts/test-aadhaar-tick-mark.ts",
+    "test:login-performance": "tsx scripts/test-login-performance.ts"
   },
   "dependencies": {
     "axios": "^1.6.0",
