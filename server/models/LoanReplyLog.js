@@ -7,5 +7,5 @@ const loanReplyLogSchema = new mongoose.Schema({
   aadharVerified: { type: Boolean, default: false }
 });
 
-const LoanReplyLog = mongoose.model('LoanReplyLog', loanReplyLogSchema);
+const LoanReplyLog = mongoose.models.LoanReplyLog || mongoose.model('LoanReplyLog', loanReplyLogSchema);
 export default LoanReplyLog; 

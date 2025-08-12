@@ -5,5 +5,5 @@ const supportCallReminderLogSchema = new mongoose.Schema({
   sentAt: { type: Date, default: Date.now },
 });
 
-const SupportCallReminderLog = mongoose.model('SupportCallReminderLog', supportCallReminderLogSchema);
+const SupportCallReminderLog = mongoose.models.SupportCallReminderLog || mongoose.model('SupportCallReminderLog', supportCallReminderLogSchema);
 export default SupportCallReminderLog; 

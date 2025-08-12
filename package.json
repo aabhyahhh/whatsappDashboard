@@ -12,7 +12,9 @@
     "test:location-update": "tsx scripts/test-location-update.ts",
     "test:location-webhook": "tsx scripts/test-whatsapp-location-webhook.ts",
     "test:location-api": "tsx scripts/test-location-api.ts",
-    "test:duplicate-prevention": "tsx scripts/test-duplicate-prevention.ts"
+    "test:duplicate-prevention": "tsx scripts/test-duplicate-prevention.ts",
+    "check:models": "node scripts/check-model-patterns.js",
+    "test:coordinate-validation": "tsx scripts/test-coordinate-validation.ts"
   },
   "dependencies": {
     "axios": "^1.6.0",

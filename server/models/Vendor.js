@@ -18,5 +18,5 @@ const vendorSchema = new mongoose.Schema({
 
 vendorSchema.index({ location: '2dsphere' });
 
-const Vendor = mongoose.model('Vendor', vendorSchema);
+const Vendor = mongoose.models.Vendor || mongoose.model('Vendor', vendorSchema);
 export default Vendor; 

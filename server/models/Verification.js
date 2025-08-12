@@ -5,4 +5,4 @@ const verificationSchema = new mongoose.Schema({
     isVerified: { type: Boolean, default: false },
     expiresAt: Date,
 });
-export default mongoose.model('Verification', verificationSchema);
+export default mongoose.models.Verification || mongoose.model('Verification', verificationSchema);

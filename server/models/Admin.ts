@@ -66,4 +66,4 @@ adminSchema.methods.comparePassword = async function(candidatePassword: string):
 };
 
 // Create and export the model with proper typing
-export const Admin = mongoose.model<IAdmin>('Admin', adminSchema); 
+export const Admin = (mongoose.models.Admin || mongoose.model<IAdmin>('Admin', adminSchema)) as mongoose.Model<IAdmin>; 

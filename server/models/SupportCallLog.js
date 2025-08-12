@@ -9,5 +9,5 @@ const supportCallLogSchema = new mongoose.Schema({
   completedAt: { type: Date },    // when marked as completed
 });
 
-const SupportCallLog = mongoose.model('SupportCallLog', supportCallLogSchema);
+const SupportCallLog = mongoose.models.SupportCallLog || mongoose.model('SupportCallLog', supportCallLogSchema);
 export default SupportCallLog; 

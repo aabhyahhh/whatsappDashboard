@@ -43,4 +43,4 @@ contactSchema.index({ phone: 1 });
 contactSchema.index({ lastSeen: -1 });                // For sorting contacts by last activity
 
 // Create and export the model
-export const Contact = mongoose.model<IContact>('Contact', contactSchema); 
+export const Contact = (mongoose.models.Contact || mongoose.model<IContact>('Contact', contactSchema)) as mongoose.Model<IContact>; 

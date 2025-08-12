@@ -52,4 +52,4 @@ adminSchema.methods.comparePassword = async function (candidatePassword) {
     return bcrypt.compare(candidatePassword, this.password);
 };
 // Create and export the model with proper typing
-export const Admin = mongoose.model('Admin', adminSchema);
+export const Admin = mongoose.models.Admin || mongoose.model('Admin', adminSchema);
