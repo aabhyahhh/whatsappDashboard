@@ -313,6 +313,22 @@ router.post('/', async (req, res) => {
             // Match greetings: hi, hello, hey, heyy, heyyy, etc.
             if (/^(hi+|hello+|hey+)$/.test(normalized)) {
                 console.log('Attempting to send template message in response to greeting');
+                
+                // Check if we've already sent a greeting response in the last 30 seconds
+                const thirtySecondsAgo = new Date(Date.now() - 30 * 1000);
+                const existingGreetingResponse = await Message.findOne({
+                    from: `whatsapp:${To.replace('whatsapp:', '')}`,
+                    to: From,
+                    direction: 'outbound',
+                    body: { $regex: /Namaste from Laari Khojo/ },
+                    timestamp: { $gte: thirtySecondsAgo }
+                });
+                
+                if (existingGreetingResponse) {
+                    console.log('⚠️ Greeting response already sent recently, skipping duplicate');
+                    return res.status(200).send('OK');
+                }
+                
                 if (client) {
                     try {
                         const msgPayload = {
@@ -354,6 +370,21 @@ router.post('/', async (req, res) => {
         // Handle loan keyword
         if (hasBody && typeof Body === 'string' && /\bloan\b/i.test(Body)) {
             console.log('Attempting to send template message in response to loan keyword');
+            
+            // Check if we've already sent a loan response in the last 30 seconds
+            const thirtySecondsAgo = new Date(Date.now() - 30 * 1000);
+            const existingLoanResponse = await Message.findOne({
+                from: `whatsapp:${To.replace('whatsapp:', '')}`,
+                to: From,
+                direction: 'outbound',
+                body: { $regex: /Certainly.*Aadhaar/ },
+                timestamp: { $gte: thirtySecondsAgo }
+            });
+            
+            if (existingLoanResponse) {
+                console.log('⚠️ Loan response already sent recently, skipping duplicate');
+                return res.status(200).send('OK');
+            }
             
             // Log the loan reply
             try {
