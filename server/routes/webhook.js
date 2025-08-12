@@ -3,6 +3,7 @@ import { Message } from '../models/Message.js';
 import { Contact } from '../models/Contact.js';
 import { client } from '../twilio.js';
 import { User } from '../models/User.js';
+import VendorLocation from '../models/VendorLocation.js';
 const router = Router();
 const twilioNumber = process.env.TWILIO_PHONE_NUMBER;
 // Helper function to extract coordinates from Google Maps URL
@@ -186,27 +187,34 @@ router.post('/', async (req, res) => {
                     await user.save();
                     console.log(`✅ Updated user location for ${user.contactNumber}`);
                 }
-                // Update VendorLocation collection for map display
+                // Update VendorLocation collection for Laari Khojo platform
                 try {
-                    const VendorLocation = (await import('../models/VendorLocation.js')).default;
+                    // Try to find existing VendorLocation record
+                    let vendorLocation = await VendorLocation.findOne({ phone: phone });
                     
-                    // Use upsert to create or update the vendor location
-                    await VendorLocation.findOneAndUpdate(
-                        { phone: phone },
-                        {
+                    if (vendorLocation) {
+                        // Update existing record
+                        vendorLocation.location = {
+                            lat: location.latitude,
+                            lng: location.longitude
+                        };
+                        vendorLocation.updatedAt = new Date();
+                        await vendorLocation.save();
+                        console.log(`✅ Updated VendorLocation for ${phone}`);
+                    } else {
+                        // Create new record
+                        vendorLocation = new VendorLocation({
                             phone: phone,
                             location: {
                                 lat: location.latitude,
                                 lng: location.longitude
-                            },
-                            updatedAt: new Date()
-                        },
-                        { upsert: true, new: true }
-                    );
-                    
-                    console.log(`✅ Updated VendorLocation collection for ${phone}`);
+                            }
+                        });
+                        await vendorLocation.save();
+                        console.log(`✅ Created new VendorLocation for ${phone}`);
+                    }
                 } catch (vendorLocationErr) {
-                    console.error('❌ Failed to update VendorLocation collection:', vendorLocationErr);
+                    console.error('❌ Failed to update VendorLocation:', vendorLocationErr);
                 }
                 
                 // Note: All vendors are stored in the users collection

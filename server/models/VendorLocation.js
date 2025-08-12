@@ -1,13 +1,4 @@
-import mongoose, { Document } from 'mongoose';
-
-export interface IVendorLocation extends Document {
-  phone: string;
-  location: {
-    lat: number;
-    lng: number;
-  };
-  updatedAt: Date;
-}
+import mongoose, { Schema } from 'mongoose';
 
 const vendorLocationSchema = new mongoose.Schema({
   phone: {
@@ -32,6 +23,12 @@ const vendorLocationSchema = new mongoose.Schema({
   }
 });
 
+// Update the updatedAt field on save
+vendorLocationSchema.pre('save', function(next) {
+  this.updatedAt = new Date();
+  next();
+});
+
 // Create indexes
 vendorLocationSchema.index({ phone: 1 });
 vendorLocationSchema.index({ updatedAt: -1 });
@@ -44,5 +41,6 @@ vendorLocationSchema.on('index', function(err) {
   }
 });
 
-export const VendorLocation = mongoose.model<IVendorLocation>('VendorLocation', vendorLocationSchema);
+const VendorLocation = mongoose.models.VendorLocation || mongoose.model('VendorLocation', vendorLocationSchema);
+
 export default VendorLocation;

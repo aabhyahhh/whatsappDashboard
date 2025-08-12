@@ -3,6 +3,8 @@ import type { Request, Response } from 'express';
 // @ts-ignore
 import { User } from '../models/User.js';
 // @ts-ignore
+import VendorLocation from '../models/VendorLocation.js';
+// @ts-ignore
 import { checkAndSendReminders } from '../vendorRemindersCron.js';
 
 const router = express.Router();
@@ -66,6 +68,114 @@ router.post('/update-location', async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/vendor/update-location-both - Update both User and VendorLocation models
+router.post('/update-location-both', async (req: Request, res: Response) => {
+  try {
+    const { contactNumber, mapsLink, lat, lng } = req.body;
+    if (!contactNumber) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    
+    let latitude = lat, longitude = lng;
+    
+    // If lat/lng not provided, try to extract from mapsLink
+    if ((!latitude || !longitude) && mapsLink) {
+      // Try to extract from Google Maps link
+      const match = mapsLink.match(/@([-.\d]+),([-.\d]+)/);
+      if (match) {
+        latitude = match[1];
+        longitude = match[2];
+      } else {
+        // Try to extract from ?q=lat,lng
+        const qMatch = mapsLink.match(/[?&]q=([-.\d]+),([-.\d]+)/);
+        if (qMatch) {
+          latitude = qMatch[1];
+          longitude = qMatch[2];
+        }
+      }
+    }
+    
+    // If neither mapsLink nor coordinates are provided, return error
+    if (!mapsLink && !latitude && !longitude) {
+      return res.status(400).json({ error: 'Nothing to update: provide at least one of mapsLink, lat, or lng' });
+    }
+    
+    const results: any = {};
+    
+    // Update User model
+    try {
+      const updateObj: any = { updatedAt: new Date() };
+      if (mapsLink) updateObj.mapsLink = mapsLink;
+      if (latitude && longitude) {
+        updateObj.location = {
+          type: 'Point',
+          coordinates: [parseFloat(longitude), parseFloat(latitude)],
+        };
+      }
+      
+      const vendor = await User.findOneAndUpdate(
+        { contactNumber },
+        updateObj,
+        { new: true }
+      );
+      
+      if (vendor) {
+        results.user = { success: true, vendor };
+        console.log(`✅ Updated User model for ${contactNumber}`);
+      } else {
+        results.user = { success: false, error: 'Vendor not found in User collection' };
+      }
+    } catch (userErr) {
+      results.user = { success: false, error: userErr.message };
+      console.error('❌ Failed to update User model:', userErr);
+    }
+    
+    // Update VendorLocation model
+    try {
+      if (latitude && longitude) {
+        let vendorLocation = await VendorLocation.findOne({ phone: contactNumber });
+        
+        if (vendorLocation) {
+          // Update existing record
+          vendorLocation.location = {
+            lat: parseFloat(latitude),
+            lng: parseFloat(longitude)
+          };
+          vendorLocation.updatedAt = new Date();
+          await vendorLocation.save();
+          results.vendorLocation = { success: true, updated: true };
+          console.log(`✅ Updated VendorLocation for ${contactNumber}`);
+        } else {
+          // Create new record
+          vendorLocation = new VendorLocation({
+            phone: contactNumber,
+            location: {
+              lat: parseFloat(latitude),
+              lng: parseFloat(longitude)
+            }
+          });
+          await vendorLocation.save();
+          results.vendorLocation = { success: true, created: true };
+          console.log(`✅ Created new VendorLocation for ${contactNumber}`);
+        }
+      } else {
+        results.vendorLocation = { success: false, error: 'No coordinates provided for VendorLocation update' };
+      }
+    } catch (vendorLocationErr) {
+      results.vendorLocation = { success: false, error: vendorLocationErr.message };
+      console.error('❌ Failed to update VendorLocation:', vendorLocationErr);
+    }
+    
+    res.json({ 
+      success: results.user.success || results.vendorLocation.success,
+      results 
+    });
+    
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/vendor - Get all vendors (now users)
 router.get('/', async (_req: Request, res: Response) => {
   try {
@@ -117,48 +227,6 @@ router.get('/open-count', async (_req: Request, res: Response) => {
   } catch (err) {
     console.error('Error counting open vendors:', err);
     res.status(500).json({ error: 'Failed to count open vendors' });
-  }
-});
-
-// GET /api/vendor/locations
-router.get('/locations', async (req: Request, res: Response) => {
-  try {
-    const VendorLocation = (await import('../models/VendorLocation.js')).default;
-    
-    const vendorLocations = await VendorLocation.find({})
-      .select('phone location updatedAt')
-      .sort({ updatedAt: -1 });
-    
-    res.json({ 
-      success: true, 
-      locations: vendorLocations,
-      count: vendorLocations.length 
-    });
-  } catch (err: any) {
-    console.error('Error fetching vendor locations:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// GET /api/vendor/location/:phone
-router.get('/location/:phone', async (req: Request, res: Response) => {
-  try {
-    const { phone } = req.params;
-    const VendorLocation = (await import('../models/VendorLocation.js')).default;
-    
-    const vendorLocation = await VendorLocation.findOne({ phone });
-    
-    if (!vendorLocation) {
-      return res.status(404).json({ error: 'Vendor location not found' });
-    }
-    
-    res.json({ 
-      success: true, 
-      location: vendorLocation 
-    });
-  } catch (err: any) {
-    console.error('Error fetching vendor location:', err);
-    res.status(500).json({ error: err.message });
   }
 });
 

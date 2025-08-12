@@ -2,87 +2,84 @@ import mongoose from 'mongoose';
 import { User } from '../server/models/User.js';
 import VendorLocation from '../server/models/VendorLocation.js';
 
-// Test data
-const testPhone = '+919876543210';
-const testLocation = {
-  latitude: 28.6139,
-  longitude: 77.2090
-};
-
+// Test location update functionality
 async function testLocationUpdate() {
   try {
     // Connect to database
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/whatsapp-dashboard');
-    console.log('✅ Connected to database');
+    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/whatsapp-dashboard';
+    await mongoose.connect(mongoUri);
+    console.log('✅ Connected to MongoDB');
 
-    // Create a test user if it doesn't exist
-    let testUser = await User.findOne({ contactNumber: testPhone });
-    if (!testUser) {
-      testUser = new User({
-        name: 'Test Vendor',
-        email: 'test@example.com',
-        password: 'testpassword',
-        contactNumber: testPhone,
-        mapsLink: 'https://maps.google.com/?q=28.6139,77.2090',
-        operatingHours: {
-          openTime: '09:00',
-          closeTime: '18:00',
-          days: [1, 2, 3, 4, 5, 6, 7]
-        }
-      });
-      await testUser.save();
-      console.log('✅ Created test user');
-    } else {
-      console.log('✅ Test user already exists');
+    const testPhone = '+919265466535'; // Using the phone from your example
+    const testLocation = {
+      latitude: 23.0210,
+      longitude: 72.5714
+    };
+
+    console.log(`🧪 Testing location update for phone: ${testPhone}`);
+    console.log(`📍 Test coordinates: ${testLocation.latitude}, ${testLocation.longitude}`);
+
+    // 1. Test User model update
+    console.log('\n📋 Testing User model update...');
+    const users = await User.find({ contactNumber: testPhone });
+    console.log(`Found ${users.length} users with phone ${testPhone}`);
+
+    for (const user of users) {
+      console.log(`Updating user: ${user.name}`);
+      user.location = {
+        type: 'Point',
+        coordinates: [testLocation.longitude, testLocation.latitude],
+      };
+      user.mapsLink = `https://maps.google.com/?q=${testLocation.latitude},${testLocation.longitude}`;
+      await user.save();
+      console.log(`✅ Updated user location for ${user.contactNumber}`);
     }
 
-    // Test location update in User model
-    testUser.location = {
-      type: 'Point',
-      coordinates: [testLocation.longitude, testLocation.latitude]
-    };
-    testUser.mapsLink = `https://maps.google.com/?q=${testLocation.latitude},${testLocation.longitude}`;
-    await testUser.save();
-    console.log('✅ Updated user location');
-
-    // Test location update in VendorLocation model
-    await VendorLocation.findOneAndUpdate(
-      { phone: testPhone },
-      {
+    // 2. Test VendorLocation model update
+    console.log('\n📋 Testing VendorLocation model update...');
+    let vendorLocation = await VendorLocation.findOne({ phone: testPhone });
+    
+    if (vendorLocation) {
+      console.log('Found existing VendorLocation record, updating...');
+      vendorLocation.location = {
+        lat: testLocation.latitude,
+        lng: testLocation.longitude
+      };
+      vendorLocation.updatedAt = new Date();
+      await vendorLocation.save();
+      console.log(`✅ Updated VendorLocation for ${testPhone}`);
+    } else {
+      console.log('Creating new VendorLocation record...');
+      vendorLocation = new VendorLocation({
         phone: testPhone,
         location: {
           lat: testLocation.latitude,
           lng: testLocation.longitude
-        },
-        updatedAt: new Date()
-      },
-      { upsert: true, new: true }
-    );
-    console.log('✅ Updated VendorLocation');
+        }
+      });
+      await vendorLocation.save();
+      console.log(`✅ Created new VendorLocation for ${testPhone}`);
+    }
 
-    // Verify the updates
-    const updatedUser = await User.findOne({ contactNumber: testPhone });
+    // 3. Verify the updates
+    console.log('\n🔍 Verifying updates...');
+    
+    // Check User model
+    const updatedUsers = await User.find({ contactNumber: testPhone });
+    for (const user of updatedUsers) {
+      console.log(`User ${user.name}:`);
+      console.log(`  - Location: ${JSON.stringify(user.location)}`);
+      console.log(`  - Maps Link: ${user.mapsLink}`);
+    }
+
+    // Check VendorLocation model
     const updatedVendorLocation = await VendorLocation.findOne({ phone: testPhone });
-
-    console.log('\n📊 Verification Results:');
-    console.log('User location:', updatedUser?.location);
-    console.log('User mapsLink:', updatedUser?.mapsLink);
-    console.log('VendorLocation:', updatedVendorLocation?.location);
-    console.log('VendorLocation updatedAt:', updatedVendorLocation?.updatedAt);
-
-    // Test with different phone number formats
-    const phoneVariations = [
-      testPhone,
-      testPhone.replace('+91', '91'),
-      testPhone.substring(1),
-      testPhone.slice(-10)
-    ];
-
-    console.log('\n📱 Phone number variations:', phoneVariations);
-
-    // Test finding user with different phone formats
-    const users = await User.find({ contactNumber: { $in: phoneVariations } });
-    console.log('Users found with phone variations:', users.length);
+    if (updatedVendorLocation) {
+      console.log(`VendorLocation:`);
+      console.log(`  - Phone: ${updatedVendorLocation.phone}`);
+      console.log(`  - Location: ${JSON.stringify(updatedVendorLocation.location)}`);
+      console.log(`  - Updated At: ${updatedVendorLocation.updatedAt}`);
+    }
 
     console.log('\n✅ Location update test completed successfully!');
 
@@ -90,7 +87,7 @@ async function testLocationUpdate() {
     console.error('❌ Test failed:', error);
   } finally {
     await mongoose.disconnect();
-    console.log('✅ Disconnected from database');
+    console.log('🔌 Disconnected from MongoDB');
   }
 }
 

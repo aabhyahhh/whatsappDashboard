@@ -9,9 +9,12 @@
     "preview": "vite preview",
     "auth-server": "tsx server/auth.ts",
     "start": "tsx server/auth.ts",
-    "test:location": "tsx scripts/test-location-update.ts"
+    "test:location-update": "tsx scripts/test-location-update.ts",
+    "test:location-webhook": "tsx scripts/test-whatsapp-location-webhook.ts",
+    "test:location-api": "tsx scripts/test-location-api.ts"
   },
   "dependencies": {
+    "axios": "^1.6.0",
     "bcryptjs": "^3.0.2",
     "body-parser": "^2.2.0",
     "cors": "^2.8.5",
