@@ -41,6 +41,11 @@ function App() {
               <ChatView />
             </ProtectedRoute>
           } />
+          <Route path="/chat/:phone" element={
+            <ProtectedRoute>
+              <ChatView />
+            </ProtectedRoute>
+          } />
           <Route path="/dashboard/active-vendors-24h" element={
             <ProtectedRoute>
               <ActiveVendors24h />

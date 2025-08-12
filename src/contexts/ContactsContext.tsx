@@ -57,7 +57,7 @@ export const ContactsProvider: React.FC<ContactsProviderProps> = ({ children }) 
       setError(null);
       
       console.log('📋 Fetching contacts from API...');
-      const response = await fetch(`${apiBaseUrl}/api/webhook/contacts`);
+      const response = await fetch(`${apiBaseUrl}/api/contacts`);
       
       if (!response.ok) {
         throw new Error('Failed to fetch contacts');

@@ -137,7 +137,7 @@ export default function MessageHealth() {
                     <div key={index} className="bg-white p-3 rounded border">
                       <p 
                         className="font-medium text-blue-600 hover:text-blue-800 cursor-pointer"
-                        onClick={() => window.open(`/chat/${log.contactNumber}`, '_blank')}
+                        onClick={() => window.open(`/dashboard/chat/${log.contactNumber}`, '_blank')}
                       >
                         {log.contactNumber}
                       </p>
@@ -166,7 +166,7 @@ export default function MessageHealth() {
                           <p className="font-medium">{log.vendorName}</p>
                           <p 
                             className="text-sm text-blue-600 hover:text-blue-800 cursor-pointer"
-                            onClick={() => window.open(`/chat/${log.contactNumber}`, '_blank')}
+                            onClick={() => window.open(`/dashboard/chat/${log.contactNumber}`, '_blank')}
                           >
                             {log.contactNumber}
                           </p>
@@ -197,25 +197,7 @@ export default function MessageHealth() {
           </div>
         </div>
 
-        {/* Unknown Messages */}
-        {data.unknownMessages && data.unknownMessages.length > 0 && (
-          <div className="mt-8">
-            <h3 className="text-lg font-semibold mb-4">Unknown Messages (First 10)</h3>
-            <div className="bg-yellow-50 rounded-lg p-4 max-h-96 overflow-y-auto">
-              <div className="space-y-2">
-                {(data.unknownMessages || []).map((msg, index) => (
-                  <div key={index} className="bg-white p-3 rounded border">
-                    <p className="font-medium">{msg.to}</p>
-                    <p className="text-sm text-gray-600">
-                      {new Date(msg.timestamp).toLocaleString()}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">{msg.body}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+
 
         {/* Health Summary */}
         <div className="mt-8 p-4 bg-gray-50 rounded-lg">
@@ -226,7 +208,7 @@ export default function MessageHealth() {
             <p>• <strong>Loan Support Messages:</strong> {(data.stats.messageTypes || []).find(t => t.type === 'Loan Support')?.count || 0} sent</p>
             <p>• <strong>Welcome Messages:</strong> {(data.stats.messageTypes || []).find(t => t.type === 'Welcome Message')?.count || 0} sent</p>
             <p>• <strong>Greeting Responses:</strong> {(data.stats.messageTypes || []).find(t => t.type === 'Greeting Response')?.count || 0} sent</p>
-            <p>• <strong>Unknown Messages:</strong> {data.stats.unknownMessagesCount} (need investigation)</p>
+
           </div>
         </div>
       </div>

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
-import { useContacts } from '../contexts/ContactsContext';
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
@@ -15,8 +14,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   
-  // Use cached contacts from context instead of fetching directly
-  const { contacts, loading: contactsLoading, error: contactsError } = useContacts();
+
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -52,16 +50,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     return location.pathname === path;
   };
 
-  const formatLastSeen = (lastSeen: string) => {
-    const date = new Date(lastSeen);
-    const now = new Date();
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-    
-    if (diffInMinutes < 1) return 'Just now';
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
-    return date.toLocaleDateString();
-  };
+
 
   const navItems = [
     {
@@ -178,68 +167,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             })}
           </ul>
         </nav>
-        {/* Contacts Section (hide on mobile) */}
-        <div className="mt-6 border-t border-gray-200 pt-4 hidden md:block flex-1 min-h-0 flex flex-col" style={{overflow: 'hidden'}}>
-          <div className="px-4 mb-3">
-            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">
-              Recent Contacts
-            </h3>
-          </div>
-          
-          {contactsLoading ? (
-            <div className="px-4 py-2">
-              <div className="animate-pulse flex space-x-2">
-                <div className="rounded-full bg-gray-300 h-8 w-8"></div>
-                <div className="flex-1 space-y-2 py-1">
-                  <div className="h-3 bg-gray-300 rounded w-3/4"></div>
-                  <div className="h-2 bg-gray-300 rounded w-1/2"></div>
-                </div>
-              </div>
-            </div>
-          ) : contactsError ? (
-            <div className="px-4 py-2">
-              <p className="text-xs text-red-500">{contactsError}</p>
-            </div>
-          ) : contacts.length === 0 ? (
-            <div className="px-4 py-2">
-              <p className="text-xs text-gray-500">No contacts yet</p>
-            </div>
-          ) : (
-            <div className="overflow-y-auto flex-1">
-              {contacts.slice(0, 10).map((contact) => (
-                <button
-                  key={contact._id}
-                  onClick={() => navigate(`/dashboard/chat/${contact.phone}`)}
-                  className="w-full flex items-center px-4 py-2 text-left hover:bg-gray-50 transition-colors duration-200"
-                >
-                  <div className="flex-shrink-0 h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center mr-3">
-                    <span className="text-white text-xs font-medium">
-                      {contact.phone ? contact.phone.slice(-2) : ''}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {contact.phone}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {formatLastSeen(contact.lastSeen)}
-                    </p>
-                  </div>
-                </button>
-              ))}
-              {contacts.length > 10 && (
-                <div className="px-4 py-2">
-                  <button
-                    onClick={() => navigate('/dashboard/contacts')}
-                    className="text-xs text-blue-600 hover:text-blue-800"
-                  >
-                    View all {contacts.length} contacts
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+
         {/* Sidebar Footer (Logout) */}
         <div className="p-4 border-t border-gray-200 hidden md:block">
           <button

@@ -629,6 +629,46 @@ router.get('/message-health', async (req: Request, res: Response) => {
             timestamp: { $gte: fortyEightHoursAgo }
         }).sort({ timestamp: -1 }).limit(20);
         
+        // Enhance vendor update location logs with vendor names
+        const enhancedVendorLogs = await Promise.all(vendorUpdateLocationLogs.map(async (log) => {
+            let vendorName = 'Unknown Vendor';
+            
+            // Always try to fetch vendor name from User collection
+            try {
+                const User = (await import('../models/User.js')).User;
+                const phone = log.to.replace('whatsapp:', '');
+                const userNumbers = [phone];
+                if (phone.startsWith('+91')) userNumbers.push(phone.replace('+91', '91'));
+                if (phone.startsWith('+')) userNumbers.push(phone.substring(1));
+                userNumbers.push(phone.slice(-10));
+                
+                // Also try with whatsapp: prefix removed and different formats
+                if (log.to.startsWith('whatsapp:')) {
+                    const cleanPhone = log.to.replace('whatsapp:', '');
+                    userNumbers.push(cleanPhone);
+                    if (cleanPhone.startsWith('+91')) userNumbers.push(cleanPhone.replace('+91', '91'));
+                    if (cleanPhone.startsWith('+')) userNumbers.push(cleanPhone.substring(1));
+                    userNumbers.push(cleanPhone.slice(-10));
+                }
+                
+                const user = await User.findOne({ contactNumber: { $in: userNumbers } });
+                if (user && user.name) {
+                    vendorName = user.name;
+                }
+            } catch (error) {
+                console.error('Error fetching vendor name for', log.to, error);
+            }
+            
+            return {
+                contactNumber: log.to,
+                sentAt: log.timestamp,
+                vendorName: vendorName,
+                minutesBefore: log.meta?.minutesBefore || 'unknown',
+                reminderType: log.meta?.reminderType || 'vendor_location',
+                openTime: log.meta?.openTime || 'unknown'
+            };
+        }));
+        
         // Calculate statistics
         const stats = {
             totalOutboundMessages: outboundMessages.length,
@@ -646,14 +686,7 @@ router.get('/message-health', async (req: Request, res: Response) => {
             categorizedMessages,
             unknownMessages: unknownMessages.slice(0, 10), // Limit to first 10
             supportCallLogs: supportCallLogs.slice(0, 10),
-            vendorUpdateLocationLogs: vendorUpdateLocationLogs.map(log => ({
-                contactNumber: log.to,
-                sentAt: log.timestamp,
-                vendorName: log.meta?.vendorName || 'Unknown Vendor',
-                minutesBefore: log.meta?.minutesBefore || 'unknown',
-                reminderType: log.meta?.reminderType || 'vendor_location',
-                openTime: log.meta?.openTime || 'unknown'
-            })),
+            vendorUpdateLocationLogs: enhancedVendorLogs,
             timeRange: {
                 from: fortyEightHoursAgo,
                 to: new Date()
