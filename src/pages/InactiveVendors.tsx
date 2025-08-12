@@ -9,14 +9,19 @@ interface InactiveVendor {
   phone: string;
   name: string;
   lastSeen: string;
-  lastMessage: string;
+  daysInactive: number;
   reminderSentAt?: string;
+  reminderStatus?: string;
+  // Handle old API response format
+  lastMessage?: string;
+  templateReceivedAt?: string;
 }
 
 export default function InactiveVendors() {
   const [vendors, setVendors] = useState<InactiveVendor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sendingReminders, setSendingReminders] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -31,7 +36,16 @@ export default function InactiveVendors() {
         throw new Error('Failed to fetch inactive vendors');
       }
       const data = await response.json();
-      setVendors(data);
+      
+      // Transform the data to handle both old and new API formats
+      const transformedData = data.map((vendor: any) => ({
+        ...vendor,
+        // If reminderStatus is missing, try to determine it from templateReceivedAt
+        reminderStatus: vendor.reminderStatus || (vendor.templateReceivedAt ? 'Sent' : 'Not sent'),
+        reminderSentAt: vendor.reminderSentAt || vendor.templateReceivedAt
+      }));
+      
+      setVendors(transformedData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -41,6 +55,8 @@ export default function InactiveVendors() {
 
   const handleSendReminder = async (vendorId: string) => {
     try {
+      setSendingReminders(prev => new Set(prev).add(vendorId));
+      
       const response = await fetch(`${apiBaseUrl}/api/webhook/send-reminder/${vendorId}`, {
         method: 'POST',
         headers: {
@@ -49,13 +65,36 @@ export default function InactiveVendors() {
       });
       
       if (response.ok) {
-        // Refresh the list after sending reminder
-        fetchInactiveVendors();
+        const result = await response.json();
+        console.log('Reminder sent successfully:', result);
+        
+        // Update the local state to show the reminder was sent
+        setVendors(prev => prev.map(vendor => 
+          vendor._id === vendorId 
+            ? { 
+                ...vendor, 
+                reminderStatus: 'Sent', 
+                reminderSentAt: new Date().toISOString() 
+              }
+            : vendor
+        ));
+        
+        // Show success message
+        alert('Reminder sent successfully!');
       } else {
-        alert('Failed to send reminder');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Failed to send reminder:', errorData);
+        alert(`Failed to send reminder: ${errorData.error || 'Unknown error'}`);
       }
     } catch (err) {
-      alert('Error sending reminder');
+      console.error('Error sending reminder:', err);
+      alert('Error sending reminder. Please try again.');
+    } finally {
+      setSendingReminders(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(vendorId);
+        return newSet;
+      });
     }
   };
 
@@ -69,12 +108,12 @@ export default function InactiveVendors() {
     });
   };
 
+  // Calculate days inactive if not provided by API
   const getDaysInactive = (lastSeen: string) => {
     const lastSeenDate = new Date(lastSeen);
     const now = new Date();
     const diffTime = Math.abs(now.getTime() - lastSeenDate.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
   };
 
   if (loading) {
@@ -155,7 +194,7 @@ export default function InactiveVendors() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Reminder Sent</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {vendors.filter(v => v.reminderSentAt).length}
+                  {vendors.filter(v => v.reminderStatus === 'Sent').length}
                 </p>
               </div>
             </div>
@@ -171,7 +210,7 @@ export default function InactiveVendors() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">No Reminder</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {vendors.filter(v => !v.reminderSentAt).length}
+                  {vendors.filter(v => v.reminderStatus !== 'Sent').length}
                 </p>
               </div>
             </div>
@@ -244,25 +283,27 @@ export default function InactiveVendors() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          getDaysInactive(vendor.lastSeen) > 7 
+                          (vendor.daysInactive || getDaysInactive(vendor.lastSeen)) > 7 
                             ? 'bg-red-100 text-red-800' 
-                            : getDaysInactive(vendor.lastSeen) > 3 
+                            : (vendor.daysInactive || getDaysInactive(vendor.lastSeen)) > 3 
                             ? 'bg-yellow-100 text-yellow-800' 
                             : 'bg-green-100 text-green-800'
                         }`}>
-                          {getDaysInactive(vendor.lastSeen)} days
+                          {vendor.daysInactive || getDaysInactive(vendor.lastSeen)} days
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {vendor.reminderSentAt ? (
+                        {vendor.reminderStatus === 'Sent' ? (
                           <div className="flex items-center">
                             <svg className="w-4 h-4 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
                             <span className="text-sm text-gray-900">Sent</span>
-                            <span className="text-xs text-gray-500 ml-1">
-                              {formatDate(vendor.reminderSentAt)}
-                            </span>
+                            {vendor.reminderSentAt && (
+                              <span className="text-xs text-gray-500 ml-1">
+                                {formatDate(vendor.reminderSentAt)}
+                              </span>
+                            )}
                           </div>
                         ) : (
                           <div className="flex items-center">
@@ -276,9 +317,19 @@ export default function InactiveVendors() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button
                           onClick={() => handleSendReminder(vendor._id)}
-                          className="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-md text-sm font-medium transition-colors"
+                          disabled={vendor.reminderStatus === 'Sent' || sendingReminders.has(vendor._id)}
+                          className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                            vendor.reminderStatus === 'Sent' || sendingReminders.has(vendor._id)
+                              ? 'text-gray-400 bg-gray-100 cursor-not-allowed'
+                              : 'text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100'
+                          }`}
                         >
-                          Send Reminder
+                          {sendingReminders.has(vendor._id) 
+                            ? 'Sending...' 
+                            : vendor.reminderStatus === 'Sent' 
+                            ? 'Reminder Sent' 
+                            : 'Send Reminder'
+                          }
                         </button>
                       </td>
                     </tr>

@@ -678,40 +678,41 @@ router.get('/inactive-vendors', async (req: Request, res: Response) => {
             lastSeen: { $lt: threeDaysAgo }
         }).sort({ lastSeen: -1 });
         
-        // For each inactive contact, check if they received the specific message template
+        // For each inactive contact, check if they are registered vendors and get reminder status
         const inactiveVendorsWithDetails = [];
         
         for (const contact of inactiveContacts) {
-            // Check if they received the template message (using the actual template ID found in database)
-            const receivedTemplate = await Message.findOne({
-                to: contact.phone,
-                direction: 'outbound',
-                body: { $regex: /HXbdb716843483717790c45c951b71701e/ }
-            });
+            // Find the corresponding vendor to get the name
+            const vendor = await User.findOne({ contactNumber: contact.phone });
             
-            if (receivedTemplate) {
-                // Check if they responded after receiving the template
-                const responseAfterTemplate = await Message.findOne({
-                    from: contact.phone,
-                    direction: 'inbound',
-                    timestamp: { $gt: receivedTemplate.timestamp }
+            // Only include if they are registered vendors
+            if (vendor) {
+                // Calculate days inactive
+                const daysInactive = Math.floor((Date.now() - contact.lastSeen.getTime()) / (1000 * 60 * 60 * 24));
+                
+                // Check if they received the support call reminder template
+                const receivedTemplate = await Message.findOne({
+                    to: contact.phone,
+                    direction: 'outbound',
+                    body: { $regex: /HX4c78928e13eda15597c00ea0915f1f77/ }
                 });
                 
-                // If no response after template, they're truly inactive
-                if (!responseAfterTemplate) {
-                    // Find the corresponding vendor to get the name
-                    const vendor = await User.findOne({ contactNumber: contact.phone });
-                    
-                    inactiveVendorsWithDetails.push({
-                        _id: contact._id,
-                        phone: contact.phone,
-                        name: vendor ? vendor.name : null,
-                        lastSeen: contact.lastSeen,
-                        lastMessage: '', // You can add this if needed
-                        templateReceivedAt: receivedTemplate.timestamp,
-                        daysInactive: Math.floor((Date.now() - contact.lastSeen.getTime()) / (1000 * 60 * 60 * 24))
-                    });
-                }
+                // Check if reminder was sent in the last 24 hours
+                const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+                const recentReminder = await SupportCallReminderLog.findOne({
+                    contactNumber: contact.phone,
+                    sentAt: { $gte: twentyFourHoursAgo }
+                });
+                
+                inactiveVendorsWithDetails.push({
+                    _id: contact._id,
+                    phone: contact.phone,
+                    name: vendor.name,
+                    lastSeen: contact.lastSeen,
+                    daysInactive: daysInactive,
+                    reminderSentAt: recentReminder ? recentReminder.sentAt : null,
+                    reminderStatus: recentReminder ? 'Sent' : 'Not sent'
+                });
             }
         }
         
@@ -831,33 +832,59 @@ router.post('/send-reminder/:vendorId', async (req: Request, res: Response) => {
     try {
         const { vendorId } = req.params;
         
-        const vendor = await Vendor.findById(vendorId);
-        if (!vendor) {
-            return res.status(404).json({ error: 'Vendor not found' });
+        // Find the contact by ID
+        const contact = await Contact.findById(vendorId);
+        if (!contact) {
+            return res.status(404).json({ error: 'Contact not found' });
         }
         
-        // Send reminder message via Twilio
+        // Find the corresponding vendor to get the name
+        const vendor = await User.findOne({ contactNumber: contact.phone });
+        if (!vendor) {
+            return res.status(404).json({ error: 'Vendor not found for this contact' });
+        }
+        
+        // Check if reminder was already sent in the last 24 hours
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const recentReminder = await SupportCallReminderLog.findOne({
+            contactNumber: contact.phone,
+            sentAt: { $gte: twentyFourHoursAgo }
+        });
+        
+        if (recentReminder) {
+            return res.status(400).json({ error: 'Reminder already sent in the last 24 hours' });
+        }
+        
+        // Send support call reminder message via Twilio
         const twilioClient = getTwilioClient();
         if (!twilioClient) {
             return res.status(500).json({ error: 'Twilio client not available' });
         }
         
+        // Use the support call reminder template
         const messagePayload = {
             from: twilioNumber,
-            to: `whatsapp:${vendor.phone}`,
-            body: "🔔 Reminder: Don't forget to stay active on Laari Khojo! Your customers are waiting for you."
+            to: `whatsapp:${contact.phone}`,
+            contentSid: 'HX4c78928e13eda15597c00ea0915f1f77'
         };
+        
+        if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
+            (messagePayload as any).messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+        }
         
         const result = await twilioClient.messages.create(messagePayload);
         
-        // Update vendor's last reminder sent
-        vendor.lastReminderSent = new Date();
-        await vendor.save();
+        // Log the reminder send
+        await SupportCallReminderLog.create({
+            contactNumber: contact.phone,
+            sentAt: new Date()
+        });
         
         res.json({ 
             success: true, 
             messageSid: result.sid,
-            vendor: vendor
+            vendor: vendor.name,
+            phone: contact.phone
         });
     } catch (error) {
         console.error('Error sending reminder:', error);
