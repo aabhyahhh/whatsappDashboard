@@ -120,4 +120,46 @@ router.get('/open-count', async (_req: Request, res: Response) => {
   }
 });
 
+// GET /api/vendor/locations
+router.get('/locations', async (req: Request, res: Response) => {
+  try {
+    const VendorLocation = (await import('../models/VendorLocation.js')).default;
+    
+    const vendorLocations = await VendorLocation.find({})
+      .select('phone location updatedAt')
+      .sort({ updatedAt: -1 });
+    
+    res.json({ 
+      success: true, 
+      locations: vendorLocations,
+      count: vendorLocations.length 
+    });
+  } catch (err: any) {
+    console.error('Error fetching vendor locations:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/vendor/location/:phone
+router.get('/location/:phone', async (req: Request, res: Response) => {
+  try {
+    const { phone } = req.params;
+    const VendorLocation = (await import('../models/VendorLocation.js')).default;
+    
+    const vendorLocation = await VendorLocation.findOne({ phone });
+    
+    if (!vendorLocation) {
+      return res.status(404).json({ error: 'Vendor location not found' });
+    }
+    
+    res.json({ 
+      success: true, 
+      location: vendorLocation 
+    });
+  } catch (err: any) {
+    console.error('Error fetching vendor location:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router; 

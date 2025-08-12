@@ -108,14 +108,16 @@ schedule.scheduleJob('0 10 * * *', async () => {
         continue;
       }
       
-      // Avoid duplicate sends within 24h
-      const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      const alreadySent = await SupportCallReminderLog.findOne({ 
-        contactNumber: contact.phone, 
-        sentAt: { $gte: since } 
-      });
+      // Send reminder every 24 hours to inactive vendors
+      // Check if we should send today (based on last sent time)
+      const lastSent = await SupportCallReminderLog.findOne({ 
+        contactNumber: contact.phone 
+      }).sort({ sentAt: -1 });
       
-      if (!alreadySent) {
+      const shouldSendToday = !lastSent || 
+        (new Date() - lastSent.sentAt) >= 24 * 60 * 60 * 1000; // 24 hours
+      
+      if (shouldSendToday) {
         console.log(`📱 Sending reminder to ${vendorName} (${contact.phone})...`);
         const sent = await sendSupportReminder(contact.phone, vendorName);
         
@@ -134,7 +136,8 @@ schedule.scheduleJob('0 10 * * *', async () => {
         // Small delay to avoid rate limits
         await new Promise(resolve => setTimeout(resolve, 1000));
       } else {
-        console.log(`⏩ Skipping ${vendorName} (${contact.phone}), already sent in last 24h.`);
+        const hoursSinceLastSent = Math.floor((new Date() - lastSent.sentAt) / (60 * 60 * 1000));
+        console.log(`⏩ Skipping ${vendorName} (${contact.phone}), sent ${hoursSinceLastSent}h ago.`);
         skippedCount++;
       }
     }

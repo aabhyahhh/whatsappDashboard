@@ -1,90 +1,98 @@
-import path from 'path';
-import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import { User } from '../server/models/User.js';
+import VendorLocation from '../server/models/VendorLocation.js';
 
-// Load .env file explicitly
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+// Test data
+const testPhone = '+919876543210';
+const testLocation = {
+  latitude: 28.6139,
+  longitude: 77.2090
+};
 
 async function testLocationUpdate() {
   try {
-    console.log('🧪 TESTING LOCATION UPDATE IN DATABASE');
-    console.log('=====================================');
-    
-    // Connect to MongoDB
-    await mongoose.connect(process.env.MONGODB_URI!);
-    console.log('✅ Connected to MongoDB');
-    
-    // Check the specific user that sent the location
-    const phoneNumber = '+918130026321';
-    const userNumbers = [phoneNumber];
-    if (phoneNumber.startsWith('+91')) userNumbers.push(phoneNumber.replace('+91', '91'));
-    if (phoneNumber.startsWith('+')) userNumbers.push(phoneNumber.substring(1));
-    userNumbers.push(phoneNumber.slice(-10));
-    
-    console.log(`🔍 Looking for user with phone: ${phoneNumber}`);
-    console.log(`📱 Trying variations: ${userNumbers.join(', ')}`);
-    
-    const user = await User.findOne({ contactNumber: { $in: userNumbers } });
-    
-    if (user) {
-      console.log(`✅ Found user: ${user.name} (${user.contactNumber})`);
-      console.log(`📍 Location data:`);
-      console.log(`   - Has location: ${!!user.location}`);
-      console.log(`   - Location type: ${user.location?.type || 'N/A'}`);
-      console.log(`   - Coordinates: ${user.location?.coordinates ? `[${user.location.coordinates.join(', ')}]` : 'N/A'}`);
-      console.log(`   - Maps Link: ${user.mapsLink || 'N/A'}`);
-      console.log(`   - Updated At: ${user.updatedAt || 'N/A'}`);
-      
-      if (user.location?.coordinates) {
-        const [lng, lat] = user.location.coordinates;
-        console.log(`🌐 Google Maps URL: https://maps.google.com/?q=${lat},${lng}`);
-        console.log(`📍 Expected coordinates from logs: 28.498142242432, 76.983039855957`);
-        console.log(`📍 Database coordinates: ${lat}, ${lng}`);
-        
-        if (Math.abs(lat - 28.498142242432) < 0.000001 && Math.abs(lng - 76.983039855957) < 0.000001) {
-          console.log('✅ Location coordinates match the webhook logs!');
-        } else {
-          console.log('❌ Location coordinates do not match the webhook logs');
+    // Connect to database
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/whatsapp-dashboard');
+    console.log('✅ Connected to database');
+
+    // Create a test user if it doesn't exist
+    let testUser = await User.findOne({ contactNumber: testPhone });
+    if (!testUser) {
+      testUser = new User({
+        name: 'Test Vendor',
+        email: 'test@example.com',
+        password: 'testpassword',
+        contactNumber: testPhone,
+        mapsLink: 'https://maps.google.com/?q=28.6139,77.2090',
+        operatingHours: {
+          openTime: '09:00',
+          closeTime: '18:00',
+          days: [1, 2, 3, 4, 5, 6, 7]
         }
-      } else {
-        console.log('❌ No location data found in database');
-      }
-    } else {
-      console.log(`❌ No user found with phone number: ${phoneNumber}`);
-      
-      // Check if there are any users with similar phone numbers
-      const similarUsers = await User.find({
-        contactNumber: { $regex: phoneNumber.slice(-10) }
       });
-      
-      if (similarUsers.length > 0) {
-        console.log(`📋 Found ${similarUsers.length} users with similar phone numbers:`);
-        similarUsers.forEach(u => {
-          console.log(`   - ${u.name} (${u.contactNumber})`);
-        });
-      }
+      await testUser.save();
+      console.log('✅ Created test user');
+    } else {
+      console.log('✅ Test user already exists');
     }
-    
-    // Also check recent location updates
-    console.log('\n🔍 Checking recent location updates...');
-    const recentUsers = await User.find({
-      'location.coordinates': { $exists: true, $ne: [0, 0] },
-      updatedAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } // Last 24 hours
-    }).sort({ updatedAt: -1 }).limit(5);
-    
-    console.log(`📊 Found ${recentUsers.length} users with recent location updates:`);
-    recentUsers.forEach(u => {
-      const [lng, lat] = u.location.coordinates;
-      console.log(`   - ${u.name} (${u.contactNumber}): ${lat}, ${lng} - Updated: ${u.updatedAt}`);
-    });
-    
+
+    // Test location update in User model
+    testUser.location = {
+      type: 'Point',
+      coordinates: [testLocation.longitude, testLocation.latitude]
+    };
+    testUser.mapsLink = `https://maps.google.com/?q=${testLocation.latitude},${testLocation.longitude}`;
+    await testUser.save();
+    console.log('✅ Updated user location');
+
+    // Test location update in VendorLocation model
+    await VendorLocation.findOneAndUpdate(
+      { phone: testPhone },
+      {
+        phone: testPhone,
+        location: {
+          lat: testLocation.latitude,
+          lng: testLocation.longitude
+        },
+        updatedAt: new Date()
+      },
+      { upsert: true, new: true }
+    );
+    console.log('✅ Updated VendorLocation');
+
+    // Verify the updates
+    const updatedUser = await User.findOne({ contactNumber: testPhone });
+    const updatedVendorLocation = await VendorLocation.findOne({ phone: testPhone });
+
+    console.log('\n📊 Verification Results:');
+    console.log('User location:', updatedUser?.location);
+    console.log('User mapsLink:', updatedUser?.mapsLink);
+    console.log('VendorLocation:', updatedVendorLocation?.location);
+    console.log('VendorLocation updatedAt:', updatedVendorLocation?.updatedAt);
+
+    // Test with different phone number formats
+    const phoneVariations = [
+      testPhone,
+      testPhone.replace('+91', '91'),
+      testPhone.substring(1),
+      testPhone.slice(-10)
+    ];
+
+    console.log('\n📱 Phone number variations:', phoneVariations);
+
+    // Test finding user with different phone formats
+    const users = await User.find({ contactNumber: { $in: phoneVariations } });
+    console.log('Users found with phone variations:', users.length);
+
+    console.log('\n✅ Location update test completed successfully!');
+
   } catch (error) {
-    console.error('❌ Error testing location update:', error);
+    console.error('❌ Test failed:', error);
   } finally {
     await mongoose.disconnect();
-    console.log('🔌 Disconnected from MongoDB');
+    console.log('✅ Disconnected from database');
   }
 }
 
+// Run the test
 testLocationUpdate();

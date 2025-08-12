@@ -186,6 +186,29 @@ router.post('/', async (req, res) => {
                     await user.save();
                     console.log(`✅ Updated user location for ${user.contactNumber}`);
                 }
+                // Update VendorLocation collection for map display
+                try {
+                    const VendorLocation = (await import('../models/VendorLocation.js')).default;
+                    
+                    // Use upsert to create or update the vendor location
+                    await VendorLocation.findOneAndUpdate(
+                        { phone: phone },
+                        {
+                            phone: phone,
+                            location: {
+                                lat: location.latitude,
+                                lng: location.longitude
+                            },
+                            updatedAt: new Date()
+                        },
+                        { upsert: true, new: true }
+                    );
+                    
+                    console.log(`✅ Updated VendorLocation collection for ${phone}`);
+                } catch (vendorLocationErr) {
+                    console.error('❌ Failed to update VendorLocation collection:', vendorLocationErr);
+                }
+                
                 // Note: All vendors are stored in the users collection
                 // The location update above already handles updating the vendor's location
                 console.log(`✅ Vendor location updated in users collection for ${users.length} user(s)`);
@@ -203,6 +226,79 @@ router.post('/', async (req, res) => {
             address: message.get('address') || undefined,
             label: message.get('label') || undefined,
         });
+        
+        // Handle button responses and interactive messages
+        if (ButtonPayload) {
+            console.log(`🔘 Button pressed: ${ButtonPayload}`);
+            
+            // Handle "yes_support" button response
+            if (ButtonPayload === 'yes_support') {
+                console.log('📞 Vendor requested support call');
+                
+                try {
+                    // Find vendor details
+                    const phone = From.replace('whatsapp:', '');
+                    const userNumbers = [phone];
+                    if (phone.startsWith('+91')) userNumbers.push(phone.replace('+91', '91'));
+                    if (phone.startsWith('+')) userNumbers.push(phone.substring(1));
+                    userNumbers.push(phone.slice(-10));
+                    
+                    const vendor = await User.findOne({ contactNumber: { $in: userNumbers } });
+                    const vendorName = vendor ? vendor.name : 'Unknown Vendor';
+                    
+                    // Create support call log entry
+                    const SupportCallLog = (await import('../models/SupportCallLog.js')).default;
+                    await SupportCallLog.create({
+                        vendorName: vendorName,
+                        contactNumber: phone,
+                        timestamp: new Date(),
+                        completed: false
+                    });
+                    
+                    console.log(`✅ Created support call log for ${vendorName} (${phone})`);
+                    
+                    // Send confirmation message
+                    if (client) {
+                        try {
+                            const confirmationPayload = {
+                                from: `whatsapp:${To.replace('whatsapp:', '')}`,
+                                to: From,
+                                contentSid: 'HXd71a47a5df1f4c784fc2f8155bb349ca',
+                                contentVariables: JSON.stringify({})
+                            };
+                            
+                            if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
+                                confirmationPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+                            }
+                            
+                            const twilioResp = await client.messages.create(confirmationPayload);
+                            console.log('✅ Sent support confirmation message:', twilioResp.sid);
+                            
+                            // Save the confirmation message to DB
+                            await Message.create({
+                                from: confirmationPayload.from,
+                                to: confirmationPayload.to,
+                                body: "✅ Support request received! Our team will contact you soon.",
+                                direction: 'outbound',
+                                timestamp: new Date(),
+                                meta: {
+                                    type: 'support_confirmation',
+                                    vendorName: vendorName,
+                                    contactNumber: phone
+                                }
+                            });
+                            console.log('✅ Support confirmation message saved to DB');
+                        } catch (err) {
+                            console.error('❌ Failed to send support confirmation:', err);
+                        }
+                    }
+                    
+                } catch (err) {
+                    console.error('❌ Error handling support request:', err);
+                }
+            }
+        }
+        
         // If the inbound message is a greeting (hi, hello, hey, etc.), send the template message
         if (hasBody && typeof Body === 'string') {
             const normalized = Body.trim().toLowerCase();

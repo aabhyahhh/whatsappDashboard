@@ -8,7 +8,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "auth-server": "tsx server/auth.ts",
-    "start": "tsx server/auth.ts"
+    "start": "tsx server/auth.ts",
+    "test:location": "tsx scripts/test-location-update.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
