@@ -41,6 +41,25 @@ const messageSchema = new Schema({
         required: false,
         trim: true,
     },
+    meta: {
+        type: Schema.Types.Mixed,
+        required: false,
+    },
+    twilioSid: {
+        type: String,
+        required: false,
+        trim: true,
+    },
+    errorCode: {
+        type: String,
+        required: false,
+        trim: true,
+    },
+    errorMessage: {
+        type: String,
+        required: false,
+        trim: true,
+    },
     createdAt: {
         type: Date,
         default: Date.now,

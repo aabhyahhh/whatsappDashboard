@@ -11,6 +11,10 @@ export interface IMessage extends Document {
     };
     address?: string;
     label?: string;
+    meta?: any;
+    twilioSid?: string;
+    errorCode?: string;
+    errorMessage?: string;
     createdAt: Date;
     updatedAt: Date;
 }

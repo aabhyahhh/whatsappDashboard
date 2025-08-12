@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
+import TimePicker from '../components/TimePicker';
 import { jwtDecode } from 'jwt-decode';
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
@@ -283,15 +284,7 @@ export default function UserManagement() {
 
   const handleAddUserChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    if (name === 'openTime' || name === 'closeTime') {
-      setNewUser((prev) => ({
-        ...prev,
-        operatingHours: {
-          ...prev.operatingHours,
-          [name]: value,
-        },
-      }));
-    } else if (name === 'days') {
+    if (name === 'days') {
       // handled in handleDayChange
     } else {
       setNewUser((prev) => ({ ...prev, [name]: value }));
@@ -497,20 +490,7 @@ export default function UserManagement() {
     });
   };
 
-  const generateTimeOptions = () => {
-    const times = [];
-    for (let hour = 0; hour < 24; hour++) {
-      for (let minute = 0; minute < 60; minute += 30) {
-        const h = hour % 12 === 0 ? 12 : hour % 12;
-        const ampm = hour < 12 ? 'AM' : 'PM';
-        const m = minute === 0 ? '00' : minute;
-        times.push(`${h}:${m} ${ampm}`);
-      }
-    }
-    return times;
-  };
 
-  const timeOptions = generateTimeOptions();
 
   const handleGetCurrentLocationAdd = () => {
     if (navigator.geolocation) {
@@ -973,35 +953,39 @@ export default function UserManagement() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="newOpenTime" className="block text-sm font-medium text-gray-700">Open Time</label>
-                    <select
-                      name="openTime"
-                      id="newOpenTime"
+                    <TimePicker
                       value={newUser.operatingHours.openTime}
-                      onChange={handleAddUserChange}
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      onChange={(time) => {
+                        setNewUser((prev) => ({
+                          ...prev,
+                          operatingHours: {
+                            ...prev.operatingHours,
+                            openTime: time,
+                          },
+                        }));
+                      }}
                       disabled={modalIs24HoursOpen}
-                    >
-                      <option value="">Select Time</option>
-                      {timeOptions.map((time) => (
-                        <option key={time} value={time}>{time}</option>
-                      ))}
-                    </select>
+                      placeholder="Select Open Time"
+                      className="mt-1"
+                    />
                   </div>
                   <div>
                     <label htmlFor="newCloseTime" className="block text-sm font-medium text-gray-700">Close Time</label>
-                    <select
-                      name="closeTime"
-                      id="newCloseTime"
+                    <TimePicker
                       value={newUser.operatingHours.closeTime}
-                      onChange={handleAddUserChange}
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      onChange={(time) => {
+                        setNewUser((prev) => ({
+                          ...prev,
+                          operatingHours: {
+                            ...prev.operatingHours,
+                            closeTime: time,
+                          },
+                        }));
+                      }}
                       disabled={modalIs24HoursOpen}
-                    >
-                      <option value="">Select Time</option>
-                      {timeOptions.map((time) => (
-                        <option key={time} value={time}>{time}</option>
-                      ))}
-                    </select>
+                      placeholder="Select Close Time"
+                      className="mt-1"
+                    />
                   </div>
                 </div>
                 <div className="mt-2">
@@ -1432,35 +1416,39 @@ export default function UserManagement() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="editOpenTime" className="block text-sm font-medium text-gray-700">Open Time</label>
-                    <select
-                      name="openTime"
-                      id="editOpenTime"
+                    <TimePicker
                       value={editForm.operatingHours?.openTime || ''}
-                      onChange={handleEditUserChange}
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      onChange={(time) => {
+                        setEditForm((prev) => ({
+                          ...prev,
+                          operatingHours: {
+                            ...prev.operatingHours,
+                            openTime: time,
+                          },
+                        }));
+                      }}
                       disabled={editIs24HoursOpen}
-                    >
-                      <option value="">Select Time</option>
-                      {timeOptions.map((time) => (
-                        <option key={time} value={time}>{time}</option>
-                      ))}
-                    </select>
+                      placeholder="Select Open Time"
+                      className="mt-1"
+                    />
                   </div>
                   <div>
                     <label htmlFor="editCloseTime" className="block text-sm font-medium text-gray-700">Close Time</label>
-                    <select
-                      name="closeTime"
-                      id="editCloseTime"
+                    <TimePicker
                       value={editForm.operatingHours?.closeTime || ''}
-                      onChange={handleEditUserChange}
-                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      onChange={(time) => {
+                        setEditForm((prev) => ({
+                          ...prev,
+                          operatingHours: {
+                            ...prev.operatingHours,
+                            closeTime: time,
+                          },
+                        }));
+                      }}
                       disabled={editIs24HoursOpen}
-                    >
-                      <option value="">Select Time</option>
-                      {timeOptions.map((time) => (
-                        <option key={time} value={time}>{time}</option>
-                      ))}
-                    </select>
+                      placeholder="Select Close Time"
+                      className="mt-1"
+                    />
                   </div>
                 </div>
                 <div className="mt-2">
@@ -2014,38 +2002,36 @@ export default function UserManagement() {
                     <div className="operating-hours-grid">
                       <div>
                         <label className="form-label-small">Open Time</label>
-                        <input
-                          type="time"
-                          name="openTime"
+                        <TimePicker
                           value={modalEditForm.operatingHours?.openTime || ''}
-                          onChange={e => setModalEditForm(prev => ({
+                          onChange={(time) => setModalEditForm(prev => ({
                             ...prev,
                             operatingHours: {
-                              openTime: e.target.value,
+                              openTime: time,
                               closeTime: prev.operatingHours?.closeTime || '',
                               days: prev.operatingHours?.days || [],
                             },
                           }))}
-                          className="form-input"
                           disabled={modalIs24HoursOpen}
+                          placeholder="Select Open Time"
+                          className="form-input"
                         />
                       </div>
                       <div>
                         <label className="form-label-small">Close Time</label>
-                        <input
-                          type="time"
-                          name="closeTime"
+                        <TimePicker
                           value={modalEditForm.operatingHours?.closeTime || ''}
-                          onChange={e => setModalEditForm(prev => ({
+                          onChange={(time) => setModalEditForm(prev => ({
                             ...prev,
                             operatingHours: {
                               openTime: prev.operatingHours?.openTime || '',
-                              closeTime: e.target.value,
+                              closeTime: time,
                               days: prev.operatingHours?.days || [],
                             },
                           }))}
-                          className="form-input"
                           disabled={modalIs24HoursOpen}
+                          placeholder="Select Close Time"
+                          className="form-input"
                         />
                       </div>
                     </div>

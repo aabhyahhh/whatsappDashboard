@@ -152,6 +152,7 @@ function extractCoordinatesFromWhatsAppLocation(body: string): { latitude: numbe
             /(-?\d+\.\d+),\s*(-?\d+\.\d+)/,  // lat, lng
             /lat[itude]*:\s*(-?\d+\.\d+).*?lng[itude]*:\s*(-?\d+\.\d+)/i,  // lat: x, lng: y
             /coordinates?:\s*(-?\d+\.\d+),\s*(-?\d+\.\d+)/i,  // coordinates: lat, lng
+            /lat[itude]*:\s*(-?\d+\.\d+),\s*lng[itude]*:\s*(-?\d+\.\d+)/i,  // lat: x, lng: y (comma separated)
         ];
 
         for (const pattern of coordPatterns) {
@@ -621,16 +622,18 @@ router.get('/message-health', async (req: Request, res: Response) => {
             sentAt: { $gte: fortyEightHoursAgo }
         }).sort({ sentAt: -1 });
         
-        // Get loan reply logs
-        const loanReplyLogs = await LoanReplyLog.find({
+        // Get vendor update location message logs (vendor reminders)
+        const vendorUpdateLocationLogs = await Message.find({
+            direction: 'outbound',
+            body: { $regex: messageTypes['Vendor Reminder'] },
             timestamp: { $gte: fortyEightHoursAgo }
-        }).sort({ timestamp: -1 });
+        }).sort({ timestamp: -1 }).limit(20);
         
         // Calculate statistics
         const stats = {
             totalOutboundMessages: outboundMessages.length,
             totalSupportCallReminders: supportCallLogs.length,
-            totalLoanReplies: loanReplyLogs.length,
+            totalVendorUpdateLocationMessages: vendorUpdateLocationLogs.length,
             messageTypes: Object.keys(categorizedMessages).map(type => ({
                 type,
                 count: categorizedMessages[type]?.length || 0
@@ -643,7 +646,14 @@ router.get('/message-health', async (req: Request, res: Response) => {
             categorizedMessages,
             unknownMessages: unknownMessages.slice(0, 10), // Limit to first 10
             supportCallLogs: supportCallLogs.slice(0, 10),
-            loanReplyLogs: loanReplyLogs.slice(0, 10),
+            vendorUpdateLocationLogs: vendorUpdateLocationLogs.map(log => ({
+                contactNumber: log.to,
+                sentAt: log.timestamp,
+                vendorName: log.meta?.vendorName || 'Unknown Vendor',
+                minutesBefore: log.meta?.minutesBefore || 'unknown',
+                reminderType: log.meta?.reminderType || 'vendor_location',
+                openTime: log.meta?.openTime || 'unknown'
+            })),
             timeRange: {
                 from: fortyEightHoursAgo,
                 to: new Date()
