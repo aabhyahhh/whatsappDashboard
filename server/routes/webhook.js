@@ -450,6 +450,86 @@ router.post('/', async (req, res) => {
             }
         }
         
+        // Handle Aadhaar verification response
+        if (hasBody && typeof Body === 'string' && /\b(?:yes|हाँ|हां).*?(?:verify|सत्यापित).*?(?:aadhaar|aadhar|आधार)\b/i.test(Body)) {
+            console.log('Attempting to send Aadhaar verification confirmation message');
+            
+            // Check if we've already sent an Aadhaar verification response in the last 30 seconds
+            const thirtySecondsAgo = new Date(Date.now() - 30 * 1000);
+            const existingAadhaarResponse = await Message.findOne({
+                from: `whatsapp:${To.replace('whatsapp:', '')}`,
+                to: From,
+                direction: 'outbound',
+                body: { $regex: /HX1a44edbb684afc1a8213054a4731e53d/ },
+                timestamp: { $gte: thirtySecondsAgo }
+            });
+            
+            if (existingAadhaarResponse) {
+                console.log('⚠️ Aadhaar verification response already sent recently, skipping duplicate');
+                return res.status(200).send('OK');
+            }
+            
+            // Update vendor's Aadhaar verification status
+            try {
+                const phone = From.replace('whatsapp:', '');
+                const userNumbers = [phone];
+                if (phone.startsWith('+91')) userNumbers.push(phone.replace('+91', '91'));
+                if (phone.startsWith('+')) userNumbers.push(phone.substring(1));
+                userNumbers.push(phone.slice(-10));
+                
+                // Find user/vendor
+                const user = await User.findOne({ contactNumber: { $in: userNumbers } });
+                if (user) {
+                    // Update Aadhaar verification status
+                    user.aadharVerified = true;
+                    user.aadharVerificationDate = new Date();
+                    await user.save();
+                    console.log(`✅ Updated Aadhaar verification status for ${user.name} (${phone})`);
+                }
+            } catch (err) {
+                console.error('❌ Failed to update Aadhaar verification status:', err);
+            }
+            
+            // Send Aadhaar verification confirmation template message
+            if (client) {
+                try {
+                    const msgPayload = {
+                        from: `whatsapp:${To.replace('whatsapp:', '')}`,
+                        to: From,
+                        contentSid: 'HX1a44edbb684afc1a8213054a4731e53d',
+                        contentVariables: JSON.stringify({})
+                    };
+                    if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
+                        msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+                    }
+                    const twilioResp = await client.messages.create(msgPayload);
+                    console.log('✅ Triggered Aadhaar verification confirmation message. Twilio response:', twilioResp);
+                    
+                    // Save the outbound message to DB
+                    try {
+                        await Message.create({
+                            from: msgPayload.from,
+                            to: msgPayload.to,
+                            body: "Aadhaar verification confirmation message sent",
+                            direction: 'outbound',
+                            timestamp: new Date(),
+                            meta: {
+                                type: 'aadhaar_verification_confirmation',
+                                contentSid: 'HX1a44edbb684afc1a8213054a4731e53d'
+                            }
+                        });
+                        console.log('✅ Aadhaar verification confirmation message saved to DB');
+                    } catch (err) {
+                        console.error('❌ Failed to save Aadhaar verification confirmation message:', err);
+                    }
+                } catch (err) {
+                    console.error('❌ Failed to send Aadhaar verification confirmation message:', err?.message || err);
+                }
+            } else {
+                console.warn('⚠️ Twilio client not initialized, cannot send Aadhaar verification confirmation message.');
+            }
+        }
+        
         // Upsert contact in contacts collection
         const phone = From.replace('whatsapp:', ''); // Remove whatsapp: prefix if present
         await Contact.findOneAndUpdate({ phone: phone }, {

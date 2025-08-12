@@ -83,6 +83,15 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: false
     },
+    aadharVerified: {
+        type: Boolean,
+        required: false,
+        default: false
+    },
+    aadharVerificationDate: {
+        type: Date,
+        required: false
+    },
     aadharFrontUrl: {
         type: String,
         required: false
