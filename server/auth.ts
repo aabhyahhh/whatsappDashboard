@@ -20,6 +20,9 @@ import './scheduler/supportCallReminder.js';
 // Import and start the vendor reminders cron job
 import './vendorRemindersCron.js';
 
+// Import and start the weekly vendor message cron job
+import '../scripts/weekly-vendor-message-cron.js';
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -91,9 +94,80 @@ app.use('/api/messages', messagesRoutes);
 // Use vendor routes
 app.use('/api/vendor', vendorRoutes);
 
-// Health check endpoint
-app.get('/api/health', (_req, res) => {
-    res.json({ status: 'ok', message: 'Auth server is running' });
+// Health check endpoint with campaign tracking
+app.get('/api/health', async (req, res) => {
+    try {
+        const healthData: any = { 
+            status: 'ok', 
+            message: 'Auth server is running',
+            timestamp: new Date().toISOString(),
+            services: {
+                database: 'connected',
+                twilio: 'available',
+                cronJobs: {
+                    dailyReminders: 'active',
+                    supportReminders: 'active',
+                    weeklyCampaign: 'active'
+                }
+            }
+        };
+
+        // Add weekly campaign status if database is available
+        try {
+            const { Message } = await import('./models/Message.js');
+            const { User } = await import('./models/User.js');
+            
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            
+            // Get today's campaign messages
+            const todayMessages = await Message.find({
+                'meta.type': 'weekly_vendor_message',
+                timestamp: { $gte: today, $lt: tomorrow }
+            });
+            
+            // Get total vendors
+            const totalVendors = await User.countDocuments();
+            
+            // Get campaign summary
+            const campaignSummary = await Message.findOne({
+                'meta.type': 'campaign_summary',
+                'meta.campaignType': 'weekly_vendor_message',
+                timestamp: { $gte: today, $lt: tomorrow }
+            });
+            
+            healthData.weeklyCampaign = {
+                today: {
+                    sent: todayMessages.length,
+                    total: totalVendors,
+                    percentage: totalVendors > 0 ? Math.round((todayMessages.length / totalVendors) * 100) : 0
+                },
+                lastCampaign: campaignSummary ? {
+                    timestamp: campaignSummary.timestamp,
+                    successCount: campaignSummary.meta?.successCount || 0,
+                    errorCount: campaignSummary.meta?.errorCount || 0,
+                    trigger: campaignSummary.meta?.campaignTrigger || 'unknown'
+                } : null,
+                status: todayMessages.length > 0 ? 'sent_today' : 'pending'
+            };
+            
+        } catch (dbError) {
+            healthData.weeklyCampaign = {
+                status: 'database_error',
+                error: dbError instanceof Error ? dbError.message : 'Unknown error'
+            };
+        }
+        
+        res.json(healthData);
+    } catch (error) {
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Health check failed',
+            error: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
 });
 
 // Optimized dashboard stats endpoint - single request for all stats

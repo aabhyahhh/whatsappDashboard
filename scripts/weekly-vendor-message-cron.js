@@ -65,13 +65,13 @@ function runMessageCampaign() {
   });
 }
 
-// Schedule the cron job to run every 24 hours
-// Cron format: 0 */24 * * * (every 24 hours at minute 0)
+// Schedule the cron job to run at 3 PM daily
+// Cron format: 0 15 * * * (every day at 3:00 PM)
 // For testing, you can use: '*/5 * * * *' (every 5 minutes)
-const cronSchedule = '0 */24 * * *'; // Every 24 hours at midnight
+const cronSchedule = '0 15 * * *'; // Every day at 3:00 PM
 
 console.log(`⏰ Scheduling cron job: ${cronSchedule}`);
-console.log('🔄 Cron job will run every 24 hours until campaign ends...\n');
+console.log('🔄 Cron job will run every day at 3:00 PM until campaign ends...\n');
 
 // Start the cron job
 const job = cron.schedule(cronSchedule, () => {

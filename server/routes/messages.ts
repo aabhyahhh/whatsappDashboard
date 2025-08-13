@@ -97,6 +97,81 @@ router.use((_err: any, _req: Request, res: Response, _next: NextFunction) => {
     }
 });
 
+// GET /api/messages/health - Get message health data for today
+router.get('/health', async (_req: Request, res: Response) => {
+    try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        // Get today's outbound messages
+        const todayMessages = await Message.find({
+            direction: 'outbound',
+            timestamp: { $gte: today, $lt: tomorrow }
+        });
+
+        // Get failed messages (messages with error fields)
+        const failedMessages = await Message.find({
+            direction: 'outbound',
+            timestamp: { $gte: today, $lt: tomorrow },
+            $or: [
+                { errorCode: { $exists: true } },
+                { errorMessage: { $exists: true } },
+                { 'meta.type': 'error' }
+            ]
+        });
+
+        // Get successful messages
+        const successfulMessages = todayMessages.filter(msg => 
+            !msg.errorCode && !msg.errorMessage && msg.meta?.type !== 'error'
+        );
+
+        // Get weekly campaign messages
+        const weeklyCampaignMessages = await Message.find({
+            'meta.type': 'weekly_vendor_message',
+            timestamp: { $gte: today, $lt: tomorrow }
+        });
+
+        // Get failed weekly campaign messages
+        const failedWeeklyMessages = await Message.find({
+            'meta.type': 'error',
+            'meta.originalType': 'weekly_vendor_message',
+            timestamp: { $gte: today, $lt: tomorrow }
+        });
+
+        // Format failed messages for display
+        const failedMessagesFormatted = failedMessages.map(msg => ({
+            contactNumber: msg.to,
+            vendorName: msg.meta?.vendorName || 'Unknown',
+            error: msg.errorMessage || msg.meta?.error || 'Unknown error',
+            timestamp: msg.timestamp
+        }));
+
+        const failedWeeklyFormatted = failedWeeklyMessages.map(msg => ({
+            contactNumber: msg.to,
+            vendorName: msg.meta?.vendorName || 'Unknown',
+            error: msg.errorMessage || msg.meta?.error || 'Unknown error',
+            timestamp: msg.timestamp
+        }));
+
+        res.json({
+            today: {
+                total: todayMessages.length,
+                successful: successfulMessages.length,
+                failed: failedMessages.length,
+                weeklyCampaign: weeklyCampaignMessages.length,
+                failedWeekly: failedWeeklyMessages.length
+            },
+            failedMessages: [...failedMessagesFormatted, ...failedWeeklyFormatted],
+            lastUpdated: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Error fetching message health data:', error);
+        res.status(500).json({ error: 'Failed to fetch message health data' });
+    }
+});
+
 // GET /api/messages/inbound-count - Get count of inbound messages
 router.get('/inbound-count', async (_req: Request, res: Response) => {
     try {

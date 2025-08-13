@@ -3,20 +3,10 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import { User } from '../server/models/User.js';
 import { Message } from '../server/models/Message.js';
-import { createFreshClient } from '../server/twilio.js';
+import twilio from 'twilio';
 
 // Load .env file explicitly
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
-
-// Debug environment variables
-console.log('🔍 Environment Variables Debug:');
-console.log('Current working directory:', process.cwd());
-console.log('MONGODB_URI exists:', !!process.env.MONGODB_URI);
-console.log('TWILIO_ACCOUNT_SID exists:', !!process.env.TWILIO_ACCOUNT_SID);
-console.log('TWILIO_AUTH_TOKEN exists:', !!process.env.TWILIO_AUTH_TOKEN);
-console.log('TWILIO_PHONE_NUMBER exists:', !!process.env.TWILIO_PHONE_NUMBER);
-console.log('JWT_SECRET exists:', !!process.env.JWT_SECRET);
-console.log('NODE_ENV:', process.env.NODE_ENV);
 
 const TEMPLATE_SID = 'HX5990e2eb62bbb374ac865ab6195fcfbe';
 const MESSAGE_TYPE = 'weekly_vendor_message';
@@ -52,7 +42,8 @@ async function sendMessageToVendor(twilioClient: any, user: any): Promise<SendRe
         vendorName: user.name,
         templateSid: TEMPLATE_SID,
         weekDay: new Date().getDay(),
-        weekNumber: Math.ceil(new Date().getDate() / 7)
+        weekNumber: Math.ceil(new Date().getDate() / 7),
+        campaignTrigger: 'manual_3pm'
       },
       twilioSid: result.sid
     });
@@ -80,7 +71,8 @@ async function sendMessageToVendor(twilioClient: any, user: any): Promise<SendRe
         type: 'error',
         originalType: MESSAGE_TYPE,
         error: error.message,
-        vendorName: user.name
+        vendorName: user.name,
+        campaignTrigger: 'manual_3pm'
       },
       errorCode: error.code,
       errorMessage: error.message
@@ -95,33 +87,34 @@ async function sendMessageToVendor(twilioClient: any, user: any): Promise<SendRe
   }
 }
 
-async function sendToAllVendors() {
+async function sendToday3PMCampaign() {
   try {
-    console.log('🚀 STARTING WEEKLY VENDOR MESSAGE CAMPAIGN');
+    console.log('🚀 SENDING TODAY\'S 3 PM CAMPAIGN MESSAGE');
     console.log('==========================================');
     console.log(`📅 Date: ${new Date().toLocaleString()}`);
     console.log(`📋 Template SID: ${TEMPLATE_SID}`);
     console.log(`📝 Message Type: ${MESSAGE_TYPE}`);
+    console.log('🎯 This is TODAY\'S message for all vendors');
+    
+    // Check environment variables
+    console.log('🔧 Checking Twilio credentials...');
+    if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN || !process.env.TWILIO_PHONE_NUMBER) {
+      throw new Error('Missing Twilio credentials');
+    }
+    
+    // Create Twilio client
+    console.log('🔧 Creating Twilio client...');
+    const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+    console.log('✅ Twilio client initialized');
     
     // Connect to MongoDB
+    console.log('🔧 Connecting to MongoDB...');
     await mongoose.connect(process.env.MONGODB_URI!);
     console.log('✅ Connected to MongoDB');
     
-    // Initialize Twilio client
-    console.log('🔧 Creating Twilio client...');
-    console.log('TWILIO_ACCOUNT_SID:', process.env.TWILIO_ACCOUNT_SID ? 'Present' : 'Missing');
-    console.log('TWILIO_AUTH_TOKEN:', process.env.TWILIO_AUTH_TOKEN ? 'Present' : 'Missing');
-    console.log('TWILIO_PHONE_NUMBER:', process.env.TWILIO_PHONE_NUMBER ? 'Present' : 'Missing');
-    
-    const twilioClient = createFreshClient();
-    if (!twilioClient) {
-      throw new Error('Failed to initialize Twilio client - check credentials');
-    }
-    console.log('✅ Twilio client initialized');
-    
-    // Get all vendors (users)
+    // Get all vendors from database
     const vendors = await User.find({}).sort({ name: 1 });
-    console.log(`📊 Found ${vendors.length} vendors to message`);
+    console.log(`📊 Found ${vendors.length} vendors in database`);
     
     if (vendors.length === 0) {
       console.log('❌ No vendors found in database');
@@ -140,11 +133,12 @@ async function sendToAllVendors() {
     });
     
     if (existingMessages.length > 0) {
-      console.log(`⚠️  Already sent ${existingMessages.length} messages today. Skipping...`);
+      console.log(`⚠️  Already sent ${existingMessages.length} messages today.`);
       console.log('📋 Today\'s messages:');
       existingMessages.forEach(msg => {
         console.log(`   - ${msg.to} (${msg.meta?.vendorName || 'Unknown'}) - ${msg.twilioSid || 'No SID'}`);
       });
+      console.log('💡 Use --force flag to send anyway');
       return;
     }
     
@@ -169,17 +163,18 @@ async function sendToAllVendors() {
     }
     
     // Summary
-    console.log('\n📊 CAMPAIGN SUMMARY');
-    console.log('==================');
+    console.log('\n📊 TODAY\'S 3 PM CAMPAIGN SUMMARY');
+    console.log('==================================');
     console.log(`✅ Successful: ${successCount}`);
     console.log(`❌ Failed: ${errorCount}`);
     console.log(`📊 Total: ${results.length}`);
+    console.log(`📅 Campaign Day: 1 of 7`);
     
     // Log summary to database
     await Message.create({
       from: 'system',
       to: 'system',
-      body: `Weekly vendor message campaign summary: ${successCount} sent, ${errorCount} failed`,
+      body: `Today's 3 PM campaign summary: ${successCount} sent, ${errorCount} failed`,
       direction: 'outbound',
       timestamp: new Date(),
       meta: { 
@@ -189,7 +184,8 @@ async function sendToAllVendors() {
         successCount,
         errorCount,
         totalCount: results.length,
-        date: today.toISOString().split('T')[0]
+        date: today.toISOString().split('T')[0],
+        campaignTrigger: 'manual_3pm'
       }
     });
     
@@ -201,24 +197,26 @@ async function sendToAllVendors() {
       });
     }
     
-    console.log('\n🎉 Campaign completed!');
+    console.log('\n🎉 Today\'s 3 PM campaign completed!');
+    console.log('📅 Next message will be sent tomorrow at 3:00 PM');
     
   } catch (error) {
-    console.error('❌ Error in weekly vendor message campaign:', error);
+    console.error('❌ Error in today\'s 3 PM campaign:', error);
     
     // Log error to database
     try {
       await Message.create({
         from: 'system',
         to: 'system',
-        body: `Weekly vendor message campaign error: ${error}`,
+        body: `Today's 3 PM campaign error: ${error}`,
         direction: 'outbound',
         timestamp: new Date(),
         meta: { 
           type: 'campaign_error',
           campaignType: MESSAGE_TYPE,
           error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined
+          stack: error instanceof Error ? error.stack : undefined,
+          campaignTrigger: 'manual_3pm'
         }
       });
     } catch (dbError) {
@@ -231,4 +229,4 @@ async function sendToAllVendors() {
 }
 
 // Run the campaign
-sendToAllVendors();
+sendToday3PMCampaign();

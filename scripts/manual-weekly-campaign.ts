@@ -8,16 +8,6 @@ import { createFreshClient } from '../server/twilio.js';
 // Load .env file explicitly
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
-// Debug environment variables
-console.log('🔍 Environment Variables Debug:');
-console.log('Current working directory:', process.cwd());
-console.log('MONGODB_URI exists:', !!process.env.MONGODB_URI);
-console.log('TWILIO_ACCOUNT_SID exists:', !!process.env.TWILIO_ACCOUNT_SID);
-console.log('TWILIO_AUTH_TOKEN exists:', !!process.env.TWILIO_AUTH_TOKEN);
-console.log('TWILIO_PHONE_NUMBER exists:', !!process.env.TWILIO_PHONE_NUMBER);
-console.log('JWT_SECRET exists:', !!process.env.JWT_SECRET);
-console.log('NODE_ENV:', process.env.NODE_ENV);
-
 const TEMPLATE_SID = 'HX5990e2eb62bbb374ac865ab6195fcfbe';
 const MESSAGE_TYPE = 'weekly_vendor_message';
 
@@ -52,7 +42,8 @@ async function sendMessageToVendor(twilioClient: any, user: any): Promise<SendRe
         vendorName: user.name,
         templateSid: TEMPLATE_SID,
         weekDay: new Date().getDay(),
-        weekNumber: Math.ceil(new Date().getDate() / 7)
+        weekNumber: Math.ceil(new Date().getDate() / 7),
+        campaignTrigger: 'manual_script'
       },
       twilioSid: result.sid
     });
@@ -80,7 +71,8 @@ async function sendMessageToVendor(twilioClient: any, user: any): Promise<SendRe
         type: 'error',
         originalType: MESSAGE_TYPE,
         error: error.message,
-        vendorName: user.name
+        vendorName: user.name,
+        campaignTrigger: 'manual_script'
       },
       errorCode: error.code,
       errorMessage: error.message
@@ -97,26 +89,19 @@ async function sendMessageToVendor(twilioClient: any, user: any): Promise<SendRe
 
 async function sendToAllVendors() {
   try {
-    console.log('🚀 STARTING WEEKLY VENDOR MESSAGE CAMPAIGN');
-    console.log('==========================================');
+    console.log('🚀 MANUAL TRIGGER: Weekly Vendor Message Campaign');
+    console.log('================================================');
     console.log(`📅 Date: ${new Date().toLocaleString()}`);
     console.log(`📋 Template SID: ${TEMPLATE_SID}`);
     console.log(`📝 Message Type: ${MESSAGE_TYPE}`);
+    console.log(`🔧 Trigger: Manual Script`);
     
     // Connect to MongoDB
     await mongoose.connect(process.env.MONGODB_URI!);
     console.log('✅ Connected to MongoDB');
     
     // Initialize Twilio client
-    console.log('🔧 Creating Twilio client...');
-    console.log('TWILIO_ACCOUNT_SID:', process.env.TWILIO_ACCOUNT_SID ? 'Present' : 'Missing');
-    console.log('TWILIO_AUTH_TOKEN:', process.env.TWILIO_AUTH_TOKEN ? 'Present' : 'Missing');
-    console.log('TWILIO_PHONE_NUMBER:', process.env.TWILIO_PHONE_NUMBER ? 'Present' : 'Missing');
-    
     const twilioClient = createFreshClient();
-    if (!twilioClient) {
-      throw new Error('Failed to initialize Twilio client - check credentials');
-    }
     console.log('✅ Twilio client initialized');
     
     // Get all vendors (users)
@@ -140,12 +125,19 @@ async function sendToAllVendors() {
     });
     
     if (existingMessages.length > 0) {
-      console.log(`⚠️  Already sent ${existingMessages.length} messages today. Skipping...`);
+      console.log(`⚠️  Already sent ${existingMessages.length} messages today.`);
       console.log('📋 Today\'s messages:');
       existingMessages.forEach(msg => {
         console.log(`   - ${msg.to} (${msg.meta?.vendorName || 'Unknown'}) - ${msg.twilioSid || 'No SID'}`);
       });
-      return;
+      
+      const shouldContinue = process.argv.includes('--force');
+      if (!shouldContinue) {
+        console.log('💡 Use --force flag to send again today');
+        return;
+      } else {
+        console.log('🔄 Force sending enabled - proceeding with campaign...');
+      }
     }
     
     // Send messages to all vendors
@@ -179,7 +171,7 @@ async function sendToAllVendors() {
     await Message.create({
       from: 'system',
       to: 'system',
-      body: `Weekly vendor message campaign summary: ${successCount} sent, ${errorCount} failed`,
+      body: `Weekly vendor message campaign (MANUAL SCRIPT) summary: ${successCount} sent, ${errorCount} failed`,
       direction: 'outbound',
       timestamp: new Date(),
       meta: { 
@@ -189,7 +181,8 @@ async function sendToAllVendors() {
         successCount,
         errorCount,
         totalCount: results.length,
-        date: today.toISOString().split('T')[0]
+        date: today.toISOString().split('T')[0],
+        campaignTrigger: 'manual_script'
       }
     });
     
@@ -201,7 +194,7 @@ async function sendToAllVendors() {
       });
     }
     
-    console.log('\n🎉 Campaign completed!');
+    console.log('\n🎉 Manual campaign completed!');
     
   } catch (error) {
     console.error('❌ Error in weekly vendor message campaign:', error);
@@ -218,7 +211,8 @@ async function sendToAllVendors() {
           type: 'campaign_error',
           campaignType: MESSAGE_TYPE,
           error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined
+          stack: error instanceof Error ? error.stack : undefined,
+          campaignTrigger: 'manual_script'
         }
       });
     } catch (dbError) {

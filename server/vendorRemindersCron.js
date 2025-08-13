@@ -18,14 +18,14 @@ async function hasLocationToday(contactNumber) {
 }
 
 // Helper: Check if a reminder was sent today
-async function hasReminderSentToday(contactNumber, minutesBefore) {
+async function hasReminderSentToday(contactNumber, reminderType) {
   const since = moment().tz('Asia/Kolkata').startOf('day').toDate();
   const bodyRegex = new RegExp(TEMPLATE_SID, 'i');
   const messages = await Message.find({
     to: { $in: [contactNumber, `whatsapp:${contactNumber}`] },
     body: { $regex: bodyRegex },
     timestamp: { $gte: since },
-    'meta.minutesBefore': minutesBefore
+    'meta.reminderType': reminderType
   });
   return messages.length > 0;
 }
@@ -70,14 +70,14 @@ const checkAndSendReminders = async () => {
           
           const diff = openTime.diff(now, 'minutes');
           
-          // Only log if the vendor is close to opening time (within 20 minutes)
-          if (diff >= -5 && diff <= 20) {
+          // Only log if the vendor is close to opening time (within 30 minutes)
+          if (diff >= -10 && diff <= 30) {
             console.log(`📱 ${user.name} (${user.contactNumber}): Open at ${openTime.format('HH:mm')}, Diff: ${diff} minutes`);
           }
 
-          // Send reminder 15 minutes before opening time
-          if (diff === 15) {
-            if (!(await hasReminderSentToday(user.contactNumber, 15))) {
+          // Send reminder 15 minutes before opening time (expanded window: 14-16 minutes)
+          if (diff >= 14 && diff <= 16) {
+            if (!(await hasReminderSentToday(user.contactNumber, 'vendor_location_15min'))) {
               try {
                 const result = await twilioClient.messages.create({
                   from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
@@ -95,7 +95,7 @@ const checkAndSendReminders = async () => {
                   timestamp: new Date(),
                   meta: { 
                     minutesBefore: 15,
-                    reminderType: 'vendor_location',
+                    reminderType: 'vendor_location_15min',
                     vendorName: user.name,
                     openTime: user.operatingHours.openTime
                   },
@@ -114,15 +114,15 @@ const checkAndSendReminders = async () => {
             }
           }
 
-          // Send reminder at opening time (diff == 0) - only if vendor hasn't shared location yet
-          if (diff === 0) {
+          // Send reminder at opening time (expanded window: -2 to +2 minutes) - only if vendor hasn't shared location yet
+          if (diff >= -2 && diff <= 2) {
             // Check if vendor has already shared location today
             const hasLocation = await hasLocationToday(user.contactNumber);
             
             if (hasLocation) {
               console.log(`⏩ Skipping open-time reminder for ${user.contactNumber} - location already shared today`);
               skippedCount++;
-            } else if (!(await hasReminderSentToday(user.contactNumber, 0))) {
+            } else if (!(await hasReminderSentToday(user.contactNumber, 'vendor_location_open'))) {
               try {
                 const result = await twilioClient.messages.create({
                   from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
@@ -140,7 +140,7 @@ const checkAndSendReminders = async () => {
                   timestamp: new Date(),
                   meta: { 
                     minutesBefore: 0,
-                    reminderType: 'vendor_location',
+                    reminderType: 'vendor_location_open',
                     vendorName: user.name,
                     openTime: user.operatingHours.openTime
                   },
@@ -203,9 +203,88 @@ const checkAndSendReminders = async () => {
       }
 };
 
-// Schedule the cron job to run every minute
-cron.schedule('* * * * *', checkAndSendReminders);
+// Schedule the cron job to run every 2 minutes for better coverage
+cron.schedule('*/2 * * * *', checkAndSendReminders);
 
-console.log('✅ Vendor reminder cron job started and scheduled to run every minute.');
+// Also schedule a daily backup check at 9 AM IST to ensure all vendors get reminded
+cron.schedule('0 9 * * *', async () => {
+  console.log('🔄 Running daily backup vendor reminder check at 9 AM IST');
+  try {
+    const now = moment().tz('Asia/Kolkata');
+    const twilioClient = createFreshClient();
+    
+    if (!twilioClient) {
+      console.error('❌ Twilio client not available for backup check');
+      return;
+    }
+    
+    const users = await User.find({ 
+      whatsappConsent: true,
+      contactNumber: { $exists: true, $ne: null }
+    });
+    
+    console.log(`📊 Backup check: Found ${users.length} vendors with WhatsApp consent`);
+    
+    let sentCount = 0;
+    let skippedCount = 0;
+    
+    for (const user of users) {
+      // Check if vendor has already shared location today
+      const hasLocation = await hasLocationToday(user.contactNumber);
+      
+      if (hasLocation) {
+        console.log(`⏩ Skipping backup reminder for ${user.contactNumber} - location already shared today`);
+        skippedCount++;
+        continue;
+      }
+      
+      // Check if any reminder was sent today
+      const hasReminder = await hasReminderSentToday(user.contactNumber, 'vendor_location_15min') || 
+                          await hasReminderSentToday(user.contactNumber, 'vendor_location_open');
+      
+      if (hasReminder) {
+        console.log(`⏩ Skipping backup reminder for ${user.contactNumber} - reminder already sent today`);
+        skippedCount++;
+        continue;
+      }
+      
+      // Send backup reminder
+      try {
+        const result = await twilioClient.messages.create({
+          from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
+          to: `whatsapp:${user.contactNumber}`,
+          contentSid: TEMPLATE_SID,
+          contentVariables: JSON.stringify({}),
+        });
+        
+        await Message.create({
+          from: process.env.TWILIO_PHONE_NUMBER,
+          to: user.contactNumber,
+          body: TEMPLATE_SID,
+          direction: 'outbound',
+          timestamp: new Date(),
+          meta: { 
+            reminderType: 'vendor_location_backup',
+            vendorName: user.name,
+            backupCheck: true
+          },
+          twilioSid: result.sid
+        });
+        
+        console.log(`✅ Sent backup reminder to ${user.name} (${user.contactNumber}) - SID: ${result.sid}`);
+        sentCount++;
+      } catch (error) {
+        console.error(`❌ Failed to send backup reminder to ${user.contactNumber}:`, error.message);
+      }
+    }
+    
+    console.log(`📊 Backup reminder summary: ${sentCount} sent, ${skippedCount} skipped`);
+    
+  } catch (err) {
+    console.error('❌ Error in backup vendor reminder check:', err);
+  }
+});
+
+console.log('✅ Vendor reminder cron job started and scheduled to run every 2 minutes with daily backup at 9 AM IST.');
 
 export { checkAndSendReminders }; 
