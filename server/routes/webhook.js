@@ -728,49 +728,97 @@ router.get('/inactive-vendors', async (req, res) => {
         const threeDaysAgo = new Date();
         threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
         
-        // Find vendors who haven't sent any messages in the last 3 days
+        // Find vendors who haven't responded to location update messages in the last 3 days
         // First, get all users
         const allUsers = await User.find({})
             .select('name contactNumber status createdAt')
             .lean();
         
-        // Get all inbound messages in the last 3 days
-        const recentMessages = await Message.find({
+        // Get all location update reminder messages sent in the last 3 days
+        const locationReminderMessages = await Message.find({
+            direction: 'outbound',
+            body: 'HXbdb716843483717790c45c951b71701e', // Location update template ID
+            'meta.reminderType': { $in: ['vendor_location_15min', 'vendor_location_open'] },
+            timestamp: { $gte: threeDaysAgo }
+        }).select('to timestamp').lean();
+        
+        // Get all inbound messages (responses) in the last 3 days
+        const recentResponses = await Message.find({
             direction: 'inbound',
             timestamp: { $gte: threeDaysAgo }
-        }).select('from').lean();
+        }).select('from timestamp').lean();
         
-        // Create a set of phone numbers that have sent messages recently
-        const recentSenders = new Set();
-        recentMessages.forEach(msg => {
-            const phone = msg.from.replace('whatsapp:', '');
-            recentSenders.add(phone);
+        // Create a map of phone numbers that have responded to location reminders
+        const respondedToLocationReminders = new Map();
+        
+        // For each location reminder sent, check if there was a response
+        locationReminderMessages.forEach(reminder => {
+            const reminderPhone = reminder.to.replace('whatsapp:', '');
+            const reminderTime = reminder.timestamp;
+            
+            // Check if there was a response within 24 hours of the reminder
+            const responseWindow = new Date(reminderTime.getTime() + 24 * 60 * 60 * 1000);
+            const hasResponse = recentResponses.some(response => {
+                const responsePhone = response.from.replace('whatsapp:', '');
+                const normalizedReminderPhone = reminderPhone.replace(/^\+91/, '').replace(/^91/, '');
+                const normalizedResponsePhone = responsePhone.replace(/^\+91/, '').replace(/^91/, '');
+                
+                return (responsePhone === reminderPhone || normalizedResponsePhone === normalizedReminderPhone) &&
+                       response.timestamp <= responseWindow;
+            });
+            
+            if (!hasResponse) {
+                respondedToLocationReminders.set(reminderPhone, false);
+            }
         });
         
-        // Filter out users who have sent messages recently
+        // Filter users who haven't responded to location reminders
         const inactiveVendors = allUsers.filter(user => {
             if (!user.contactNumber) {
                 return false; // Skip users without contact numbers
             }
             const userPhone = user.contactNumber;
             const normalizedPhone = userPhone.replace(/^\+91/, '').replace(/^91/, '');
-            return !recentSenders.has(userPhone) && !recentSenders.has(normalizedPhone);
+            
+            // Check if this user was sent a location reminder and didn't respond
+            return respondedToLocationReminders.has(userPhone) || 
+                   respondedToLocationReminders.has(normalizedPhone);
         });
         
         // Apply pagination
         const paginatedVendors = inactiveVendors.slice(skip, skip + limit);
         
-        // Calculate days inactive for each vendor
-        const vendorsWithDaysInactive = paginatedVendors.map(vendor => {
-            const daysInactive = Math.floor((new Date() - vendor.createdAt) / (1000 * 60 * 60 * 24));
+        // Calculate days inactive for each vendor based on when location reminder was sent
+        const vendorsWithDaysInactive = await Promise.all(paginatedVendors.map(async (vendor) => {
+            const userPhone = vendor.contactNumber;
+            const normalizedPhone = userPhone.replace(/^\+91/, '').replace(/^91/, '');
+            
+            // Find the most recent location reminder sent to this vendor
+            const lastLocationReminder = await Message.findOne({
+                direction: 'outbound',
+                to: { $in: [userPhone, `whatsapp:${userPhone}`, normalizedPhone, `whatsapp:${normalizedPhone}`] },
+                body: 'HXbdb716843483717790c45c951b71701e',
+                'meta.reminderType': { $in: ['vendor_location_15min', 'vendor_location_open'] }
+            }).sort({ timestamp: -1 }).lean();
+            
+            let daysInactive = 0;
+            let reminderSentAt = null;
+            
+            if (lastLocationReminder) {
+                reminderSentAt = lastLocationReminder.timestamp;
+                daysInactive = Math.floor((new Date() - lastLocationReminder.timestamp) / (1000 * 60 * 60 * 24));
+            } else {
+                // If no reminder was sent, use creation date
+                daysInactive = Math.floor((new Date() - vendor.createdAt) / (1000 * 60 * 60 * 24));
+            }
             
             return {
                 ...vendor,
                 daysInactive,
-                reminderStatus: 'Not sent', // Default status
-                reminderSentAt: null
+                reminderStatus: lastLocationReminder ? 'Sent' : 'Not sent',
+                reminderSentAt: reminderSentAt
             };
-        });
+        }));
         
         const totalCount = inactiveVendors.length;
         
