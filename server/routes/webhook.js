@@ -788,7 +788,7 @@ router.get('/inactive-vendors', async (req, res) => {
         // Apply pagination
         const paginatedVendors = inactiveVendors.slice(skip, skip + limit);
         
-        // Calculate days inactive for each vendor based on when location reminder was sent
+        // Calculate days inactive for each vendor based on their last activity
         const vendorsWithDaysInactive = await Promise.all(paginatedVendors.map(async (vendor) => {
             const userPhone = vendor.contactNumber;
             const normalizedPhone = userPhone.replace(/^\+91/, '').replace(/^91/, '');
@@ -801,20 +801,33 @@ router.get('/inactive-vendors', async (req, res) => {
                 'meta.reminderType': { $in: ['vendor_location_15min', 'vendor_location_open'] }
             }).sort({ timestamp: -1 }).lean();
             
+            // Find the vendor's last activity (last inbound message)
+            const lastActivity = await Message.findOne({
+                direction: 'inbound',
+                from: { $in: [userPhone, `whatsapp:${userPhone}`, normalizedPhone, `whatsapp:${normalizedPhone}`] }
+            }).sort({ timestamp: -1 }).lean();
+            
             let daysInactive = 0;
+            let lastSeen = null;
             let reminderSentAt = null;
+            
+            if (lastActivity) {
+                lastSeen = lastActivity.timestamp;
+                daysInactive = Math.floor((new Date() - lastActivity.timestamp) / (1000 * 60 * 60 * 24));
+            } else {
+                // If no activity found, use creation date
+                lastSeen = vendor.createdAt;
+                daysInactive = Math.floor((new Date() - vendor.createdAt) / (1000 * 60 * 60 * 24));
+            }
             
             if (lastLocationReminder) {
                 reminderSentAt = lastLocationReminder.timestamp;
-                daysInactive = Math.floor((new Date() - lastLocationReminder.timestamp) / (1000 * 60 * 60 * 24));
-            } else {
-                // If no reminder was sent, use creation date
-                daysInactive = Math.floor((new Date() - vendor.createdAt) / (1000 * 60 * 60 * 24));
             }
             
             return {
                 ...vendor,
                 daysInactive,
+                lastSeen: lastSeen.toISOString(),
                 reminderStatus: lastLocationReminder ? 'Sent' : 'Not sent',
                 reminderSentAt: reminderSentAt ? reminderSentAt.toISOString() : null
             };
