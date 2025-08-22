@@ -627,6 +627,103 @@ router.post('/', async (req, res) => {
             }
         }
         
+        // Handle text responses to support call reminders (like "yes")
+        if (hasBody && typeof Body === 'string') {
+            const normalizedBody = Body.trim().toLowerCase();
+            
+            // Check if this is a "yes" response to a support call reminder
+            if (normalizedBody === 'yes' || normalizedBody === 'हाँ' || normalizedBody === 'हां') {
+                console.log('📞 Vendor responded "yes" to support call reminder');
+                
+                try {
+                    // Check if this vendor recently received a support call reminder
+                    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+                    const recentSupportReminder = await Message.findOne({
+                        to: From,
+                        direction: 'outbound',
+                        body: 'HX4c78928e13eda15597c00ea0915f1f77', // Support call reminder template
+                        timestamp: { $gte: oneHourAgo }
+                    });
+                    
+                    if (recentSupportReminder) {
+                        console.log('✅ Found recent support call reminder, processing "yes" response');
+                        
+                        // Find vendor details
+                        const phone = From.replace('whatsapp:', '');
+                        const userNumbers = [phone];
+                        if (phone.startsWith('+91')) userNumbers.push(phone.replace('+91', '91'));
+                        if (phone.startsWith('+')) userNumbers.push(phone.substring(1));
+                        userNumbers.push(phone.slice(-10));
+                        
+                        const vendor = await User.findOne({ contactNumber: { $in: userNumbers } });
+                        const vendorName = vendor ? vendor.name : 'Unknown Vendor';
+                        
+                        // Check if support call already exists for this vendor in the last hour
+                        const SupportCallLog = (await import('../models/SupportCallLog.js')).default;
+                        const existingSupportCall = await SupportCallLog.findOne({
+                            contactNumber: phone,
+                            timestamp: { $gte: oneHourAgo }
+                        });
+                        
+                        if (!existingSupportCall) {
+                            // Create support call log entry
+                            await SupportCallLog.create({
+                                vendorName: vendorName,
+                                contactNumber: phone,
+                                timestamp: new Date(),
+                                completed: false
+                            });
+                            
+                            console.log(`✅ Created support call log for ${vendorName} (${phone}) via text response`);
+                            
+                            // Send confirmation message
+                            if (client) {
+                                try {
+                                    const confirmationPayload = {
+                                        from: `whatsapp:${To.replace('whatsapp:', '')}`,
+                                        to: From,
+                                        contentSid: 'HXd71a47a5df1f4c784fc2f8155bb349ca',
+                                        contentVariables: JSON.stringify({})
+                                    };
+                                    
+                                    if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
+                                        confirmationPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+                                    }
+                                    
+                                    const twilioResp = await client.messages.create(confirmationPayload);
+                                    console.log('✅ Sent support confirmation message via text response:', twilioResp.sid);
+                                    
+                                    // Save the confirmation message to DB
+                                    await Message.create({
+                                        from: confirmationPayload.from,
+                                        to: confirmationPayload.to,
+                                        body: "✅ Support request received! Our team will contact you soon.",
+                                        direction: 'outbound',
+                                        timestamp: new Date(),
+                                        meta: {
+                                            type: 'support_confirmation',
+                                            vendorName: vendorName,
+                                            contactNumber: phone,
+                                            trigger: 'text_response'
+                                        }
+                                    });
+                                    console.log('✅ Support confirmation message saved to DB');
+                                } catch (err) {
+                                    console.error('❌ Failed to send support confirmation via text response:', err);
+                                }
+                            }
+                        } else {
+                            console.log(`ℹ️ Support call already exists for ${phone} within last hour`);
+                        }
+                    } else {
+                        console.log('ℹ️ No recent support call reminder found for this "yes" response');
+                    }
+                } catch (err) {
+                    console.error('❌ Error handling support call text response:', err);
+                }
+            }
+        }
+        
         // Upsert contact in contacts collection
         const phone = From.replace('whatsapp:', ''); // Remove whatsapp: prefix if present
         await Contact.findOneAndUpdate({ phone: phone }, {
