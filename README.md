@@ -1,15 +1,74 @@
-# WhatsApp Admin Dashboard
+# WhatsApp Dashboard
 
-A React + TypeScript + Vite application for managing WhatsApp conversations through Twilio integration.
+A comprehensive WhatsApp-based vendor management system with location tracking, automated reminders, and admin dashboard.
 
 ## Features
 
-- Admin authentication with JWT
-- Real-time WhatsApp message handling via Twilio webhooks
-- Contact management and message history
-- Send WhatsApp messages through admin interface
-- Location sharing support
-- Modern UI with Tailwind CSS
+- **Vendor Management**: Add, edit, and manage vendor profiles
+- **Location Tracking**: Real-time location updates via WhatsApp
+- **Automated Reminders**: Location update reminders sent automatically
+- **Admin Dashboard**: Web-based interface for managing vendors
+- **WhatsApp Integration**: Seamless communication via Twilio WhatsApp API
+
+## Location Update Reminders
+
+The system automatically sends location update reminders to vendors:
+
+- **15 minutes before their opening time** - Reminds vendors to update their location
+- **At their opening time** - Sends another reminder if location hasn't been updated
+
+### How it works:
+
+1. **Cron Job**: Runs every minute to check all vendors with WhatsApp consent
+2. **Timing Check**: Only sends reminders to vendors who are open today
+3. **Duplicate Prevention**: Ensures only one reminder per type per day
+4. **Logging**: Comprehensive logging for monitoring and debugging
+
+### Configuration:
+
+- **Template ID**: `HXbdb716843483717790c45c951b71701e`
+- **Timezone**: Asia/Kolkata
+- **Frequency**: Every minute
+- **Requirements**: Vendor must have `whatsappConsent: true` and configured `operatingHours`
+
+## Environment Variables
+
+```env
+MONGODB_URI=your_mongodb_connection_string
+JWT_SECRET=your_jwt_secret_key
+TWILIO_ACCOUNT_SID=your_twilio_account_sid
+TWILIO_AUTH_TOKEN=your_twilio_auth_token
+TWILIO_PHONE_NUMBER=your_twilio_whatsapp_number_here
+```
+
+## Installation
+
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Set up environment variables
+4. Start the server: `npm start`
+
+## API Endpoints
+
+- `GET /api/vendor/check-vendor-reminders` - Manually trigger reminder check
+- `POST /api/vendor/update-location` - Update vendor location
+- `GET /api/vendor` - Get all vendors
+- `GET /api/vendor/open-count` - Get count of currently open vendors
+
+## Recent Fixes
+
+### Location Update Cron Job (Latest)
+
+**Issue**: The update location cron job stopped working after the initial deployment.
+
+**Fix**: 
+- Uncommented the cron scheduling in `vendorRemindersCron.js`
+- Added proper initialization in `auth.ts`
+- Enhanced error handling and logging
+- Added validation for required environment variables
+- Improved duplicate prevention logic
+
+**Result**: Location update reminders now work reliably every day at the specified times.
 
 ## Setup
 

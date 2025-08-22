@@ -23,8 +23,11 @@ import './vendorRemindersCron.js';
 // Import and start the weekly vendor message cron job
 import '../scripts/weekly-vendor-message-cron.js';
 
+// Import and start the profile photo announcement scheduler
+import './scheduler/profilePhotoAnnouncement.js';
+
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 // Connect to MongoDB

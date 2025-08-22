@@ -715,6 +715,123 @@ router.get('/loan-replies', async (req, res) => {
     }
 });
 
+// Inactive vendors route
+router.get('/inactive-vendors', async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 50;
+        const skip = (page - 1) * limit;
+        
+        const startTime = Date.now();
+        
+        // Calculate the date 3 days ago
+        const threeDaysAgo = new Date();
+        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+        
+        // Find vendors who haven't sent any messages in the last 3 days
+        const inactiveVendors = await User.find({
+            lastMessageAt: { $lt: threeDaysAgo }
+        })
+        .select('name contactNumber lastMessageAt status createdAt')
+        .sort({ lastMessageAt: -1 })
+        .skip(skip)
+        .limit(limit);
+        
+        // Get total count for pagination
+        const totalCount = await User.countDocuments({
+            lastMessageAt: { $lt: threeDaysAgo }
+        });
+        
+        // Calculate days inactive for each vendor
+        const vendorsWithDaysInactive = inactiveVendors.map(vendor => {
+            const lastMessageDate = vendor.lastMessageAt || vendor.createdAt;
+            const daysInactive = Math.floor((new Date() - lastMessageDate) / (1000 * 60 * 60 * 24));
+            
+            return {
+                ...vendor.toObject(),
+                daysInactive,
+                reminderStatus: 'Not sent', // Default status
+                reminderSentAt: null
+            };
+        });
+        
+        const endTime = Date.now();
+        const duration = endTime - startTime;
+        
+        res.json({
+            vendors: vendorsWithDaysInactive,
+            pagination: {
+                currentPage: page,
+                totalPages: Math.ceil(totalCount / limit),
+                totalCount,
+                hasNextPage: page * limit < totalCount,
+                hasPrevPage: page > 1
+            },
+            performance: {
+                duration: `${duration}ms`,
+                queryTime: duration
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error fetching inactive vendors:', error);
+        res.status(500).json({ error: 'Failed to fetch inactive vendors' });
+    }
+});
+
+// Send reminder to specific vendor
+router.post('/send-reminder/:vendorId', async (req, res) => {
+    try {
+        const { vendorId } = req.params;
+        
+        // Find the vendor
+        const vendor = await User.findById(vendorId);
+        if (!vendor) {
+            return res.status(404).json({ error: 'Vendor not found' });
+        }
+        
+        // Send reminder via Twilio
+        if (client) {
+            try {
+                const msgPayload = {
+                    from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
+                    to: `whatsapp:${vendor.contactNumber}`,
+                    contentSid: 'HX4c78928e13eda15597c00ea0915f1f77', // Support call reminder template
+                    contentVariables: JSON.stringify({})
+                };
+                
+                if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
+                    msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+                }
+                
+                const twilioResp = await client.messages.create(msgPayload);
+                console.log('✅ Sent reminder to vendor:', vendor.name, twilioResp.sid);
+                
+                // Update vendor's reminder status
+                vendor.reminderStatus = 'Sent';
+                vendor.reminderSentAt = new Date();
+                await vendor.save();
+                
+                res.json({ 
+                    success: true, 
+                    message: 'Reminder sent successfully',
+                    twilioSid: twilioResp.sid 
+                });
+                
+            } catch (twilioError) {
+                console.error('❌ Failed to send reminder via Twilio:', twilioError);
+                res.status(500).json({ error: 'Failed to send reminder via Twilio' });
+            }
+        } else {
+            res.status(500).json({ error: 'Twilio client not initialized' });
+        }
+        
+    } catch (error) {
+        console.error('Error sending reminder:', error);
+        res.status(500).json({ error: 'Failed to send reminder' });
+    }
+});
+
 // Message health check route
 router.get('/message-health', async (req, res) => {
     try {

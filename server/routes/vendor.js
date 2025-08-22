@@ -3,6 +3,9 @@ import express from 'express';
 import Vendor from '../models/Vendor.js';
 // @ts-ignore
 import { checkAndSendReminders } from '../vendorRemindersCron.js';
+import { Message } from '../models/Message.js';
+import { User } from '../models/User.js';
+import { client } from '../twilio.js';
 const router = express.Router();
 // GET /api/vendor/check-vendor-reminders
 router.get('/check-vendor-reminders', async (_req, res) => {
@@ -11,6 +14,104 @@ router.get('/check-vendor-reminders', async (_req, res) => {
         res.send('Reminder check complete');
     }
     catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/vendor/send-profile-photo-announcement
+router.post('/send-profile-photo-announcement', async (req, res) => {
+    try {
+        const { force = false } = req.body;
+        
+        console.log('🚀 Starting profile photo feature announcement...');
+        console.log(`📅 Date: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`);
+        
+        // Find all users with WhatsApp consent
+        const users = await User.find({ whatsappConsent: true });
+        console.log(`📊 Found ${users.length} users with WhatsApp consent.`);
+        
+        let sent = 0;
+        let failed = 0;
+        let skipped = 0;
+        
+        for (const user of users) {
+            const contact = user.contactNumber;
+            
+            // Skip users without valid contact numbers
+            if (!contact || typeof contact !== 'string' || contact.length < 10) {
+                console.warn(`⚠️ Skipping user ${user._id} - invalid contact number: ${contact}`);
+                skipped++;
+                continue;
+            }
+            
+            // Check if message was already sent today to this user (unless force is true)
+            if (!force) {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const tomorrow = new Date(today);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                
+                const existingMessage = await Message.findOne({
+                    to: contact,
+                    body: 'HX5364d2f0c0cce7ac9e38673572a45d15', // Template ID
+                    timestamp: { $gte: today, $lt: tomorrow }
+                });
+                
+                if (existingMessage) {
+                    console.log(`⏩ Skipping ${contact} - message already sent today`);
+                    skipped++;
+                    continue;
+                }
+            }
+            
+            try {
+                // Send WhatsApp message
+                await client.messages.create({
+                    from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
+                    to: `whatsapp:${contact}`,
+                    contentSid: 'HX5364d2f0c0cce7ac9e38673572a45d15', // Template ID
+                    contentVariables: JSON.stringify({}),
+                });
+                
+                // Save message to database
+                await Message.create({
+                    from: process.env.TWILIO_PHONE_NUMBER,
+                    to: contact,
+                    body: 'HX5364d2f0c0cce7ac9e38673572a45d15',
+                    direction: 'outbound',
+                    timestamp: new Date(),
+                    meta: { 
+                        campaign: 'profile-photo-announcement',
+                        date: new Date().toISOString().split('T')[0]
+                    }
+                });
+                
+                sent++;
+                console.log(`✅ Sent profile photo announcement to ${contact} (${user.name || 'Unknown'})`);
+                
+                // Add a small delay to avoid rate limiting
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+            } catch (err) {
+                failed++;
+                console.error(`❌ Failed to send to ${contact}:`, err.message || err);
+            }
+        }
+        
+        const summary = {
+            success: true,
+            sent,
+            failed,
+            skipped,
+            total: sent + failed + skipped,
+            message: 'Profile photo announcement campaign completed'
+        };
+        
+        console.log('\n📈 Summary:', summary);
+        res.json(summary);
+        
+    } catch (err) {
+        console.error('💥 Error in profile photo announcement:', err);
         res.status(500).json({ error: err.message });
     }
 });

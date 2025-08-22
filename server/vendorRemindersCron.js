@@ -6,6 +6,17 @@ import { client, createFreshClient } from './twilio.js';
 
 const TEMPLATE_SID = 'HXbdb716843483717790c45c951b71701e';
 
+// Validate required environment variables
+if (!process.env.TWILIO_PHONE_NUMBER) {
+  console.error('❌ TWILIO_PHONE_NUMBER environment variable is not set');
+  process.exit(1);
+}
+
+if (!client) {
+  console.error('❌ Twilio client is not initialized');
+  process.exit(1);
+}
+
 // Helper: Check if a location was received from user today
 async function hasLocationToday(contactNumber) {
   const since = moment().tz('Asia/Kolkata').startOf('day').toDate();
@@ -55,108 +66,121 @@ const checkAndSendReminders = async () => {
         let errorCount = 0;
         
         for (const user of users) {
-          if (!user.operatingHours || !user.operatingHours.openTime) {
-            console.log(`⏩ Skipping ${user.contactNumber} - no operating hours`);
-            continue;
-          }
-          
-          // Parse the open time
-          const openTime = moment.tz(user.operatingHours.openTime, 'h:mm A', 'Asia/Kolkata');
-          openTime.set({
-            year: now.year(),
-            month: now.month(),
-            date: now.date(),
-          });
-          
-          const diff = openTime.diff(now, 'minutes');
-          
-          // Only log if the vendor is close to opening time (within 30 minutes)
-          if (diff >= -10 && diff <= 30) {
-            console.log(`📱 ${user.name} (${user.contactNumber}): Open at ${openTime.format('HH:mm')}, Diff: ${diff} minutes`);
-          }
-
-          // Send reminder 15 minutes before opening time (expanded window: 14-16 minutes)
-          if (diff >= 14 && diff <= 16) {
-            if (!(await hasReminderSentToday(user.contactNumber, 'vendor_location_15min'))) {
-              try {
-                const result = await twilioClient.messages.create({
-                  from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
-                  to: `whatsapp:${user.contactNumber}`,
-                  contentSid: TEMPLATE_SID,
-                  contentVariables: JSON.stringify({}),
-                });
-                
-                // Log the message with proper meta data
-                await Message.create({
-                  from: process.env.TWILIO_PHONE_NUMBER,
-                  to: user.contactNumber,
-                  body: TEMPLATE_SID,
-                  direction: 'outbound',
-                  timestamp: new Date(),
-                  meta: { 
-                    minutesBefore: 15,
-                    reminderType: 'vendor_location_15min',
-                    vendorName: user.name,
-                    openTime: user.operatingHours.openTime
-                  },
-                  twilioSid: result.sid
-                });
-                
-                console.log(`✅ Sent 15-min reminder to ${user.name} (${user.contactNumber}) - SID: ${result.sid}`);
-                sentCount++;
-              } catch (error) {
-                console.error(`❌ Failed to send 15-min reminder to ${user.contactNumber}:`, error.message);
-                errorCount++;
-              }
-            } else {
-              console.log(`⏩ Skipping 15-min reminder for ${user.contactNumber} - already sent today`);
-              skippedCount++;
+          try {
+            if (!user.operatingHours || !user.operatingHours.openTime) {
+              console.log(`⏩ Skipping ${user.contactNumber} - no operating hours`);
+              continue;
             }
-          }
-
-          // Send reminder at opening time (expanded window: -2 to +2 minutes) - only if vendor hasn't shared location yet
-          if (diff >= -2 && diff <= 2) {
-            // Check if vendor has already shared location today
-            const hasLocation = await hasLocationToday(user.contactNumber);
             
-            if (hasLocation) {
-              console.log(`⏩ Skipping open-time reminder for ${user.contactNumber} - location already shared today`);
+            // Check if vendor is open today
+            const today = now.day(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+            if (!user.operatingHours.days || !user.operatingHours.days.includes(today)) {
+              console.log(`⏩ Skipping ${user.contactNumber} - not open today (day ${today})`);
               skippedCount++;
-            } else if (!(await hasReminderSentToday(user.contactNumber, 'vendor_location_open'))) {
-              try {
-                const result = await twilioClient.messages.create({
-                  from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
-                  to: `whatsapp:${user.contactNumber}`,
-                  contentSid: TEMPLATE_SID,
-                  contentVariables: JSON.stringify({}),
-                });
-                
-                // Log the message with proper meta data
-                await Message.create({
-                  from: process.env.TWILIO_PHONE_NUMBER,
-                  to: user.contactNumber,
-                  body: TEMPLATE_SID,
-                  direction: 'outbound',
-                  timestamp: new Date(),
-                  meta: { 
-                    minutesBefore: 0,
-                    reminderType: 'vendor_location_open',
-                    vendorName: user.name,
-                    openTime: user.operatingHours.openTime
-                  },
-                  twilioSid: result.sid
-                });
-                
-                console.log(`✅ Sent open-time reminder to ${user.name} (${user.contactNumber}) - SID: ${result.sid}`);
-                sentCount++;
-              } catch (error) {
-                console.error(`❌ Failed to send open-time reminder to ${user.contactNumber}:`, error.message);
-                errorCount++;
-              }
-            } else {
-              console.log(`⏩ Skipping open-time reminder for ${user.contactNumber} - already sent today`);
-              skippedCount++;
+              continue;
             }
+            
+            // Parse the open time
+            const openTime = moment.tz(user.operatingHours.openTime, 'h:mm A', 'Asia/Kolkata');
+            openTime.set({
+              year: now.year(),
+              month: now.month(),
+              date: now.date(),
+            });
+            
+            const diff = openTime.diff(now, 'minutes');
+            
+            // Only log if the vendor is close to opening time (within 30 minutes)
+            if (diff >= -10 && diff <= 30) {
+              console.log(`📱 ${user.name} (${user.contactNumber}): Open at ${openTime.format('HH:mm')}, Diff: ${diff} minutes`);
+            }
+
+            // Send reminder 15 minutes before opening time (expanded window: 14-16 minutes)
+            if (diff >= 14 && diff <= 16) {
+              if (!(await hasReminderSentToday(user.contactNumber, 'vendor_location_15min'))) {
+                try {
+                  const result = await twilioClient.messages.create({
+                    from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
+                    to: `whatsapp:${user.contactNumber}`,
+                    contentSid: TEMPLATE_SID,
+                    contentVariables: JSON.stringify({}),
+                  });
+                  
+                  // Log the message with proper meta data
+                  await Message.create({
+                    from: process.env.TWILIO_PHONE_NUMBER,
+                    to: user.contactNumber,
+                    body: TEMPLATE_SID,
+                    direction: 'outbound',
+                    timestamp: new Date(),
+                    meta: { 
+                      minutesBefore: 15,
+                      reminderType: 'vendor_location_15min',
+                      vendorName: user.name,
+                      openTime: user.operatingHours.openTime
+                    },
+                    twilioSid: result.sid
+                  });
+                  
+                  console.log(`✅ Sent 15-min reminder to ${user.name} (${user.contactNumber}) - SID: ${result.sid}`);
+                  sentCount++;
+                } catch (error) {
+                  console.error(`❌ Failed to send 15-min reminder to ${user.contactNumber}:`, error.message);
+                  errorCount++;
+                }
+              } else {
+                console.log(`⏩ Skipping 15-min reminder for ${user.contactNumber} - already sent today`);
+                skippedCount++;
+              }
+            }
+
+            // Send reminder at opening time (expanded window: -2 to +2 minutes) - only if vendor hasn't shared location yet
+            if (diff >= -2 && diff <= 2) {
+              // Check if vendor has already shared location today
+              const hasLocation = await hasLocationToday(user.contactNumber);
+              
+              if (hasLocation) {
+                console.log(`⏩ Skipping open-time reminder for ${user.contactNumber} - location already shared today`);
+                skippedCount++;
+              } else if (!(await hasReminderSentToday(user.contactNumber, 'vendor_location_open'))) {
+                try {
+                  const result = await twilioClient.messages.create({
+                    from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
+                    to: `whatsapp:${user.contactNumber}`,
+                    contentSid: TEMPLATE_SID,
+                    contentVariables: JSON.stringify({}),
+                  });
+                  
+                  // Log the message with proper meta data
+                  await Message.create({
+                    from: process.env.TWILIO_PHONE_NUMBER,
+                    to: user.contactNumber,
+                    body: TEMPLATE_SID,
+                    direction: 'outbound',
+                    timestamp: new Date(),
+                    meta: { 
+                      minutesBefore: 0,
+                      reminderType: 'vendor_location_open',
+                      vendorName: user.name,
+                      openTime: user.operatingHours.openTime
+                    },
+                    twilioSid: result.sid
+                  });
+                  
+                  console.log(`✅ Sent open-time reminder to ${user.name} (${user.contactNumber}) - SID: ${result.sid}`);
+                  sentCount++;
+                } catch (error) {
+                  console.error(`❌ Failed to send open-time reminder to ${user.contactNumber}:`, error.message);
+                  errorCount++;
+                }
+              } else {
+                console.log(`⏩ Skipping open-time reminder for ${user.contactNumber} - already sent today`);
+                skippedCount++;
+              }
+            }
+          } catch (userError) {
+            console.error(`Error processing user ${user.contactNumber}:`, userError);
+            errorCount++;
           }
         }
         
