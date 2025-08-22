@@ -188,7 +188,7 @@ export default function InactiveVendors() {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Inactive Vendors</h1>
               <p className="text-gray-600 mt-2">
-                Vendors who haven't responded to support reminders
+                Vendors who haven't responded to location update reminders in the past 7 days
               </p>
               {performance && (
                 <p className="text-sm text-green-600 mt-1">

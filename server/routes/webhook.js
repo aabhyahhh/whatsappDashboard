@@ -724,28 +724,28 @@ router.get('/inactive-vendors', async (req, res) => {
         
         const startTime = Date.now();
         
-        // Calculate the date 3 days ago
-        const threeDaysAgo = new Date();
-        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+        // Calculate the date 7 days ago
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         
-        // Find vendors who haven't responded to location update messages in the last 3 days
+        // Find vendors who haven't responded to location update messages in the last 7 days
         // First, get all users
         const allUsers = await User.find({})
             .select('name contactNumber status createdAt')
             .lean();
         
-        // Get all location update reminder messages sent in the last 3 days
+        // Get all location update reminder messages sent in the last 7 days
         const locationReminderMessages = await Message.find({
             direction: 'outbound',
             body: 'HXbdb716843483717790c45c951b71701e', // Location update template ID
             'meta.reminderType': { $in: ['vendor_location_15min', 'vendor_location_open'] },
-            timestamp: { $gte: threeDaysAgo }
+            timestamp: { $gte: sevenDaysAgo }
         }).select('to timestamp').lean();
         
-        // Get all inbound messages (responses) in the last 3 days
+        // Get all inbound messages (responses) in the last 7 days
         const recentResponses = await Message.find({
             direction: 'inbound',
-            timestamp: { $gte: threeDaysAgo }
+            timestamp: { $gte: sevenDaysAgo }
         }).select('from timestamp').lean();
         
         // Create a map of phone numbers that have responded to location reminders
