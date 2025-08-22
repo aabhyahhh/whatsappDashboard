@@ -18,12 +18,11 @@ interface InactiveVendor {
 }
 
 interface PaginationInfo {
-  page: number;
-  limit: number;
-  total: number;
-  pages: number;
-  hasNext: boolean;
-  hasPrev: boolean;
+  currentPage: number;
+  totalPages: number;
+  totalCount: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
 }
 
 interface ApiResponse {
@@ -397,18 +396,18 @@ export default function InactiveVendors() {
               </div>
               
               {/* Pagination */}
-              {pagination && pagination.pages > 1 && (
+              {pagination && pagination.totalPages > 1 && (
                 <div className="px-6 py-4 border-t border-gray-200">
                   <div className="flex items-center justify-between">
                     <div className="text-sm text-gray-700">
-                      Page {pagination.page} of {pagination.pages}
+                      Page {pagination.currentPage} of {pagination.totalPages}
                     </div>
                     <div className="flex space-x-2">
                       <button
-                        onClick={() => handlePageChange(pagination.page - 1)}
-                        disabled={!pagination.hasPrev}
+                        onClick={() => handlePageChange(pagination.currentPage - 1)}
+                        disabled={!pagination.hasPrevPage}
                         className={`px-3 py-1 rounded-md text-sm font-medium ${
-                          pagination.hasPrev
+                          pagination.hasPrevPage
                             ? 'text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100'
                             : 'text-gray-400 bg-gray-100 cursor-not-allowed'
                         }`}
@@ -416,10 +415,10 @@ export default function InactiveVendors() {
                         Previous
                       </button>
                       <button
-                        onClick={() => handlePageChange(pagination.page + 1)}
-                        disabled={!pagination.hasNext}
+                        onClick={() => handlePageChange(pagination.currentPage + 1)}
+                        disabled={!pagination.hasNextPage}
                         className={`px-3 py-1 rounded-md text-sm font-medium ${
-                          pagination.hasNext
+                          pagination.hasNextPage
                             ? 'text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100'
                             : 'text-gray-400 bg-gray-100 cursor-not-allowed'
                         }`}
