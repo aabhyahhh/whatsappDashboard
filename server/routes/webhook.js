@@ -785,11 +785,8 @@ router.get('/inactive-vendors', async (req, res) => {
                    respondedToLocationReminders.has(normalizedPhone);
         });
         
-        // Apply pagination
-        const paginatedVendors = inactiveVendors.slice(skip, skip + limit);
-        
         // Calculate days inactive for each vendor based on their last activity
-        const vendorsWithDaysInactive = await Promise.all(paginatedVendors.map(async (vendor) => {
+        const vendorsWithDaysInactive = await Promise.all(inactiveVendors.map(async (vendor) => {
             const userPhone = vendor.contactNumber;
             const normalizedPhone = userPhone.replace(/^\+91/, '').replace(/^91/, '');
             
@@ -832,6 +829,14 @@ router.get('/inactive-vendors', async (req, res) => {
                 reminderSentAt: reminderSentAt ? reminderSentAt.toISOString() : null
             };
         }));
+        
+        // Sort vendors by days inactive in ascending order (least inactive first)
+        vendorsWithDaysInactive.sort((a, b) => a.daysInactive - b.daysInactive);
+        
+        // Apply pagination after sorting
+        const paginatedVendors = vendorsWithDaysInactive.slice(skip, skip + limit);
+        
+
         
         const totalCount = inactiveVendors.length;
         
