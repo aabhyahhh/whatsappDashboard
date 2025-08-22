@@ -226,7 +226,7 @@ export default function InactiveVendors() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Inactive</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {pagination ? pagination.total : vendors.length}
+                  {pagination ? pagination.totalCount : vendors.length}
                 </p>
               </div>
             </div>
@@ -271,7 +271,11 @@ export default function InactiveVendors() {
             <h2 className="text-lg font-medium text-gray-900">Inactive Vendor List</h2>
             {pagination && (
               <p className="text-sm text-gray-500 mt-1">
-                Showing {((pagination.page - 1) * pagination.limit) + 1} - {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} vendors
+                {pagination.totalCount > 0 ? (
+                  `Showing ${((pagination.currentPage - 1) * 50) + 1} - ${Math.min(pagination.currentPage * 50, pagination.totalCount)} of ${pagination.totalCount} vendors`
+                ) : (
+                  'No vendors found'
+                )}
               </p>
             )}
           </div>

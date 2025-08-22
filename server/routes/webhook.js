@@ -729,31 +729,52 @@ router.get('/inactive-vendors', async (req, res) => {
         threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
         
         // Find vendors who haven't sent any messages in the last 3 days
-        const inactiveVendors = await User.find({
-            lastMessageAt: { $lt: threeDaysAgo }
-        })
-        .select('name contactNumber lastMessageAt status createdAt')
-        .sort({ lastMessageAt: -1 })
-        .skip(skip)
-        .limit(limit);
+        // First, get all users
+        const allUsers = await User.find({})
+            .select('name contactNumber status createdAt')
+            .lean();
         
-        // Get total count for pagination
-        const totalCount = await User.countDocuments({
-            lastMessageAt: { $lt: threeDaysAgo }
+        // Get all inbound messages in the last 3 days
+        const recentMessages = await Message.find({
+            direction: 'inbound',
+            timestamp: { $gte: threeDaysAgo }
+        }).select('from').lean();
+        
+        // Create a set of phone numbers that have sent messages recently
+        const recentSenders = new Set();
+        recentMessages.forEach(msg => {
+            const phone = msg.from.replace('whatsapp:', '');
+            recentSenders.add(phone);
         });
         
+        // Filter out users who have sent messages recently
+        const inactiveVendors = allUsers.filter(user => {
+            if (!user.contactNumber) {
+                return false; // Skip users without contact numbers
+            }
+            const userPhone = user.contactNumber;
+            const normalizedPhone = userPhone.replace(/^\+91/, '').replace(/^91/, '');
+            return !recentSenders.has(userPhone) && !recentSenders.has(normalizedPhone);
+        });
+        
+        // Apply pagination
+        const paginatedVendors = inactiveVendors.slice(skip, skip + limit);
+        
         // Calculate days inactive for each vendor
-        const vendorsWithDaysInactive = inactiveVendors.map(vendor => {
-            const lastMessageDate = vendor.lastMessageAt || vendor.createdAt;
-            const daysInactive = Math.floor((new Date() - lastMessageDate) / (1000 * 60 * 60 * 24));
+        const vendorsWithDaysInactive = paginatedVendors.map(vendor => {
+            const daysInactive = Math.floor((new Date() - vendor.createdAt) / (1000 * 60 * 60 * 24));
             
             return {
-                ...vendor.toObject(),
+                ...vendor,
                 daysInactive,
                 reminderStatus: 'Not sent', // Default status
                 reminderSentAt: null
             };
         });
+        
+        const totalCount = inactiveVendors.length;
+        
+
         
         const endTime = Date.now();
         const duration = endTime - startTime;
