@@ -816,7 +816,7 @@ router.get('/inactive-vendors', async (req, res) => {
                 ...vendor,
                 daysInactive,
                 reminderStatus: lastLocationReminder ? 'Sent' : 'Not sent',
-                reminderSentAt: reminderSentAt
+                reminderSentAt: reminderSentAt ? reminderSentAt.toISOString() : null
             };
         }));
         

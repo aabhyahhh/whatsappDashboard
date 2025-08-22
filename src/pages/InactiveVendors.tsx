@@ -6,9 +6,9 @@ const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
 interface InactiveVendor {
   _id: string;
-  phone: string;
+  contactNumber: string;
   name: string;
-  lastSeen: string;
+  lastSeen?: string;
   daysInactive: number;
   reminderSentAt?: string;
   reminderStatus?: string;
@@ -333,20 +333,20 @@ export default function InactiveVendors() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {vendor.phone}
+                          {vendor.contactNumber}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatDate(vendor.lastSeen)}
+                          {vendor.reminderSentAt ? formatDate(vendor.reminderSentAt) : 'No reminder sent'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            (vendor.daysInactive || getDaysInactive(vendor.lastSeen)) > 7 
+                            vendor.daysInactive > 7 
                               ? 'bg-red-100 text-red-800' 
-                              : (vendor.daysInactive || getDaysInactive(vendor.lastSeen)) > 3 
+                              : vendor.daysInactive > 3 
                               ? 'bg-yellow-100 text-yellow-800' 
                               : 'bg-green-100 text-green-800'
                           }`}>
-                            {vendor.daysInactive || getDaysInactive(vendor.lastSeen)} days
+                            {vendor.daysInactive} days
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
