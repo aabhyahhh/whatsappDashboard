@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import cron from 'node-cron';
 import moment from 'moment-timezone';
 import { Message } from './models/Message.js';

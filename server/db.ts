@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import mongoose from 'mongoose';
 
 // Single database configuration for both development and production
