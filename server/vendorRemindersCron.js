@@ -22,8 +22,11 @@ async function hasLocationToday(contactNumber) {
   const since = moment().tz('Asia/Kolkata').startOf('day').toDate();
   const messages = await Message.find({
     from: { $in: [contactNumber, `whatsapp:${contactNumber}`] },
-    'location.latitude': { $exists: true },
-    timestamp: { $gte: since }
+    timestamp: { $gte: since },
+    $or: [
+      { 'location.latitude': { $exists: true } }, // Location shared
+      { body: { $regex: /location|shared|updated/i } } // Text response about location
+    ]
   });
   return messages.length > 0;
 }
@@ -31,14 +34,41 @@ async function hasLocationToday(contactNumber) {
 // Helper: Check if a reminder was sent today
 async function hasReminderSentToday(contactNumber, reminderType) {
   const since = moment().tz('Asia/Kolkata').startOf('day').toDate();
-  const bodyRegex = new RegExp(TEMPLATE_SID, 'i');
   const messages = await Message.find({
     to: { $in: [contactNumber, `whatsapp:${contactNumber}`] },
-    body: { $regex: bodyRegex },
-    timestamp: { $gte: since },
-    'meta.reminderType': reminderType
+    $or: [
+      { body: TEMPLATE_SID }, // Exact template SID match
+      { 'meta.reminderType': reminderType } // Meta data match
+    ],
+    timestamp: { $gte: since }
   });
   return messages.length > 0;
+}
+
+// Helper: Check if vendor responded to 15-min reminder
+async function hasRespondedTo15MinReminder(contactNumber) {
+  const since = moment().tz('Asia/Kolkata').startOf('day').toDate();
+  
+  // Check if 15-min reminder was sent today
+  const reminderSent = await Message.findOne({
+    to: { $in: [contactNumber, `whatsapp:${contactNumber}`] },
+    'meta.reminderType': 'vendor_location_15min',
+    timestamp: { $gte: since }
+  }).sort({ timestamp: -1 });
+  
+  if (!reminderSent) return false;
+  
+  // Check if vendor responded after the reminder was sent
+  const response = await Message.findOne({
+    from: { $in: [contactNumber, `whatsapp:${contactNumber}`] },
+    timestamp: { $gte: reminderSent.timestamp },
+    $or: [
+      { 'location.latitude': { $exists: true } }, // Location shared
+      { body: { $regex: /location|shared|updated/i } } // Text response
+    ]
+  });
+  
+  return !!response;
 }
 
 const checkAndSendReminders = async () => {
@@ -80,21 +110,35 @@ const checkAndSendReminders = async () => {
               continue;
             }
             
-            // Parse the open time
-            const openTime = moment.tz(user.operatingHours.openTime, 'h:mm A', 'Asia/Kolkata');
-            openTime.set({
-              year: now.year(),
-              month: now.month(),
-              date: now.date(),
-            });
-            
-            const diff = openTime.diff(now, 'minutes');
-            
-            // Only log if the vendor is close to opening time (within 30 minutes)
-            if (diff >= -10 && diff <= 30) {
-              console.log(`📱 ${user.name} (${user.contactNumber}): Open at ${openTime.format('HH:mm')}, Diff: ${diff} minutes`);
+                        let diff;
+            try {
+              // Parse the open time with better error handling
+              const openTime = moment.tz(user.operatingHours.openTime, ['h:mm A', 'HH:mm', 'H:mm'], 'Asia/Kolkata');
+              
+              if (!openTime.isValid()) {
+                console.log(`⚠️ Invalid open time format for ${user.contactNumber}: ${user.operatingHours.openTime}`);
+                skippedCount++;
+                continue;
+              }
+              
+              openTime.set({
+                year: now.year(),
+                month: now.month(),
+                date: now.date(),
+              });
+              
+              diff = openTime.diff(now, 'minutes');
+              
+              // Only log if the vendor is close to opening time (within 30 minutes)
+              if (diff >= -10 && diff <= 30) {
+                console.log(`📱 ${user.name} (${user.contactNumber}): Open at ${openTime.format('HH:mm')}, Diff: ${diff} minutes`);
+              }
+            } catch (timeError) {
+              console.error(`❌ Error parsing time for ${user.contactNumber}:`, timeError.message);
+              errorCount++;
+              continue;
             }
-
+            
             // Send reminder 15 minutes before opening time (expanded window: 14-16 minutes)
             if (diff >= 14 && diff <= 16) {
               if (!(await hasReminderSentToday(user.contactNumber, 'vendor_location_15min'))) {
@@ -142,40 +186,49 @@ const checkAndSendReminders = async () => {
               if (hasLocation) {
                 console.log(`⏩ Skipping open-time reminder for ${user.contactNumber} - location already shared today`);
                 skippedCount++;
-              } else if (!(await hasReminderSentToday(user.contactNumber, 'vendor_location_open'))) {
-                try {
-                  const result = await twilioClient.messages.create({
-                    from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
-                    to: `whatsapp:${user.contactNumber}`,
-                    contentSid: TEMPLATE_SID,
-                    contentVariables: JSON.stringify({}),
-                  });
-                  
-                  // Log the message with proper meta data
-                  await Message.create({
-                    from: process.env.TWILIO_PHONE_NUMBER,
-                    to: user.contactNumber,
-                    body: TEMPLATE_SID,
-                    direction: 'outbound',
-                    timestamp: new Date(),
-                    meta: { 
-                      minutesBefore: 0,
-                      reminderType: 'vendor_location_open',
-                      vendorName: user.name,
-                      openTime: user.operatingHours.openTime
-                    },
-                    twilioSid: result.sid
-                  });
-                  
-                  console.log(`✅ Sent open-time reminder to ${user.name} (${user.contactNumber}) - SID: ${result.sid}`);
-                  sentCount++;
-                } catch (error) {
-                  console.error(`❌ Failed to send open-time reminder to ${user.contactNumber}:`, error.message);
-                  errorCount++;
-                }
               } else {
-                console.log(`⏩ Skipping open-time reminder for ${user.contactNumber} - already sent today`);
-                skippedCount++;
+                // Check if vendor responded to 15-min reminder
+                const respondedTo15Min = await hasRespondedTo15MinReminder(user.contactNumber);
+                
+                if (respondedTo15Min) {
+                  console.log(`⏩ Skipping open-time reminder for ${user.contactNumber} - already responded to 15-min reminder`);
+                  skippedCount++;
+                } else if (!(await hasReminderSentToday(user.contactNumber, 'vendor_location_open'))) {
+                  try {
+                    const result = await twilioClient.messages.create({
+                      from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
+                      to: `whatsapp:${user.contactNumber}`,
+                      contentSid: TEMPLATE_SID,
+                      contentVariables: JSON.stringify({}),
+                    });
+                    
+                    // Log the message with proper meta data
+                    await Message.create({
+                      from: process.env.TWILIO_PHONE_NUMBER,
+                      to: user.contactNumber,
+                      body: TEMPLATE_SID,
+                      direction: 'outbound',
+                      timestamp: new Date(),
+                      meta: { 
+                        minutesBefore: 0,
+                        reminderType: 'vendor_location_open',
+                        vendorName: user.name,
+                        openTime: user.operatingHours.openTime,
+                        followUp: true // Mark this as a follow-up reminder
+                      },
+                      twilioSid: result.sid
+                    });
+                    
+                    console.log(`✅ Sent follow-up open-time reminder to ${user.name} (${user.contactNumber}) - SID: ${result.sid}`);
+                    sentCount++;
+                  } catch (error) {
+                    console.error(`❌ Failed to send open-time reminder to ${user.contactNumber}:`, error.message);
+                    errorCount++;
+                  }
+                } else {
+                  console.log(`⏩ Skipping open-time reminder for ${user.contactNumber} - already sent today`);
+                  skippedCount++;
+                }
               }
             }
           } catch (userError) {
@@ -258,6 +311,15 @@ cron.schedule('0 9 * * *', async () => {
       
       if (hasLocation) {
         console.log(`⏩ Skipping backup reminder for ${user.contactNumber} - location already shared today`);
+        skippedCount++;
+        continue;
+      }
+      
+      // Check if vendor responded to any reminder today
+      const respondedTo15Min = await hasRespondedTo15MinReminder(user.contactNumber);
+      
+      if (respondedTo15Min) {
+        console.log(`⏩ Skipping backup reminder for ${user.contactNumber} - already responded to 15-min reminder`);
         skippedCount++;
         continue;
       }

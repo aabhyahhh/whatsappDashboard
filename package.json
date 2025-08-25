@@ -21,6 +21,7 @@
     "test:aadhaar-tick-mark": "tsx scripts/test-aadhaar-tick-mark.ts",
     "test:login-performance": "tsx scripts/test-login-performance.ts",
     "test:vendor-reminders": "tsx scripts/test-vendor-reminders-manual.ts",
+    "test:location-improvements": "tsx scripts/test-location-reminder-improvements.ts",
     "monitor:cron": "tsx scripts/monitor-cron-status.ts",
     "trigger-weekly-campaign": "tsx scripts/trigger-weekly-campaign.ts",
     "manual-weekly-campaign": "tsx scripts/manual-weekly-campaign.ts",
