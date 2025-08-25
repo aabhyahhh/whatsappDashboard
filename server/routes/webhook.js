@@ -812,7 +812,7 @@ router.get('/loan-replies', async (req, res) => {
     }
 });
 
-// Inactive vendors route
+// Inactive vendors route - OPTIMIZED VERSION
 router.get('/inactive-vendors', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -825,125 +825,292 @@ router.get('/inactive-vendors', async (req, res) => {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         
-        // Find vendors who haven't responded to location update messages in the last 7 days
-        // First, get all users
-        const allUsers = await User.find({})
-            .select('name contactNumber status createdAt')
-            .lean();
+        // Use aggregation pipeline for better performance
+        const inactiveVendorsPipeline = [
+            // Stage 1: Get all users with contact numbers
+            {
+                $match: {
+                    contactNumber: { $exists: true, $ne: null }
+                }
+            },
+            // Stage 2: Lookup recent location reminders sent to each user
+            {
+                $lookup: {
+                    from: 'messages',
+                    let: { userPhone: '$contactNumber' },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ['$direction', 'outbound'] },
+                                        { $eq: ['$body', 'HXbdb716843483717790c45c951b71701e'] },
+                                        { $in: ['$meta.reminderType', ['vendor_location_15min', 'vendor_location_open']] },
+                                        { $gte: ['$timestamp', sevenDaysAgo] },
+                                        {
+                                            $or: [
+                                                { $eq: ['$to', '$$userPhone'] },
+                                                { $eq: ['$to', { $concat: ['whatsapp:', '$$userPhone'] }] }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        { $sort: { timestamp: -1 } },
+                        { $limit: 1 }
+                    ],
+                    as: 'lastLocationReminder'
+                }
+            },
+            // Stage 3: Lookup recent responses from each user
+            {
+                $lookup: {
+                    from: 'messages',
+                    let: { userPhone: '$contactNumber' },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ['$direction', 'inbound'] },
+                                        { $gte: ['$timestamp', sevenDaysAgo] },
+                                        {
+                                            $or: [
+                                                { $eq: ['$from', '$$userPhone'] },
+                                                { $eq: ['$from', { $concat: ['whatsapp:', '$$userPhone'] }] }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        { $sort: { timestamp: -1 } },
+                        { $limit: 1 }
+                    ],
+                    as: 'lastResponse'
+                }
+            },
+            // Stage 4: Lookup all responses from each user (for checking if they responded to reminders)
+            {
+                $lookup: {
+                    from: 'messages',
+                    let: { userPhone: '$contactNumber' },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ['$direction', 'inbound'] },
+                                        { $gte: ['$timestamp', sevenDaysAgo] },
+                                        {
+                                            $or: [
+                                                { $eq: ['$from', '$$userPhone'] },
+                                                { $eq: ['$from', { $concat: ['whatsapp:', '$$userPhone'] }] }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    ],
+                    as: 'allResponses'
+                }
+            },
+            // Stage 5: Add computed fields
+            {
+                $addFields: {
+                    hasLocationReminder: { $gt: [{ $size: '$lastLocationReminder' }, 0] },
+                    hasRecentResponse: { $gt: [{ $size: '$lastResponse' }, 0] },
+                    lastSeen: {
+                        $ifNull: [
+                            { $arrayElemAt: ['$lastResponse.timestamp', 0] },
+                            '$createdAt'
+                        ]
+                    },
+                    reminderSentAt: { $arrayElemAt: ['$lastLocationReminder.timestamp', 0] }
+                }
+            },
+            // Stage 6: Calculate days inactive
+            {
+                $addFields: {
+                    daysInactive: {
+                        $floor: {
+                            $divide: [
+                                { $subtract: [new Date(), '$lastSeen'] },
+                                1000 * 60 * 60 * 24
+                            ]
+                        }
+                    }
+                }
+            },
+            // Stage 7: Filter for inactive vendors (those with location reminders but no recent responses)
+            {
+                $match: {
+                    $and: [
+                        { hasLocationReminder: true },
+                        {
+                            $or: [
+                                { hasRecentResponse: false },
+                                {
+                                    $and: [
+                                        { hasRecentResponse: true },
+                                        { hasLocationReminder: true },
+                                        {
+                                            $lt: [
+                                                { $arrayElemAt: ['$lastResponse.timestamp', 0] },
+                                                { $arrayElemAt: ['$lastLocationReminder.timestamp', 0] }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
+            // Stage 8: Project final fields
+            {
+                $project: {
+                    _id: 1,
+                    name: 1,
+                    contactNumber: 1,
+                    lastSeen: 1,
+                    daysInactive: 1,
+                    reminderStatus: {
+                        $cond: {
+                            if: { $gt: [{ $size: '$lastLocationReminder' }, 0] },
+                            then: 'Sent',
+                            else: 'Not sent'
+                        }
+                    },
+                    reminderSentAt: 1
+                }
+            },
+            // Stage 9: Sort by days inactive
+            { $sort: { daysInactive: 1 } },
+            // Stage 10: Apply pagination
+            { $skip: skip },
+            { $limit: limit }
+        ];
         
-        // Get all location update reminder messages sent in the last 7 days
-        const locationReminderMessages = await Message.find({
-            direction: 'outbound',
-            body: 'HXbdb716843483717790c45c951b71701e', // Location update template ID
-            'meta.reminderType': { $in: ['vendor_location_15min', 'vendor_location_open'] },
-            timestamp: { $gte: sevenDaysAgo }
-        }).select('to timestamp').lean();
+        // Get total count for pagination
+        const countPipeline = [
+            // Same stages 1-7 as above, but without pagination
+            {
+                $match: {
+                    contactNumber: { $exists: true, $ne: null }
+                }
+            },
+            {
+                $lookup: {
+                    from: 'messages',
+                    let: { userPhone: '$contactNumber' },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ['$direction', 'outbound'] },
+                                        { $eq: ['$body', 'HXbdb716843483717790c45c951b71701e'] },
+                                        { $in: ['$meta.reminderType', ['vendor_location_15min', 'vendor_location_open']] },
+                                        { $gte: ['$timestamp', sevenDaysAgo] },
+                                        {
+                                            $or: [
+                                                { $eq: ['$to', '$$userPhone'] },
+                                                { $eq: ['$to', { $concat: ['whatsapp:', '$$userPhone'] }] }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        { $sort: { timestamp: -1 } },
+                        { $limit: 1 }
+                    ],
+                    as: 'lastLocationReminder'
+                }
+            },
+            {
+                $lookup: {
+                    from: 'messages',
+                    let: { userPhone: '$contactNumber' },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ['$direction', 'inbound'] },
+                                        { $gte: ['$timestamp', sevenDaysAgo] },
+                                        {
+                                            $or: [
+                                                { $eq: ['$from', '$$userPhone'] },
+                                                { $eq: ['$from', { $concat: ['whatsapp:', '$$userPhone'] }] }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        { $sort: { timestamp: -1 } },
+                        { $limit: 1 }
+                    ],
+                    as: 'lastResponse'
+                }
+            },
+            {
+                $addFields: {
+                    hasLocationReminder: { $gt: [{ $size: '$lastLocationReminder' }, 0] },
+                    hasRecentResponse: { $gt: [{ $size: '$lastResponse' }, 0] }
+                }
+            },
+            {
+                $match: {
+                    $and: [
+                        { hasLocationReminder: true },
+                        {
+                            $or: [
+                                { hasRecentResponse: false },
+                                {
+                                    $and: [
+                                        { hasRecentResponse: true },
+                                        { hasLocationReminder: true },
+                                        {
+                                            $lt: [
+                                                { $arrayElemAt: ['$lastResponse.timestamp', 0] },
+                                                { $arrayElemAt: ['$lastLocationReminder.timestamp', 0] }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
+            { $count: 'total' }
+        ];
         
-        // Get all inbound messages (responses) in the last 7 days
-        const recentResponses = await Message.find({
-            direction: 'inbound',
-            timestamp: { $gte: sevenDaysAgo }
-        }).select('from timestamp').lean();
+        // Execute both queries in parallel
+        const [vendors, countResult] = await Promise.all([
+            User.aggregate(inactiveVendorsPipeline),
+            User.aggregate(countPipeline)
+        ]);
         
-        // Create a map of phone numbers that have responded to location reminders
-        const respondedToLocationReminders = new Map();
+        const totalCount = countResult.length > 0 ? countResult[0].total : 0;
         
-        // For each location reminder sent, check if there was a response
-        locationReminderMessages.forEach(reminder => {
-            const reminderPhone = reminder.to.replace('whatsapp:', '');
-            const reminderTime = reminder.timestamp;
-            
-            // Check if there was a response within 24 hours of the reminder
-            const responseWindow = new Date(reminderTime.getTime() + 24 * 60 * 60 * 1000);
-            const hasResponse = recentResponses.some(response => {
-                const responsePhone = response.from.replace('whatsapp:', '');
-                const normalizedReminderPhone = reminderPhone.replace(/^\+91/, '').replace(/^91/, '');
-                const normalizedResponsePhone = responsePhone.replace(/^\+91/, '').replace(/^91/, '');
-                
-                return (responsePhone === reminderPhone || normalizedResponsePhone === normalizedReminderPhone) &&
-                       response.timestamp <= responseWindow;
-            });
-            
-            if (!hasResponse) {
-                respondedToLocationReminders.set(reminderPhone, false);
-            }
-        });
-        
-        // Filter users who haven't responded to location reminders
-        const inactiveVendors = allUsers.filter(user => {
-            if (!user.contactNumber) {
-                return false; // Skip users without contact numbers
-            }
-            const userPhone = user.contactNumber;
-            const normalizedPhone = userPhone.replace(/^\+91/, '').replace(/^91/, '');
-            
-            // Check if this user was sent a location reminder and didn't respond
-            return respondedToLocationReminders.has(userPhone) || 
-                   respondedToLocationReminders.has(normalizedPhone);
-        });
-        
-        // Calculate days inactive for each vendor based on their last activity
-        const vendorsWithDaysInactive = await Promise.all(inactiveVendors.map(async (vendor) => {
-            const userPhone = vendor.contactNumber;
-            const normalizedPhone = userPhone.replace(/^\+91/, '').replace(/^91/, '');
-            
-            // Find the most recent location reminder sent to this vendor
-            const lastLocationReminder = await Message.findOne({
-                direction: 'outbound',
-                to: { $in: [userPhone, `whatsapp:${userPhone}`, normalizedPhone, `whatsapp:${normalizedPhone}`] },
-                body: 'HXbdb716843483717790c45c951b71701e',
-                'meta.reminderType': { $in: ['vendor_location_15min', 'vendor_location_open'] }
-            }).sort({ timestamp: -1 }).lean();
-            
-            // Find the vendor's last activity (last inbound message)
-            const lastActivity = await Message.findOne({
-                direction: 'inbound',
-                from: { $in: [userPhone, `whatsapp:${userPhone}`, normalizedPhone, `whatsapp:${normalizedPhone}`] }
-            }).sort({ timestamp: -1 }).lean();
-            
-            let daysInactive = 0;
-            let lastSeen = null;
-            let reminderSentAt = null;
-            
-            if (lastActivity) {
-                lastSeen = lastActivity.timestamp;
-                daysInactive = Math.floor((new Date() - lastActivity.timestamp) / (1000 * 60 * 60 * 24));
-            } else {
-                // If no activity found, use creation date
-                lastSeen = vendor.createdAt;
-                daysInactive = Math.floor((new Date() - vendor.createdAt) / (1000 * 60 * 60 * 24));
-            }
-            
-            if (lastLocationReminder) {
-                reminderSentAt = lastLocationReminder.timestamp;
-            }
-            
-            return {
+        // Convert dates to ISO strings for JSON response
+        const vendorsWithFormattedDates = vendors.map(vendor => ({
                 ...vendor,
-                daysInactive,
-                lastSeen: lastSeen.toISOString(),
-                reminderStatus: lastLocationReminder ? 'Sent' : 'Not sent',
-                reminderSentAt: reminderSentAt ? reminderSentAt.toISOString() : null
-            };
+            lastSeen: vendor.lastSeen ? vendor.lastSeen.toISOString() : null,
+            reminderSentAt: vendor.reminderSentAt ? vendor.reminderSentAt.toISOString() : null
         }));
-        
-        // Sort vendors by days inactive in ascending order (least inactive first)
-        vendorsWithDaysInactive.sort((a, b) => a.daysInactive - b.daysInactive);
-        
-        // Apply pagination after sorting
-        const paginatedVendors = vendorsWithDaysInactive.slice(skip, skip + limit);
-        
-
-        
-        const totalCount = inactiveVendors.length;
-        
-
         
         const endTime = Date.now();
         const duration = endTime - startTime;
         
         res.json({
-            vendors: vendorsWithDaysInactive,
+            vendors: vendorsWithFormattedDates,
             pagination: {
                 currentPage: page,
                 totalPages: Math.ceil(totalCount / limit),
@@ -953,6 +1120,7 @@ router.get('/inactive-vendors', async (req, res) => {
             },
             performance: {
                 duration: `${duration}ms`,
+                optimized: true,
                 queryTime: duration
             }
         });

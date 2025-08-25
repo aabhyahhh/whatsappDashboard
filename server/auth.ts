@@ -14,18 +14,6 @@ import messagesRoutes from './routes/messages.js';
 import verifyRoutes from './routes/verify.js';
 import vendorRoutes from './routes/vendor.js';
 
-// Import and start the support call reminder scheduler
-import './scheduler/supportCallReminder.js';
-
-// Import and start the vendor reminders cron job
-import './vendorRemindersCron.js';
-
-// Import and start the weekly vendor message cron job
-import '../scripts/weekly-vendor-message-cron.js';
-
-// Import and start the profile photo announcement scheduler
-import './scheduler/profilePhotoAnnouncement.js';
-
 const app = express();
 const PORT = process.env.PORT || 5001;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -73,6 +61,18 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  next();
+});
+
+// Request timeout middleware
+app.use((req, res, next) => {
+  // Set timeout for all requests
+  req.setTimeout(10000, () => {
+    console.error('Request timeout for:', req.method, req.url);
+    if (!res.headersSent) {
+      res.status(408).json({ error: 'Request timeout' });
+    }
+  });
   next();
 });
 
@@ -221,19 +221,31 @@ app.post('/api/auth', (async (req: Request<{}, {}, LoginRequest>, res: Response)
         // Add request timing for debugging
         const startTime = Date.now();
 
+        // Validate input
+        if (!username || !password) {
+            console.log(`❌ Login failed: Missing credentials (${Date.now() - startTime}ms)`);
+            return res.status(400).json({ error: 'Username and password are required' });
+        }
+
         // Find admin by username with projection to only get needed fields
         const admin = await Admin.findOne(
             { username }, 
             'username password role _id lastLogin'
-        ).lean(); // Use lean() for better performance
+        ).lean().maxTimeMS(5000); // 5 second timeout for database query
 
         if (!admin) {
             console.log(`❌ Login failed: User '${username}' not found (${Date.now() - startTime}ms)`);
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        // Verify password
-        const isValidPassword = await bcrypt.compare(password, admin.password);
+        // Verify password with timeout
+        const isValidPassword = await Promise.race([
+            bcrypt.compare(password, admin.password),
+            new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Password verification timeout')), 3000)
+            )
+        ]);
+
         if (!isValidPassword) {
             console.log(`❌ Login failed: Invalid password for user '${username}' (${Date.now() - startTime}ms)`);
             return res.status(401).json({ error: 'Invalid credentials' });
@@ -262,8 +274,14 @@ app.post('/api/auth', (async (req: Request<{}, {}, LoginRequest>, res: Response)
 
         res.json({ token });
     } catch (error) {
-        console.error('Login error:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        const totalTime = Date.now() - (req as any).startTime || Date.now();
+        console.error(`❌ Login error after ${totalTime}ms:`, error);
+        
+        if (error.message === 'Password verification timeout') {
+            res.status(408).json({ error: 'Login timeout - please try again' });
+        } else {
+            res.status(500).json({ error: 'Internal server error' });
+        }
     }
 }) as RequestHandler);
 
@@ -286,6 +304,33 @@ async function createInitialAdmin() {
     }
 }
 
+// Deferred initialization of cron jobs and schedulers
+async function initializeBackgroundJobs() {
+    try {
+        console.log('🔄 Initializing background jobs...');
+        
+        // Import and start the support call reminder scheduler
+        await import('./scheduler/supportCallReminder.js');
+        console.log('✅ Support call reminder scheduler initialized');
+        
+        // Import and start the vendor reminders cron job
+        await import('./vendorRemindersCron.js');
+        console.log('✅ Vendor reminders cron job initialized');
+        
+        // Import and start the weekly vendor message cron job
+        await import('../scripts/weekly-vendor-message-cron.js');
+        console.log('✅ Weekly vendor message cron job initialized');
+        
+        // Import and start the profile photo announcement scheduler
+        await import('./scheduler/profilePhotoAnnouncement.js');
+        console.log('✅ Profile photo announcement scheduler initialized');
+        
+        console.log('🎉 All background jobs initialized successfully');
+    } catch (error) {
+        console.error('❌ Error initializing background jobs:', error);
+    }
+}
+
 // Start server
 app.listen(PORT, () => {
     console.log(`Auth server running at http://localhost:${PORT}`);
@@ -295,4 +340,9 @@ app.listen(PORT, () => {
     
     // Create initial admin user
     createInitialAdmin().catch(console.error);
+    
+    // Initialize background jobs after server starts (non-blocking)
+    setTimeout(() => {
+        initializeBackgroundJobs();
+    }, 2000); // Wait 2 seconds after server starts
 }); 

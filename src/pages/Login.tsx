@@ -17,6 +17,10 @@ export default function Login() {
     const startTime = Date.now();
 
     try {
+      // Create AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
       const response = await fetch(`${apiBaseUrl}/api/auth`, {
         method: 'POST',
         headers: {
@@ -24,7 +28,10 @@ export default function Login() {
           'Cache-Control': 'no-cache'
         },
         body: JSON.stringify({ username, password }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       const data = await response.json();
 
@@ -42,8 +49,19 @@ export default function Login() {
       navigate('/dashboard');
     } catch (err) {
       const totalTime = Date.now() - startTime;
-      console.error(`❌ Login failed after ${totalTime}ms:`, err);
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      
+      if (err instanceof Error) {
+        if (err.name === 'AbortError') {
+          console.error(`❌ Login timeout after ${totalTime}ms`);
+          setError('Login request timed out. Please check your connection and try again.');
+        } else {
+          console.error(`❌ Login failed after ${totalTime}ms:`, err);
+          setError(err.message);
+        }
+      } else {
+        console.error(`❌ Login failed after ${totalTime}ms:`, err);
+        setError('An unexpected error occurred. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }

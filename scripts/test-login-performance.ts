@@ -1,120 +1,184 @@
-import axios from 'axios';
-import dotenv from 'dotenv';
+import 'dotenv/config';
 
-// Load environment variables
-dotenv.config();
+const apiBaseUrl = process.env.VITE_API_BASE_URL || 'http://localhost:5001';
 
-// Test login performance
-async function testLoginPerformance() {
+interface LoginTestResult {
+  success: boolean;
+  duration: number;
+  error?: string;
+  statusCode?: number;
+}
+
+async function testLoginPerformance(): Promise<LoginTestResult> {
+  const startTime = Date.now();
+  
   try {
-    const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3000';
-    
-    console.log('🧪 Testing Login Performance Optimizations');
-    console.log('==========================================');
-    console.log(`📡 API Base URL: ${apiBaseUrl}`);
-    
-    // Test 1: Login performance
-    console.log('\n📤 Test 1: Testing login performance...');
-    const loginStartTime = Date.now();
-    
-    try {
-      const loginResponse = await axios.post(`${apiBaseUrl}/api/auth`, {
-        username: 'admin',
-        password: 'L@@riKh0j0'
-      }, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache'
-        }
-      });
-      
-      const loginTime = Date.now() - loginStartTime;
-      console.log('✅ Login successful');
-      console.log('✅ Login time:', loginTime + 'ms');
-      console.log('✅ Response status:', loginResponse.status);
-      
-      const token = loginResponse.data.token;
-      
-      // Test 2: Dashboard stats performance
-      console.log('\n📤 Test 2: Testing dashboard stats performance...');
-      const statsStartTime = Date.now();
-      
-      try {
-        const statsResponse = await axios.get(`${apiBaseUrl}/api/dashboard-stats`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Cache-Control': 'no-cache'
-          }
-        });
-        
-        const statsTime = Date.now() - statsStartTime;
-        console.log('✅ Dashboard stats successful');
-        console.log('✅ Stats time:', statsTime + 'ms');
-        console.log('✅ Response status:', statsResponse.status);
-        console.log('✅ Stats data:', statsResponse.data);
-        
-      } catch (statsError) {
-        console.log('❌ Dashboard stats failed:', statsError.message);
-      }
-      
-      // Test 3: CORS preflight performance
-      console.log('\n📤 Test 3: Testing CORS preflight performance...');
-      const preflightStartTime = Date.now();
-      
-      try {
-        const preflightResponse = await axios.options(`${apiBaseUrl}/api/auth`, {
-          headers: {
-            'Origin': 'https://admin.laarikhojo.in',
-            'Access-Control-Request-Method': 'POST',
-            'Access-Control-Request-Headers': 'Content-Type'
-          }
-        });
-        
-        const preflightTime = Date.now() - preflightStartTime;
-        console.log('✅ CORS preflight successful');
-        console.log('✅ Preflight time:', preflightTime + 'ms');
-        console.log('✅ Response status:', preflightResponse.status);
-        
-      } catch (preflightError) {
-        console.log('❌ CORS preflight failed:', preflightError.message);
-      }
-      
-    } catch (loginError) {
-      const loginTime = Date.now() - loginStartTime;
-      console.log('❌ Login failed after', loginTime + 'ms');
-      console.log('❌ Error:', loginError.message);
+    // Create AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+    const response = await fetch(`${apiBaseUrl}/api/auth`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache'
+      },
+      body: JSON.stringify({ 
+        username: 'admin', 
+        password: 'L@@riKh0j0' 
+      }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    const data = await response.json();
+    const duration = Date.now() - startTime;
+
+    if (!response.ok) {
+      return {
+        success: false,
+        duration,
+        error: data.error || 'Login failed',
+        statusCode: response.status
+      };
     }
-    
-    // Test 4: Health check performance
-    console.log('\n📤 Test 4: Testing health check performance...');
-    const healthStartTime = Date.now();
-    
-    try {
-      const healthResponse = await axios.get(`${apiBaseUrl}/api/health`);
-      const healthTime = Date.now() - healthStartTime;
-      console.log('✅ Health check successful');
-      console.log('✅ Health check time:', healthTime + 'ms');
-      console.log('✅ Response status:', healthResponse.status);
-      
-    } catch (healthError) {
-      console.log('❌ Health check failed:', healthError.message);
-    }
-    
-    console.log('\n✅ Login performance test completed!');
-    console.log('\n📋 Performance Summary:');
-    console.log('   - Login should complete in < 500ms');
-    console.log('   - Dashboard stats should load in < 1000ms');
-    console.log('   - CORS preflight should complete in < 100ms');
-    console.log('   - Health check should complete in < 200ms');
+
+    return {
+      success: true,
+      duration,
+      statusCode: response.status
+    };
 
   } catch (error) {
-    console.error('❌ Test failed:', error);
-    if (axios.isAxiosError(error)) {
-      console.error('Response status:', error.response?.status);
-      console.error('Response data:', error.response?.data);
+    const duration = Date.now() - startTime;
+    
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        return {
+          success: false,
+          duration,
+          error: 'Request timeout'
+        };
+      }
+      return {
+        success: false,
+        duration,
+        error: error.message
+      };
+    }
+    
+    return {
+      success: false,
+      duration,
+      error: 'Unknown error'
+    };
+  }
+}
+
+async function runPerformanceTest() {
+  console.log('🚀 LOGIN PERFORMANCE TEST');
+  console.log('==========================');
+  console.log(`API Base URL: ${apiBaseUrl}`);
+  console.log(`Test Time: ${new Date().toISOString()}`);
+  console.log('');
+
+  const results: LoginTestResult[] = [];
+  const testCount = 5;
+
+  console.log(`Running ${testCount} login tests...`);
+  console.log('');
+
+  for (let i = 1; i <= testCount; i++) {
+    console.log(`Test ${i}/${testCount}...`);
+    const result = await testLoginPerformance();
+    results.push(result);
+    
+    if (result.success) {
+      console.log(`✅ Success: ${result.duration}ms`);
+    } else {
+      console.log(`❌ Failed: ${result.duration}ms - ${result.error}`);
+    }
+    
+    // Wait 1 second between tests
+    if (i < testCount) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  }
+
+  console.log('');
+  console.log('📊 PERFORMANCE SUMMARY');
+  console.log('======================');
+
+  const successfulTests = results.filter(r => r.success);
+  const failedTests = results.filter(r => !r.success);
+
+  console.log(`Total Tests: ${results.length}`);
+  console.log(`Successful: ${successfulTests.length}`);
+  console.log(`Failed: ${failedTests.length}`);
+
+  if (successfulTests.length > 0) {
+    const durations = successfulTests.map(r => r.duration);
+    const avgDuration = durations.reduce((a, b) => a + b, 0) / durations.length;
+    const minDuration = Math.min(...durations);
+    const maxDuration = Math.max(...durations);
+
+    console.log('');
+    console.log('⏱️ TIMING STATISTICS (Successful Tests)');
+    console.log(`Average: ${avgDuration.toFixed(2)}ms`);
+    console.log(`Minimum: ${minDuration}ms`);
+    console.log(`Maximum: ${maxDuration}ms`);
+  }
+
+  if (failedTests.length > 0) {
+    console.log('');
+    console.log('❌ FAILED TESTS');
+    failedTests.forEach((test, index) => {
+      console.log(`${index + 1}. ${test.error} (${test.duration}ms)`);
+    });
+  }
+
+  // Performance assessment
+  console.log('');
+  console.log('📈 PERFORMANCE ASSESSMENT');
+  console.log('=========================');
+
+  if (successfulTests.length === 0) {
+    console.log('🚨 CRITICAL: All tests failed - immediate attention required');
+  } else {
+    const avgDuration = successfulTests.reduce((a, b) => a + b.duration, 0) / successfulTests.length;
+    
+    if (avgDuration < 1000) {
+      console.log('✅ EXCELLENT: Login performance is very fast (< 1s)');
+    } else if (avgDuration < 3000) {
+      console.log('✅ GOOD: Login performance is acceptable (1-3s)');
+    } else if (avgDuration < 10000) {
+      console.log('⚠️ SLOW: Login performance needs improvement (3-10s)');
+    } else {
+      console.log('🚨 CRITICAL: Login performance is very slow (> 10s)');
+    }
+  }
+
+  console.log('');
+  console.log('🔧 RECOMMENDATIONS');
+  console.log('==================');
+  
+  if (failedTests.length > 0) {
+    console.log('• Check server connectivity and database connection');
+    console.log('• Verify environment variables are set correctly');
+    console.log('• Check server logs for errors');
+  }
+  
+  if (successfulTests.length > 0) {
+    const avgDuration = successfulTests.reduce((a, b) => a + b.duration, 0) / successfulTests.length;
+    
+    if (avgDuration > 5000) {
+      console.log('• Optimize database queries');
+      console.log('• Check for slow database connections');
+      console.log('• Consider adding database indexes');
+      console.log('• Review server startup processes');
     }
   }
 }
 
-// Run the test
-testLoginPerformance();
+runPerformanceTest().catch(console.error);
