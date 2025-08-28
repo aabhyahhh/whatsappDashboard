@@ -78,8 +78,8 @@ async function testInactiveVendorsLocal() {
             }
         }
         
-        // Sort by days inactive (most inactive first)
-        inactiveVendors.sort((a, b) => b.daysInactive - a.daysInactive);
+        // Sort by days inactive (least inactive first - ascending order)
+        inactiveVendors.sort((a, b) => a.daysInactive - b.daysInactive);
         
         const endTime = Date.now();
         const duration = endTime - startTime;

@@ -14,6 +14,7 @@
     "test-inactive-endpoint": "node scripts/test-inactive-vendors-endpoint.js",
     "test-inactive-local": "node scripts/test-inactive-vendors-local.js",
     "test-send-reminder": "node scripts/test-send-reminder.js",
+    "test-bulk-reminder": "node scripts/test-bulk-reminder.js",
     "lint": "eslint .",
     "preview": "vite preview",
     "auth-server": "tsx server/auth.ts",

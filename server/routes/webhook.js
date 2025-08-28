@@ -849,6 +849,14 @@ router.get('/inactive-vendors', async (req, res) => {
         
         for (const user of allUsers) {
             try {
+                // Skip users with invalid phone numbers
+                if (!user.contactNumber || 
+                    user.contactNumber.length < 10 || 
+                    user.contactNumber.includes('...') ||
+                    user.contactNumber.includes('+91') && user.contactNumber.length < 13) {
+                    continue;
+                }
+                
                 // Find all interactions from this user
                 const userInteractions = allInboundMessages.filter(msg => 
                     msg.from === user.contactNumber || msg.from === `whatsapp:${user.contactNumber}`
@@ -879,8 +887,8 @@ router.get('/inactive-vendors', async (req, res) => {
             }
         }
         
-        // Sort by days inactive (most inactive first)
-        inactiveVendors.sort((a, b) => b.daysInactive - a.daysInactive);
+        // Sort by days inactive (least inactive first - ascending order)
+        inactiveVendors.sort((a, b) => a.daysInactive - b.daysInactive);
         
         // Apply pagination
         const totalCount = inactiveVendors.length;
@@ -967,6 +975,133 @@ router.post('/send-reminder/:vendorId', async (req, res) => {
     } catch (error) {
         console.error('Error sending reminder:', error);
         res.status(500).json({ error: 'Failed to send reminder' });
+    }
+});
+
+// Send reminder to all inactive vendors
+router.post('/send-reminder-to-all', async (req, res) => {
+    try {
+        console.log('📤 Starting bulk reminder send to all inactive vendors...');
+        
+        // Get all inactive vendors (3+ days inactive)
+        const threeDaysAgo = new Date();
+        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+        
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        // Get all users with contact numbers
+        const allUsers = await User.find({ 
+            contactNumber: { $exists: true, $ne: null, $ne: '' }
+        }).select('name contactNumber createdAt _id').lean();
+        
+        // Get all inbound messages from the last 30 days
+        const allInboundMessages = await Message.find({
+            direction: 'inbound',
+            timestamp: { $gte: thirtyDaysAgo }
+        }).select('from timestamp').lean();
+        
+        // Find inactive vendors
+        const inactiveVendors = [];
+        for (const user of allUsers) {
+            // Skip users with invalid phone numbers
+            if (!user.contactNumber || 
+                user.contactNumber.length < 10 || 
+                user.contactNumber.includes('...') ||
+                user.contactNumber.includes('+91') && user.contactNumber.length < 13) {
+                continue;
+            }
+            
+            const userInteractions = allInboundMessages.filter(msg => 
+                msg.from === user.contactNumber || msg.from === `whatsapp:${user.contactNumber}`
+            );
+            
+            const lastInteraction = userInteractions.sort((a, b) => b.timestamp - a.timestamp)[0];
+            const lastSeen = lastInteraction ? lastInteraction.timestamp : user.createdAt;
+            const daysInactive = Math.floor((new Date() - lastSeen) / (1000 * 60 * 60 * 24));
+            
+            if (daysInactive >= 3) {
+                inactiveVendors.push({
+                    _id: user._id,
+                    name: user.name,
+                    contactNumber: user.contactNumber,
+                    daysInactive: daysInactive
+                });
+            }
+        }
+        
+        console.log(`📊 Found ${inactiveVendors.length} inactive vendors to send reminders to`);
+        
+        if (inactiveVendors.length === 0) {
+            return res.json({ 
+                success: true, 
+                message: 'No inactive vendors found',
+                sentCount: 0,
+                errorCount: 0
+            });
+        }
+        
+        // Send reminders to all inactive vendors
+        let successCount = 0;
+        let errorCount = 0;
+        const errors = [];
+        
+        for (const vendor of inactiveVendors) {
+            try {
+                if (client) {
+                    const msgPayload = {
+                        from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
+                        to: `whatsapp:${vendor.contactNumber}`,
+                        contentSid: 'HX4c78928e13eda15597c00ea0915f1f77',
+                        contentVariables: JSON.stringify({})
+                    };
+                    
+                    if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
+                        msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+                    }
+                    
+                    const twilioResp = await client.messages.create(msgPayload);
+                    console.log(`✅ Sent reminder to ${vendor.name} (${vendor.contactNumber}): ${twilioResp.sid}`);
+                    
+                    // Update vendor's reminder status
+                    await User.findByIdAndUpdate(vendor._id, {
+                        reminderStatus: 'Sent',
+                        reminderSentAt: new Date()
+                    });
+                    
+                    successCount++;
+                } else {
+                    throw new Error('Twilio client not initialized');
+                }
+                
+                // Small delay to avoid overwhelming Twilio
+                await new Promise(resolve => setTimeout(resolve, 200));
+                
+            } catch (error) {
+                errorCount++;
+                const errorMsg = `Failed to send to ${vendor.name} (${vendor.contactNumber}): ${error.message}`;
+                console.error(`❌ ${errorMsg}`);
+                errors.push(errorMsg);
+            }
+        }
+        
+        console.log(`📊 Bulk reminder send completed: ${successCount} successful, ${errorCount} failed`);
+        
+        res.json({ 
+            success: true, 
+            message: `Bulk reminder send completed`,
+            sentCount: successCount,
+            errorCount: errorCount,
+            totalVendors: inactiveVendors.length,
+            errors: errors.slice(0, 10) // Limit error details
+        });
+        
+    } catch (error) {
+        console.error('❌ Error in bulk reminder send:', error);
+        res.status(500).json({ 
+            error: 'Failed to send bulk reminders',
+            details: error.message 
+        });
     }
 });
 

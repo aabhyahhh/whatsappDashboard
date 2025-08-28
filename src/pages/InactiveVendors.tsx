@@ -39,6 +39,7 @@ export default function InactiveVendors() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sendingReminders, setSendingReminders] = useState<Set<string>>(new Set());
+  const [sendingToAll, setSendingToAll] = useState(false);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [performance, setPerformance] = useState<string>('');
@@ -156,6 +157,61 @@ export default function InactiveVendors() {
         newSet.delete(vendorId);
         return newSet;
       });
+    }
+  };
+
+  const handleSendReminderToAll = async () => {
+    // Get all vendors that haven't received a reminder yet
+    const vendorsToRemind = vendors.filter(vendor => vendor.reminderStatus !== 'Sent');
+    
+    if (vendorsToRemind.length === 0) {
+      alert('All vendors have already received reminders!');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to send reminders to all ${vendorsToRemind.length} inactive vendors?\n\nThis action cannot be undone.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setSendingToAll(true);
+
+      // Use the bulk endpoint for better performance
+      const response = await fetch(`${apiBaseUrl}/api/webhook/send-reminder-to-all`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Bulk reminder send result:', result);
+        
+        // Show results
+        if (result.errorCount === 0) {
+          alert(`✅ Successfully sent reminders to all ${result.sentCount} vendors!`);
+        } else {
+          alert(`⚠️ Sent reminders to ${result.sentCount} vendors, failed for ${result.errorCount} vendors.`);
+        }
+
+        // Refresh the data to get updated counts
+        await fetchInactiveVendors(currentPage);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Failed to send bulk reminders:', errorData);
+        alert(`Failed to send bulk reminders: ${errorData.error || 'Unknown error'}`);
+      }
+
+    } catch (err) {
+      console.error('Error sending reminders to all vendors:', err);
+      alert('Error sending reminders to all vendors. Please try again.');
+    } finally {
+      setSendingToAll(false);
     }
   };
 
@@ -278,6 +334,28 @@ export default function InactiveVendors() {
               )}
             </div>
             <div className="flex flex-col sm:flex-row gap-2 lg:gap-4">
+              <button
+                onClick={handleSendReminderToAll}
+                disabled={sendingToAll}
+                className="px-3 py-2 lg:px-4 lg:py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:bg-orange-400 disabled:cursor-not-allowed transition-colors text-sm lg:text-base flex items-center gap-2"
+              >
+                {sendingToAll ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                    Send to All
+                  </>
+                )}
+              </button>
               <button
                 onClick={() => navigate('/support-calls')}
                 className="px-3 py-2 lg:px-4 lg:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm lg:text-base"
