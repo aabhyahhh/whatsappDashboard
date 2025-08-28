@@ -19,7 +19,7 @@ const options: mongoose.ConnectOptions = {
     socketTimeoutMS: 15000, // Reduced for faster timeouts
     connectTimeoutMS: 5000, // Faster connection
     maxIdleTimeMS: 15000, // Close idle connections faster
-    bufferCommands: false, // Disable mongoose buffering
+    bufferCommands: true, // Enable mongoose buffering for initial operations
     // Production-specific options
     ...(process.env.NODE_ENV === 'production' && {
         ssl: true,

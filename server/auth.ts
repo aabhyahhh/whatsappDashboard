@@ -30,11 +30,17 @@ app.use(cors({
     const allowedOrigins = [
       'http://localhost:5173',
       'http://localhost:3000',
+      'http://localhost:4173', // Vite preview
       'https://whatsappdashboard-1.onrender.com',
       'https://whatsappdashboard.onrender.com',
       'https://admin.laarikhojo.in',
       'https://www.admin.laarikhojo.in'
     ];
+    
+    // In development, allow all localhost origins
+    if (process.env.NODE_ENV === 'development' && origin.includes('localhost')) {
+      return callback(null, true);
+    }
     
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
@@ -57,7 +63,28 @@ app.options('*', cors());
 
 // Add CORS headers to all responses
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin);
+  const origin = req.headers.origin;
+  
+  // Set CORS headers based on origin
+  if (origin) {
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'http://localhost:4173',
+      'https://whatsappdashboard-1.onrender.com',
+      'https://whatsappdashboard.onrender.com',
+      'https://admin.laarikhojo.in',
+      'https://www.admin.laarikhojo.in'
+    ];
+    
+    // In development, allow all localhost origins
+    if (process.env.NODE_ENV === 'development' && origin.includes('localhost')) {
+      res.header('Access-Control-Allow-Origin', origin);
+    } else if (allowedOrigins.includes(origin)) {
+      res.header('Access-Control-Allow-Origin', origin);
+    }
+  }
+  
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma');
