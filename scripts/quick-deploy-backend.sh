@@ -1,0 +1,41 @@
+#!/bin/bash
+
+echo "🚀 Quick Backend Deployment for Inactive Vendors Fix"
+
+echo ""
+echo "📋 The inactive vendors endpoint has been simplified and should work better."
+echo "📋 You need to update your Render server with the latest code."
+echo ""
+
+echo "🔧 To deploy the backend fixes:"
+echo ""
+echo "1️⃣ If you have GitHub integration:"
+echo "   git add ."
+echo "   git commit -m 'Fix inactive vendors endpoint - simplified version'"
+echo "   git push origin main"
+echo ""
+echo "2️⃣ If you don't have GitHub integration:"
+echo "   - Go to https://dashboard.render.com"
+echo "   - Find your WhatsApp Dashboard service"
+echo "   - Click 'Manual Deploy' → 'Deploy latest commit'"
+echo ""
+echo "3️⃣ After deployment, test the endpoint:"
+echo "   curl https://whatsappdashboard-1.onrender.com/api/webhook/inactive-vendors?page=1&limit=5"
+echo ""
+
+echo "🎯 Expected result after deployment:"
+echo "   ✅ Inactive vendors page loads without 500 errors"
+echo "   ✅ Returns JSON with vendors array and pagination"
+echo "   ✅ Performance should be good (under 5 seconds)"
+echo ""
+
+echo "📝 The simplified endpoint:"
+echo "   - Uses simple queries instead of complex aggregation"
+echo "   - Better error handling and logging"
+echo "   - More reliable and easier to debug"
+echo "   - Still provides the same functionality"
+echo ""
+
+echo "⚠️  Remember: The frontend is already working (contacts load fine)"
+echo "   Only the backend needs to be updated for inactive vendors to work."
+echo ""

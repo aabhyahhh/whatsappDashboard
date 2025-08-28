@@ -12,6 +12,7 @@
     "test-vendor-reminders": "node scripts/test-vendor-reminders-now.js",
     "test-specific-vendor": "node scripts/test-specific-vendor.js",
     "test-inactive-endpoint": "node scripts/test-inactive-vendors-endpoint.js",
+    "test-inactive-local": "node scripts/test-inactive-vendors-local.js",
     "lint": "eslint .",
     "preview": "vite preview",
     "auth-server": "tsx server/auth.ts",
