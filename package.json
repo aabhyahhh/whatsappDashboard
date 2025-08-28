@@ -36,8 +36,7 @@
     "test:location-improvements": "tsx scripts/test-location-reminder-improvements.ts",
     "test:login-performance": "tsx scripts/test-login-performance.ts",
     "add-indexes": "tsx scripts/add-performance-indexes.js",
-    "monitor:cron": "tsx scripts/monitor-cron-status.ts",
-
+    "monitor:cron": "tsx scripts/monitor-cron-status.ts"
   },
   "dependencies": {
     "axios": "^1.6.0",
