@@ -1105,6 +1105,107 @@ router.post('/send-reminder-to-all', async (req, res) => {
     }
 });
 
+// Send location update message to all vendors
+router.post('/send-location-update-to-all', async (req, res) => {
+    try {
+        console.log('📍 Starting bulk location update send to all vendors...');
+        
+        // Get all users with valid contact numbers
+        const allUsers = await User.find({ 
+            contactNumber: { $exists: true, $ne: null, $ne: '' }
+        }).select('name contactNumber _id').lean();
+        
+        // Filter out users with invalid phone numbers
+        const validVendors = allUsers.filter(user => 
+            user.contactNumber && 
+            user.contactNumber.length >= 10 && 
+            !user.contactNumber.includes('...') &&
+            !(user.contactNumber.includes('+91') && user.contactNumber.length < 13)
+        );
+        
+        console.log(`📊 Found ${validVendors.length} valid vendors to send location update to`);
+        
+        if (validVendors.length === 0) {
+            return res.json({ 
+                success: true, 
+                message: 'No valid vendors found',
+                sentCount: 0,
+                errorCount: 0
+            });
+        }
+        
+        // Send location update messages to all vendors
+        let successCount = 0;
+        let errorCount = 0;
+        const errors = [];
+        
+        for (const vendor of validVendors) {
+            try {
+                if (client) {
+                    const msgPayload = {
+                        from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
+                        to: `whatsapp:${vendor.contactNumber}`,
+                        contentSid: 'HXbdb716843483717790c45c951b71701e', // Location update template
+                        contentVariables: JSON.stringify({})
+                    };
+                    
+                    if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
+                        msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+                    }
+                    
+                    const twilioResp = await client.messages.create(msgPayload);
+                    console.log(`✅ Sent location update to ${vendor.name} (${vendor.contactNumber}): ${twilioResp.sid}`);
+                    
+                    // Save the message to database
+                    await Message.create({
+                        from: msgPayload.from,
+                        to: msgPayload.to,
+                        body: 'HXbdb716843483717790c45c951b71701e', // Location update template
+                        direction: 'outbound',
+                        timestamp: new Date(),
+                        meta: {
+                            type: 'location_update_bulk',
+                            vendorName: vendor.name,
+                            vendorId: vendor._id
+                        }
+                    });
+                    
+                    successCount++;
+                } else {
+                    throw new Error('Twilio client not initialized');
+                }
+                
+                // Small delay to avoid overwhelming Twilio
+                await new Promise(resolve => setTimeout(resolve, 200));
+                
+            } catch (error) {
+                errorCount++;
+                const errorMsg = `Failed to send location update to ${vendor.name} (${vendor.contactNumber}): ${error.message}`;
+                console.error(`❌ ${errorMsg}`);
+                errors.push(errorMsg);
+            }
+        }
+        
+        console.log(`📊 Bulk location update send completed: ${successCount} successful, ${errorCount} failed`);
+        
+        res.json({ 
+            success: true, 
+            message: `Bulk location update send completed`,
+            sentCount: successCount,
+            errorCount: errorCount,
+            totalVendors: validVendors.length,
+            errors: errors.slice(0, 10) // Limit error details
+        });
+        
+    } catch (error) {
+        console.error('❌ Error in bulk location update send:', error);
+        res.status(500).json({ 
+            error: 'Failed to send bulk location updates',
+            details: error.message 
+        });
+    }
+});
+
 // Message health check route
 router.get('/message-health', async (req, res) => {
     try {

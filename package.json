@@ -15,6 +15,7 @@
     "test-inactive-local": "node scripts/test-inactive-vendors-local.js",
     "test-send-reminder": "node scripts/test-send-reminder.js",
     "test-bulk-reminder": "node scripts/test-bulk-reminder.js",
+    "test-location-update": "node scripts/test-location-update-all.js",
     "lint": "eslint .",
     "preview": "vite preview",
     "auth-server": "tsx server/auth.ts",
