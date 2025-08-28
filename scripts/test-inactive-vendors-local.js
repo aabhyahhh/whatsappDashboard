@@ -19,69 +19,58 @@ async function testInactiveVendorsLocal() {
         console.log('✅ Connected to MongoDB');
 
         const startTime = Date.now();
-        console.log('📊 Testing inactive vendors endpoint locally...');
+        console.log('📊 Testing inactive vendors endpoint (3+ days) locally...');
         
-        // Calculate the date 7 days ago
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        // Calculate the date 3 days ago (for 3+ days inactivity)
+        const threeDaysAgo = new Date();
+        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
         
-        // Simple approach: Get all users and filter in memory
+        // Get all users with contact numbers
         const allUsers = await User.find({ 
             contactNumber: { $exists: true, $ne: null, $ne: '' }
         }).select('name contactNumber createdAt').lean();
         
         console.log(`📊 Found ${allUsers.length} total users`);
         
-        // Get recent messages for all users
-        const recentMessages = await Message.find({
-            timestamp: { $gte: sevenDaysAgo },
-            $or: [
-                { direction: 'outbound', body: 'HXbdb716843483717790c45c951b71701e' },
-                { direction: 'inbound' }
-            ]
-        }).select('from to direction timestamp meta').lean();
+        // Get all inbound messages (vendor interactions) from the last 30 days
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         
-        console.log(`📊 Found ${recentMessages.length} recent messages`);
+        const allInboundMessages = await Message.find({
+            direction: 'inbound',
+            timestamp: { $gte: thirtyDaysAgo }
+        }).select('from timestamp').lean();
         
-        // Process users to find inactive ones
+        console.log(`📊 Found ${allInboundMessages.length} inbound messages in last 30 days`);
+        
+        // Process users to find inactive ones (no interaction for 3+ days)
         const inactiveVendors = [];
         
         for (const user of allUsers) {
             try {
-                // Find location reminders sent to this user
-                const locationReminders = recentMessages.filter(msg => 
-                    msg.direction === 'outbound' && 
-                    msg.body === 'HXbdb716843483717790c45c951b71701e' &&
-                    (msg.to === user.contactNumber || msg.to === `whatsapp:${user.contactNumber}`)
+                // Find all interactions from this user
+                const userInteractions = allInboundMessages.filter(msg => 
+                    msg.from === user.contactNumber || msg.from === `whatsapp:${user.contactNumber}`
                 );
                 
-                // Find recent responses from this user
-                const userResponses = recentMessages.filter(msg => 
-                    msg.direction === 'inbound' &&
-                    (msg.from === user.contactNumber || msg.from === `whatsapp:${user.contactNumber}`)
-                );
+                // Get the most recent interaction
+                const lastInteraction = userInteractions.sort((a, b) => b.timestamp - a.timestamp)[0];
                 
-                // Check if user is inactive (has reminders but no recent responses)
-                if (locationReminders.length > 0) {
-                    const lastReminder = locationReminders.sort((a, b) => b.timestamp - a.timestamp)[0];
-                    const lastResponse = userResponses.sort((a, b) => b.timestamp - a.timestamp)[0];
-                    
-                    const isInactive = !lastResponse || lastResponse.timestamp < lastReminder.timestamp;
-                    
-                    if (isInactive) {
-                        const lastSeen = lastResponse ? lastResponse.timestamp : user.createdAt;
-                        const daysInactive = Math.floor((new Date() - lastSeen) / (1000 * 60 * 60 * 24));
-                        
-                        inactiveVendors.push({
-                            _id: user._id,
-                            name: user.name,
-                            contactNumber: user.contactNumber,
-                            lastSeen: lastSeen.toISOString(),
-                            daysInactive: daysInactive,
-                            reminderStatus: 'Sent',
-                            reminderSentAt: lastReminder.timestamp.toISOString()
-                        });
-                    }
+                // Calculate days since last interaction
+                const lastSeen = lastInteraction ? lastInteraction.timestamp : user.createdAt;
+                const daysInactive = Math.floor((new Date() - lastSeen) / (1000 * 60 * 60 * 24));
+                
+                // Check if user is inactive for 3+ days
+                if (daysInactive >= 3) {
+                    inactiveVendors.push({
+                        _id: user._id,
+                        name: user.name,
+                        contactNumber: user.contactNumber,
+                        lastSeen: lastSeen.toISOString(),
+                        daysInactive: daysInactive,
+                        reminderStatus: 'Not sent',
+                        reminderSentAt: null
+                    });
                 }
             } catch (userError) {
                 console.error(`Error processing user ${user.contactNumber}:`, userError);
@@ -89,23 +78,36 @@ async function testInactiveVendorsLocal() {
             }
         }
         
-        // Sort by days inactive
-        inactiveVendors.sort((a, b) => a.daysInactive - b.daysInactive);
+        // Sort by days inactive (most inactive first)
+        inactiveVendors.sort((a, b) => b.daysInactive - a.daysInactive);
         
         const endTime = Date.now();
         const duration = endTime - startTime;
         
-        console.log(`✅ Found ${inactiveVendors.length} inactive vendors (${duration}ms)`);
+        console.log(`✅ Found ${inactiveVendors.length} inactive vendors (3+ days) (${duration}ms)`);
         
-        // Show first 5 inactive vendors
+        // Show first 10 inactive vendors
         console.log('\n📋 Sample inactive vendors:');
-        inactiveVendors.slice(0, 5).forEach((vendor, index) => {
+        inactiveVendors.slice(0, 10).forEach((vendor, index) => {
             console.log(`   ${index + 1}. ${vendor.name} (${vendor.contactNumber}) - ${vendor.daysInactive} days inactive`);
         });
         
-        if (inactiveVendors.length > 5) {
-            console.log(`   ... and ${inactiveVendors.length - 5} more vendors`);
+        if (inactiveVendors.length > 10) {
+            console.log(`   ... and ${inactiveVendors.length - 10} more vendors`);
         }
+        
+        // Show summary by inactivity ranges
+        const summary = {
+            '3-7 days': inactiveVendors.filter(v => v.daysInactive >= 3 && v.daysInactive <= 7).length,
+            '8-14 days': inactiveVendors.filter(v => v.daysInactive >= 8 && v.daysInactive <= 14).length,
+            '15-30 days': inactiveVendors.filter(v => v.daysInactive >= 15 && v.daysInactive <= 30).length,
+            '30+ days': inactiveVendors.filter(v => v.daysInactive > 30).length
+        };
+        
+        console.log('\n📊 Inactivity Summary:');
+        Object.entries(summary).forEach(([range, count]) => {
+            console.log(`   ${range}: ${count} vendors`);
+        });
         
         console.log('\n🎯 Test completed successfully!');
         console.log('📤 Ready to deploy to production server.');

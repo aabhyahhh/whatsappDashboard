@@ -269,7 +269,7 @@ export default function InactiveVendors() {
             <div className="flex-1">
               <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Inactive Vendors</h1>
               <p className="text-gray-600 mt-1 lg:mt-2 text-sm lg:text-base">
-                Vendors who haven't responded to location update reminders in the past 7 days
+                Vendors who haven't interacted with the WhatsApp business account for 3 or more consecutive days
               </p>
               {performance && (
                 <p className="text-xs lg:text-sm text-green-600 mt-1">

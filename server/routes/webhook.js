@@ -812,7 +812,7 @@ router.get('/loan-replies', async (req, res) => {
     }
 });
 
-// Inactive vendors route - SIMPLIFIED VERSION
+// Inactive vendors route - UPDATED FOR 3+ DAYS INACTIVITY
 router.get('/inactive-vendors', async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -820,69 +820,58 @@ router.get('/inactive-vendors', async (req, res) => {
         const skip = (page - 1) * limit;
         
         const startTime = Date.now();
-        console.log(`📊 Fetching inactive vendors - page: ${page}, limit: ${limit}`);
+        console.log(`📊 Fetching inactive vendors (3+ days) - page: ${page}, limit: ${limit}`);
         
-        // Calculate the date 7 days ago
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        // Calculate the date 3 days ago (for 3+ days inactivity)
+        const threeDaysAgo = new Date();
+        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
         
-        // Simple approach: Get all users and filter in memory
+        // Get all users with contact numbers
         const allUsers = await User.find({ 
             contactNumber: { $exists: true, $ne: null, $ne: '' }
         }).select('name contactNumber createdAt').lean();
         
         console.log(`📊 Found ${allUsers.length} total users`);
         
-        // Get recent messages for all users
-        const recentMessages = await Message.find({
-            timestamp: { $gte: sevenDaysAgo },
-            $or: [
-                { direction: 'outbound', body: 'HXbdb716843483717790c45c951b71701e' },
-                { direction: 'inbound' }
-            ]
-        }).select('from to direction timestamp meta').lean();
+        // Get all inbound messages (vendor interactions) from the last 30 days
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         
-        console.log(`📊 Found ${recentMessages.length} recent messages`);
+        const allInboundMessages = await Message.find({
+            direction: 'inbound',
+            timestamp: { $gte: thirtyDaysAgo }
+        }).select('from timestamp').lean();
         
-        // Process users to find inactive ones
+        console.log(`📊 Found ${allInboundMessages.length} inbound messages in last 30 days`);
+        
+        // Process users to find inactive ones (no interaction for 3+ days)
         const inactiveVendors = [];
         
         for (const user of allUsers) {
             try {
-                // Find location reminders sent to this user
-                const locationReminders = recentMessages.filter(msg => 
-                    msg.direction === 'outbound' && 
-                    msg.body === 'HXbdb716843483717790c45c951b71701e' &&
-                    (msg.to === user.contactNumber || msg.to === `whatsapp:${user.contactNumber}`)
+                // Find all interactions from this user
+                const userInteractions = allInboundMessages.filter(msg => 
+                    msg.from === user.contactNumber || msg.from === `whatsapp:${user.contactNumber}`
                 );
                 
-                // Find recent responses from this user
-                const userResponses = recentMessages.filter(msg => 
-                    msg.direction === 'inbound' &&
-                    (msg.from === user.contactNumber || msg.from === `whatsapp:${user.contactNumber}`)
-                );
+                // Get the most recent interaction
+                const lastInteraction = userInteractions.sort((a, b) => b.timestamp - a.timestamp)[0];
                 
-                // Check if user is inactive (has reminders but no recent responses)
-                if (locationReminders.length > 0) {
-                    const lastReminder = locationReminders.sort((a, b) => b.timestamp - a.timestamp)[0];
-                    const lastResponse = userResponses.sort((a, b) => b.timestamp - a.timestamp)[0];
-                    
-                    const isInactive = !lastResponse || lastResponse.timestamp < lastReminder.timestamp;
-                    
-                    if (isInactive) {
-                        const lastSeen = lastResponse ? lastResponse.timestamp : user.createdAt;
-                        const daysInactive = Math.floor((new Date() - lastSeen) / (1000 * 60 * 60 * 24));
-                        
-                        inactiveVendors.push({
-                            _id: user._id,
-                            name: user.name,
-                            contactNumber: user.contactNumber,
-                            lastSeen: lastSeen.toISOString(),
-                            daysInactive: daysInactive,
-                            reminderStatus: 'Sent',
-                            reminderSentAt: lastReminder.timestamp.toISOString()
-                        });
-                    }
+                // Calculate days since last interaction
+                const lastSeen = lastInteraction ? lastInteraction.timestamp : user.createdAt;
+                const daysInactive = Math.floor((new Date() - lastSeen) / (1000 * 60 * 60 * 24));
+                
+                // Check if user is inactive for 3+ days
+                if (daysInactive >= 3) {
+                    inactiveVendors.push({
+                        _id: user._id,
+                        name: user.name,
+                        contactNumber: user.contactNumber,
+                        lastSeen: lastSeen.toISOString(),
+                        daysInactive: daysInactive,
+                        reminderStatus: 'Not sent', // Will be updated when reminder is sent
+                        reminderSentAt: null
+                    });
                 }
             } catch (userError) {
                 console.error(`Error processing user ${user.contactNumber}:`, userError);
@@ -890,8 +879,8 @@ router.get('/inactive-vendors', async (req, res) => {
             }
         }
         
-        // Sort by days inactive
-        inactiveVendors.sort((a, b) => a.daysInactive - b.daysInactive);
+        // Sort by days inactive (most inactive first)
+        inactiveVendors.sort((a, b) => b.daysInactive - a.daysInactive);
         
         // Apply pagination
         const totalCount = inactiveVendors.length;
@@ -900,7 +889,7 @@ router.get('/inactive-vendors', async (req, res) => {
         const endTime = Date.now();
         const duration = endTime - startTime;
         
-        console.log(`✅ Found ${paginatedVendors.length} inactive vendors (${duration}ms)`);
+        console.log(`✅ Found ${paginatedVendors.length} inactive vendors (3+ days) (${duration}ms)`);
         
         res.json({
             vendors: paginatedVendors,
@@ -945,7 +934,7 @@ router.post('/send-reminder/:vendorId', async (req, res) => {
                 const msgPayload = {
                     from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
                     to: `whatsapp:${vendor.contactNumber}`,
-                    contentSid: 'HX4c78928e13eda15597c00ea0915f1f77', // Support call reminder template
+                    contentSid: 'HX4c78928e13eda15597c00ea0915f1f77', // Inactive vendor reminder template
                     contentVariables: JSON.stringify({})
                 };
                 
