@@ -5,10 +5,11 @@ const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
 interface Contact {
   _id: string;
-  name: string;
   phone: string;
   lastSeen: string;
-  // Add other contact fields as needed
+  createdAt: string;
+  updatedAt: string;
+  name?: string;
 }
 
 interface ContactsContextType {
@@ -40,8 +41,8 @@ export const ContactsProvider: React.FC<ContactsProviderProps> = ({ children }) 
   const [lastFetch, setLastFetch] = useState<number>(0);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Cache duration: 5 minutes
-  const CACHE_DURATION = 5 * 60 * 1000;
+  // Cache duration: 10 minutes (increased for better performance)
+  const CACHE_DURATION = 10 * 60 * 1000;
 
   const fetchContacts = async (forceRefresh = false) => {
     const now = Date.now();
@@ -57,10 +58,24 @@ export const ContactsProvider: React.FC<ContactsProviderProps> = ({ children }) 
       setError(null);
       
       console.log('📋 Fetching contacts from API...');
-      const response = await fetch(`${apiBaseUrl}/api/contacts`);
+      
+      // Add timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      const response = await fetch(`${apiBaseUrl}/api/contacts`, {
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
-        throw new Error('Failed to fetch contacts');
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       
       const data = await response.json();
@@ -73,6 +88,11 @@ export const ContactsProvider: React.FC<ContactsProviderProps> = ({ children }) 
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch contacts';
       setError(errorMessage);
       console.error('❌ Error fetching contacts:', errorMessage);
+      
+      // If it's a timeout error, show a more user-friendly message
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError('Request timeout - please try again');
+      }
     } finally {
       setLoading(false);
     }
@@ -86,11 +106,16 @@ export const ContactsProvider: React.FC<ContactsProviderProps> = ({ children }) 
     return contacts.find(contact => contact.phone === phone);
   };
 
-  // Initialize contacts on mount
+  // Initialize contacts on mount with delay to prevent blocking initial render
   useEffect(() => {
     if (!isInitialized) {
-      fetchContacts();
-      setIsInitialized(true);
+      // Small delay to prevent blocking initial page load
+      const timer = setTimeout(() => {
+        fetchContacts();
+        setIsInitialized(true);
+      }, 100);
+      
+      return () => clearTimeout(timer);
     }
   }, [isInitialized]);
 

@@ -45,7 +45,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cache-Control'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cache-Control', 'Pragma'],
   exposedHeaders: ['Content-Length', 'X-Requested-With'],
   maxAge: 86400 // Cache preflight for 24 hours
 }));
@@ -60,7 +60,7 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', req.headers.origin);
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma');
   next();
 });
 
@@ -215,11 +215,10 @@ interface LoginRequest {
 
 // Login endpoint - Optimized for performance
 app.post('/api/auth', (async (req: Request<{}, {}, LoginRequest>, res: Response) => {
+    const startTime = Date.now();
+    
     try {
         const { username, password } = req.body;
-
-        // Add request timing for debugging
-        const startTime = Date.now();
 
         // Validate input
         if (!username || !password) {
@@ -227,22 +226,24 @@ app.post('/api/auth', (async (req: Request<{}, {}, LoginRequest>, res: Response)
             return res.status(400).json({ error: 'Username and password are required' });
         }
 
-        // Find admin by username with projection to only get needed fields
+        // Find admin by username with projection and timeout
         const admin = await Admin.findOne(
             { username }, 
             'username password role _id lastLogin'
-        ).lean().maxTimeMS(5000); // 5 second timeout for database query
+        )
+        .lean()
+        .maxTimeMS(3000); // Reduced timeout to 3 seconds
 
         if (!admin) {
             console.log(`❌ Login failed: User '${username}' not found (${Date.now() - startTime}ms)`);
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        // Verify password with timeout
+        // Verify password with shorter timeout
         const isValidPassword = await Promise.race([
             bcrypt.compare(password, admin.password),
             new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Password verification timeout')), 3000)
+                setTimeout(() => reject(new Error('Password verification timeout')), 2000)
             )
         ]);
 
@@ -274,11 +275,13 @@ app.post('/api/auth', (async (req: Request<{}, {}, LoginRequest>, res: Response)
 
         res.json({ token });
     } catch (error) {
-        const totalTime = Date.now() - (req as any).startTime || Date.now();
+        const totalTime = Date.now() - startTime;
         console.error(`❌ Login error after ${totalTime}ms:`, error);
         
         if (error.message === 'Password verification timeout') {
             res.status(408).json({ error: 'Login timeout - please try again' });
+        } else if (error.name === 'MongooseError' && error.message.includes('timeout')) {
+            res.status(408).json({ error: 'Database timeout - please try again' });
         } else {
             res.status(500).json({ error: 'Internal server error' });
         }

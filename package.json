@@ -5,6 +5,13 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:hostinger": "./scripts/deploy-to-hostinger.sh",
+    "create-indexes": "node scripts/create-performance-indexes.js",
+    "update-whatsapp-consent": "node scripts/update-whatsapp-consent.js",
+    "verify-whatsapp-consent": "node scripts/verify-whatsapp-consent.js",
+    "test-vendor-reminders": "node scripts/test-vendor-reminders-now.js",
+    "test-specific-vendor": "node scripts/test-specific-vendor.js",
+    "test-inactive-endpoint": "node scripts/test-inactive-vendors-endpoint.js",
     "lint": "eslint .",
     "preview": "vite preview",
     "auth-server": "tsx server/auth.ts",

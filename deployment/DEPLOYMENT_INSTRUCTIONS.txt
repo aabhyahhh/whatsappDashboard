@@ -1,0 +1,16 @@
+DEPLOYMENT INSTRUCTIONS FOR HOSTINGER:
+
+1. Upload all files from this folder to your public_html directory
+2. Rename 'htaccess.txt' to '.htaccess' in your Hostinger file manager
+3. Make sure .htaccess is in the root of public_html
+
+If you can't see .htaccess files in Hostinger:
+- Use FTP client (FileZilla, etc.) to upload
+- Enable "Show hidden files" in your file manager
+- Or manually create .htaccess with the content from htaccess.txt
+
+The .htaccess file is essential for:
+- React Router to work properly
+- Security headers
+- Asset caching
+- File compression

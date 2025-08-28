@@ -11,19 +11,21 @@ if (!process.env.MONGODB_URI) {
     process.exit(1);
 }
 
-// Connection options - optimized for performance
+// Connection options - optimized for Render starter pack performance
 const options: mongoose.ConnectOptions = {
-    maxPoolSize: 20, // Increased pool size for better concurrency
-    minPoolSize: 5,  // Maintain minimum connections
-    serverSelectionTimeoutMS: 10000, // Reduced for faster failure detection
-    socketTimeoutMS: 30000, // Reduced for faster timeouts
-    connectTimeoutMS: 10000, // Reduced for faster connection
-    maxIdleTimeMS: 30000, // Close idle connections after 30 seconds
+    maxPoolSize: 10, // Reduced for Render starter pack limits
+    minPoolSize: 2,  // Reduced minimum connections
+    serverSelectionTimeoutMS: 5000, // Faster failure detection
+    socketTimeoutMS: 15000, // Reduced for faster timeouts
+    connectTimeoutMS: 5000, // Faster connection
+    maxIdleTimeMS: 15000, // Close idle connections faster
+    bufferCommands: false, // Disable mongoose buffering
     // Production-specific options
     ...(process.env.NODE_ENV === 'production' && {
         ssl: true,
         retryWrites: true,
-        w: 'majority'
+        w: 'majority',
+        readPreference: 'primaryPreferred' // Prefer primary but allow secondary reads
     })
 };
 
