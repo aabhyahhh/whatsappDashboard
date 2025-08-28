@@ -15,9 +15,9 @@ if (!process.env.MONGODB_URI) {
 const options: mongoose.ConnectOptions = {
     maxPoolSize: 10, // Reduced for Render starter pack limits
     minPoolSize: 2,  // Reduced minimum connections
-    serverSelectionTimeoutMS: 5000, // Faster failure detection
-    socketTimeoutMS: 15000, // Reduced for faster timeouts
-    connectTimeoutMS: 5000, // Faster connection
+    serverSelectionTimeoutMS: process.env.NODE_ENV === 'production' ? 30000 : 5000, // Longer timeout for production
+    socketTimeoutMS: process.env.NODE_ENV === 'production' ? 30000 : 15000, // Longer timeout for production
+    connectTimeoutMS: process.env.NODE_ENV === 'production' ? 30000 : 5000, // Longer timeout for production
     maxIdleTimeMS: 15000, // Close idle connections faster
     bufferCommands: true, // Enable mongoose buffering for initial operations
     // Production-specific options
@@ -25,7 +25,9 @@ const options: mongoose.ConnectOptions = {
         ssl: true,
         retryWrites: true,
         w: 'majority',
-        readPreference: 'primaryPreferred' // Prefer primary but allow secondary reads
+        readPreference: 'primaryPreferred', // Prefer primary but allow secondary reads
+        retryReads: true, // Enable retry reads for better reliability
+        maxStalenessSeconds: 90 // Allow slightly stale reads for better performance
     })
 };
 

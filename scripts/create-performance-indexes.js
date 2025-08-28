@@ -42,7 +42,7 @@ async function createIndexes() {
         // Contact collection indexes
         console.log('📞 Creating Contact indexes...');
         await createIndexSafely(Contact.collection, { lastSeen: -1 }, 'lastSeen_desc');
-        await createIndexSafely(Contact.collection, { phone: 1 }, 'phone_asc');
+        // Note: phone index already exists in schema, skipping to avoid duplicate
         await createIndexSafely(Contact.collection, { createdAt: -1 }, 'createdAt_desc');
         console.log('✅ Contact indexes processed');
 
