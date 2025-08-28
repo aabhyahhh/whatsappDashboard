@@ -325,6 +325,19 @@ router.post('/', async (req, res) => {
                         user.aadharVerificationDate = new Date();
                         await user.save();
                         console.log(`✅ Updated Aadhaar verification status for ${user.name} (${phone}) via button click`);
+                        
+                        // Update LoanReplyLog entry to show Aadhaar verification
+                        try {
+                            const LoanReplyLogModel = (await import('../models/LoanReplyLog.js')).default;
+                            await LoanReplyLogModel.findOneAndUpdate(
+                                { contactNumber: phone },
+                                { aadharVerified: true },
+                                { new: true }
+                            );
+                            console.log(`✅ Updated LoanReplyLog Aadhaar verification status for ${phone}`);
+                        } catch (logErr) {
+                            console.error('❌ Failed to update LoanReplyLog Aadhaar verification status:', logErr);
+                        }
                     }
                     
                     // Send visual confirmation message with tick mark
@@ -483,7 +496,7 @@ router.post('/', async (req, res) => {
                         vendorName: vendorName || 'Unknown',
                         contactNumber: phone,
                         timestamp: new Date(),
-                        aadharVerified: user?.aadharNumber ? true : false
+                        aadharVerified: user?.aadharVerified ? true : false
                     });
                     console.log(`✅ Logged loan reply from ${vendorName || 'Unknown'} (${phone})`);
                 } else {
@@ -548,6 +561,19 @@ router.post('/', async (req, res) => {
                     user.aadharVerificationDate = new Date();
                     await user.save();
                     console.log(`✅ Updated Aadhaar verification status for ${user.name} (${phone})`);
+                    
+                    // Update LoanReplyLog entry to show Aadhaar verification
+                    try {
+                        const LoanReplyLogModel = (await import('../models/LoanReplyLog.js')).default;
+                        await LoanReplyLogModel.findOneAndUpdate(
+                            { contactNumber: phone },
+                            { aadharVerified: true },
+                            { new: true }
+                        );
+                        console.log(`✅ Updated LoanReplyLog Aadhaar verification status for ${phone}`);
+                    } catch (logErr) {
+                        console.error('❌ Failed to update LoanReplyLog Aadhaar verification status:', logErr);
+                    }
                 }
             } catch (err) {
                 console.error('❌ Failed to update Aadhaar verification status:', err);

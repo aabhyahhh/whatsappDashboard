@@ -136,59 +136,12 @@ app.get('/api/health', async (req, res) => {
                 twilio: 'available',
                 cronJobs: {
                     dailyReminders: 'active',
-                    supportReminders: 'active',
-                    weeklyCampaign: 'active'
+                    supportReminders: 'active'
                 }
             }
         };
 
-        // Add weekly campaign status if database is available
-        try {
-            const { Message } = await import('./models/Message.js');
-            const { User } = await import('./models/User.js');
-            
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const tomorrow = new Date(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            
-            // Get today's campaign messages
-            const todayMessages = await Message.find({
-                'meta.type': 'weekly_vendor_message',
-                timestamp: { $gte: today, $lt: tomorrow }
-            });
-            
-            // Get total vendors
-            const totalVendors = await User.countDocuments();
-            
-            // Get campaign summary
-            const campaignSummary = await Message.findOne({
-                'meta.type': 'campaign_summary',
-                'meta.campaignType': 'weekly_vendor_message',
-                timestamp: { $gte: today, $lt: tomorrow }
-            });
-            
-            healthData.weeklyCampaign = {
-                today: {
-                    sent: todayMessages.length,
-                    total: totalVendors,
-                    percentage: totalVendors > 0 ? Math.round((todayMessages.length / totalVendors) * 100) : 0
-                },
-                lastCampaign: campaignSummary ? {
-                    timestamp: campaignSummary.timestamp,
-                    successCount: campaignSummary.meta?.successCount || 0,
-                    errorCount: campaignSummary.meta?.errorCount || 0,
-                    trigger: campaignSummary.meta?.campaignTrigger || 'unknown'
-                } : null,
-                status: todayMessages.length > 0 ? 'sent_today' : 'pending'
-            };
-            
-        } catch (dbError) {
-            healthData.weeklyCampaign = {
-                status: 'database_error',
-                error: dbError instanceof Error ? dbError.message : 'Unknown error'
-            };
-        }
+
         
         res.json(healthData);
     } catch (error) {
@@ -347,9 +300,7 @@ async function initializeBackgroundJobs() {
         await import('./vendorRemindersCron.js');
         console.log('✅ Vendor reminders cron job initialized');
         
-        // Import and start the weekly vendor message cron job
-        await import('../scripts/weekly-vendor-message-cron.js');
-        console.log('✅ Weekly vendor message cron job initialized');
+
         
         // Import and start the profile photo announcement scheduler
         await import('./scheduler/profilePhotoAnnouncement.js');

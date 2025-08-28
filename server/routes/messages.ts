@@ -127,18 +127,7 @@ router.get('/health', async (_req: Request, res: Response) => {
             !msg.errorCode && !msg.errorMessage && msg.meta?.type !== 'error'
         );
 
-        // Get weekly campaign messages
-        const weeklyCampaignMessages = await Message.find({
-            'meta.type': 'weekly_vendor_message',
-            timestamp: { $gte: today, $lt: tomorrow }
-        });
 
-        // Get failed weekly campaign messages
-        const failedWeeklyMessages = await Message.find({
-            'meta.type': 'error',
-            'meta.originalType': 'weekly_vendor_message',
-            timestamp: { $gte: today, $lt: tomorrow }
-        });
 
         // Format failed messages for display
         const failedMessagesFormatted = failedMessages.map(msg => ({
@@ -148,22 +137,15 @@ router.get('/health', async (_req: Request, res: Response) => {
             timestamp: msg.timestamp
         }));
 
-        const failedWeeklyFormatted = failedWeeklyMessages.map(msg => ({
-            contactNumber: msg.to,
-            vendorName: msg.meta?.vendorName || 'Unknown',
-            error: msg.errorMessage || msg.meta?.error || 'Unknown error',
-            timestamp: msg.timestamp
-        }));
+
 
         res.json({
             today: {
                 total: todayMessages.length,
                 successful: successfulMessages.length,
-                failed: failedMessages.length,
-                weeklyCampaign: weeklyCampaignMessages.length,
-                failedWeekly: failedWeeklyMessages.length
+                failed: failedMessages.length
             },
-            failedMessages: [...failedMessagesFormatted, ...failedWeeklyFormatted],
+            failedMessages: failedMessagesFormatted,
             lastUpdated: new Date().toISOString()
         });
     } catch (error) {

@@ -47,8 +47,7 @@ interface TodayMessageHealth {
     total: number;
     successful: number;
     failed: number;
-    weeklyCampaign: number;
-    failedWeekly: number;
+
   };
   failedMessages: Array<{
     contactNumber: string;
@@ -164,14 +163,7 @@ export default function MessageHealth() {
                 <div className="text-2xl font-bold text-red-600">{todayHealth.today.failed}</div>
                 <div className="text-sm text-gray-600">Failed</div>
               </div>
-              <div className="bg-white p-4 rounded-lg shadow-sm border">
-                <div className="text-2xl font-bold text-purple-600">{todayHealth.today.weeklyCampaign}</div>
-                <div className="text-sm text-gray-600">Weekly Campaign</div>
-              </div>
-              <div className="bg-white p-4 rounded-lg shadow-sm border">
-                <div className="text-2xl font-bold text-orange-600">{todayHealth.today.failedWeekly}</div>
-                <div className="text-sm text-gray-600">Failed Weekly</div>
-              </div>
+
             </div>
 
             {/* Failed Messages Section */}

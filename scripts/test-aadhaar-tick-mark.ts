@@ -8,10 +8,12 @@ dotenv.config();
 async function testAadhaarTickMark() {
   try {
     const webhookUrl = process.env.WEBHOOK_URL || 'http://localhost:3000/api/webhook';
+    const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3000';
     
     console.log('🧪 Testing Aadhaar Verification Tick Mark');
     console.log('=========================================');
     console.log(`📡 Webhook URL: ${webhookUrl}`);
+    console.log(`🌐 API Base URL: ${apiBaseUrl}`);
     
     // Test 1: Send button payload for Aadhaar verification
     console.log('\n📤 Test 1: Sending Aadhaar verification button click...');
@@ -60,29 +62,39 @@ async function testAadhaarTickMark() {
     // Test 3: Check database for verification status
     console.log('\n📊 Test 3: Checking database for verification status...');
     try {
-      const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3000';
+      // Check LoanReplyLog entries
+      const loanRepliesResponse = await axios.get(`${apiBaseUrl}/api/webhook/loan-replies`);
+      console.log('✅ Loan replies found:', loanRepliesResponse.data.length);
       
-      // Check messages for visual confirmation
-      const messagesResponse = await axios.get(`${apiBaseUrl}/api/messages`);
-      const recentMessages = messagesResponse.data.filter((msg: any) => 
-        msg.from === 'whatsapp:+918130026321' && 
-        new Date(msg.timestamp) > new Date(Date.now() - 60000) // Last minute
+      const testVendorEntry = loanRepliesResponse.data.find((entry: any) => 
+        entry.contactNumber === '+918130026321' || 
+        entry.contactNumber === '918130026321' ||
+        entry.contactNumber === '8130026321'
       );
       
-      console.log('✅ Recent messages from test vendor:', recentMessages.length);
+      if (testVendorEntry) {
+        console.log('✅ Found test vendor in LoanReplyLog:');
+        console.log('   - Vendor Name:', testVendorEntry.vendorName);
+        console.log('   - Contact Number:', testVendorEntry.contactNumber);
+        console.log('   - Aadhaar Verified:', testVendorEntry.aadharVerified);
+        console.log('   - Timestamp:', new Date(testVendorEntry.timestamp).toLocaleString());
+        
+        if (testVendorEntry.aadharVerified) {
+          console.log('✅ SUCCESS: Aadhaar verification tick mark should appear in admin dashboard!');
+        } else {
+          console.log('❌ ISSUE: Aadhaar verification status is false in LoanReplyLog');
+        }
+      } else {
+        console.log('❌ Test vendor not found in LoanReplyLog');
+      }
       
-      // Look for visual confirmation messages
-      const visualConfirmations = recentMessages.filter((msg: any) => 
-        msg.body && msg.body.includes('✅ Aadhaar Verification Successful')
-      );
-      
-      console.log('✅ Visual confirmation messages found:', visualConfirmations.length);
-      
-      visualConfirmations.forEach((msg: any, index: number) => {
-        console.log(`   ${index + 1}. ${msg.direction}: "${msg.body.substring(0, 100)}..." (${new Date(msg.timestamp).toLocaleTimeString()})`);
-      });
-      
-      // Check for verification status in user data
+    } catch (dbError) {
+      console.error('❌ Failed to check database:', dbError);
+    }
+    
+    // Test 4: Check User model verification status
+    console.log('\n📊 Test 4: Checking User model verification status...');
+    try {
       const usersResponse = await axios.get(`${apiBaseUrl}/api/users`);
       const testUser = usersResponse.data.find((user: any) => 
         user.contactNumber === '+918130026321' || 
@@ -91,24 +103,32 @@ async function testAadhaarTickMark() {
       );
       
       if (testUser) {
-        console.log('✅ Test user found in database');
-        console.log('✅ Aadhaar verification status:', testUser.aadharVerified);
-        console.log('✅ Aadhaar verification date:', testUser.aadharVerificationDate);
+        console.log('✅ Found test user in User model:');
+        console.log('   - Name:', testUser.name);
+        console.log('   - Contact Number:', testUser.contactNumber);
+        console.log('   - Aadhaar Verified:', testUser.aadharVerified);
+        console.log('   - Aadhaar Verification Date:', testUser.aadharVerificationDate ? new Date(testUser.aadharVerificationDate).toLocaleString() : 'Not set');
+        
+        if (testUser.aadharVerified) {
+          console.log('✅ SUCCESS: User Aadhaar verification status is true!');
+        } else {
+          console.log('❌ ISSUE: User Aadhaar verification status is false');
+        }
       } else {
-        console.log('⚠️ Test user not found in database');
+        console.log('❌ Test user not found in User model');
       }
       
-    } catch (dbError) {
-      console.log('⚠️ Could not check database:', dbError.message);
+    } catch (userError) {
+      console.error('❌ Failed to check User model:', userError);
     }
-    
-    console.log('\n✅ Aadhaar verification tick mark test completed!');
+
     console.log('\n📋 Summary:');
     console.log('   - Check server logs for Aadhaar verification processing');
     console.log('   - Verify visual confirmation message with tick mark is sent');
     console.log('   - Check if vendor Aadhaar verification status is updated');
     console.log('   - Verify both button click and text message triggers work');
     console.log('   - Look for ✅ emoji and "VERIFIED" status in messages');
+    console.log('   - Check admin dashboard LoanReplyLog for tick mark');
 
   } catch (error) {
     console.error('❌ Test failed:', error);
