@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { Message } from '../models/Message.js';
 import { Contact } from '../models/Contact.js';
-import { client } from '../twilio.js';
+import { client, createFreshClient } from '../twilio.js';
 import { User } from '../models/User.js';
 import VendorLocation from '../models/VendorLocation.js';
 const router = Router();
@@ -1167,7 +1167,10 @@ router.post('/send-location-update-to-all', async (req, res) => {
         
         for (const vendor of validVendors) {
             try {
-                if (client) {
+                // Create a fresh Twilio client for each request
+                const twilioClient = createFreshClient();
+                
+                if (twilioClient) {
                     const msgPayload = {
                         from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
                         to: `whatsapp:${vendor.contactNumber}`,
@@ -1179,7 +1182,7 @@ router.post('/send-location-update-to-all', async (req, res) => {
                         msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
                     }
                     
-                    const twilioResp = await client.messages.create(msgPayload);
+                    const twilioResp = await twilioClient.messages.create(msgPayload);
                     console.log(`✅ Sent location update to ${vendor.name} (${vendor.contactNumber}): ${twilioResp.sid}`);
                     
                     // Save the message to database
