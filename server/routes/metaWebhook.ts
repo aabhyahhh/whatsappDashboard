@@ -24,6 +24,15 @@ router.get('/', (req, res) => {
 // Webhook endpoint to receive Meta messages
 router.post('/', async (req, res) => {
   try {
+    // Validate X-Relay-Secret header for security
+    const relaySecret = req.header('X-Relay-Secret');
+    const expectedSecret = process.env.RELAY_SECRET;
+    
+    if (expectedSecret && relaySecret !== expectedSecret) {
+      console.log('❌ Invalid X-Relay-Secret header');
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+    
     console.log('Incoming Meta webhook payload:', JSON.stringify(req.body, null, 2));
     
     const webhookData = processWebhook(req.body);

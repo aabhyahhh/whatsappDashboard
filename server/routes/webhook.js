@@ -103,6 +103,15 @@ function extractLocationFromMessage(body) {
 // Webhook endpoint to receive Twilio messages
 router.post('/', async (req, res) => {
     try {
+        // Validate X-Relay-Secret header for security
+        const relaySecret = req.header('X-Relay-Secret');
+        const expectedSecret = process.env.RELAY_SECRET;
+        
+        if (expectedSecret && relaySecret !== expectedSecret) {
+            console.log('❌ Invalid X-Relay-Secret header');
+            return res.status(403).json({ error: 'Unauthorized' });
+        }
+        
         // Debug log: print the entire incoming Twilio webhook payload
         console.log('Incoming Twilio webhook payload:', req.body);
         // Extract all relevant fields from the Twilio webhook payload

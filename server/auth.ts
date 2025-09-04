@@ -10,6 +10,7 @@ import adminRoutes from './routes/admin.js';
 import userRoutes from './routes/users.js';
 import webhookRoutes from './routes/webhook.js';
 import metaWebhookRoutes from './routes/metaWebhook.js';
+import webhookRouterRoutes from './routes/webhookRouter.js';
 import metaHealthRoutes from './routes/metaHealth.js';
 import contactsRoutes from './routes/contacts.js';
 import messagesRoutes from './routes/messages.js';
@@ -114,10 +115,13 @@ app.use('/api/verify', verifyRoutes);
 // Use user routes
 app.use('/api/users', userRoutes);
 
-// Use webhook routes - no auth required
-app.use('/api/webhook', webhookRoutes);
+// Use webhook router - no auth required (main entry point for Meta webhooks)
+app.use('/api/webhook', webhookRouterRoutes);
 
-// Use Meta webhook routes - no auth required
+// Use webhook routes - no auth required (legacy Twilio webhooks)
+app.use('/api/webhook-legacy', webhookRoutes);
+
+// Use Meta webhook routes - no auth required (direct Meta webhooks)
 app.use('/api/meta-webhook', metaWebhookRoutes);
 
 // Use Meta health routes - no auth required
