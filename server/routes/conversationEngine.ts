@@ -61,24 +61,15 @@ router.post('/', async (req: RequestWithRawBody, res: Response) => {
       }
     }
     
-    console.log('📨 Conversation engine received webhook:', JSON.stringify(req.body, null, 2));
+    console.log('📨 Conversation engine received webhook');
     
     // ACK immediately
     res.status(200).send('OK');
     
-    const value = req.body?.entry?.[0]?.changes?.[0]?.value || {};
-    
-    // Process messages
-    const messages = value?.messages || [];
-    for (const message of messages) {
-      await handleInboundMessage(message);
-    }
-    
-    // Process statuses
-    const statuses = value?.statuses || [];
-    for (const status of statuses) {
-      await handleMessageStatus(status);
-    }
+    // Process webhook data asynchronously
+    processConversationWebhookAsync(req.body).catch(error => {
+      console.error('❌ Error in async conversation processing:', error);
+    });
     
   } catch (error) {
     console.error('❌ Error in conversation engine:', error);
@@ -89,21 +80,61 @@ router.post('/', async (req: RequestWithRawBody, res: Response) => {
 });
 
 /**
+ * Process conversation webhook data asynchronously
+ */
+async function processConversationWebhookAsync(body: any) {
+  try {
+    console.log('🔄 Processing conversation webhook data asynchronously...');
+    
+    const value = body?.entry?.[0]?.changes?.[0]?.value || {};
+    
+    // Process messages
+    const messages = value?.messages || [];
+    for (const message of messages) {
+      try {
+        await handleInboundMessage(message);
+      } catch (error) {
+        console.error('❌ Error processing message:', error);
+      }
+    }
+    
+    // Process statuses
+    const statuses = value?.statuses || [];
+    for (const status of statuses) {
+      try {
+        await handleMessageStatus(status);
+      } catch (error) {
+        console.error('❌ Error processing status:', error);
+      }
+    }
+    
+    console.log('✅ Conversation webhook processing completed');
+  } catch (error) {
+    console.error('❌ Error in conversation webhook processing:', error);
+  }
+}
+
+/**
  * Handle inbound messages with idempotency
  */
 async function handleInboundMessage(message: any) {
-  const messageId = message.id;
-  
-  // Check idempotency using Redis + fallback
-  if (await checkMessageIdempotency(messageId)) {
-    console.log(`⚠️ Message ${messageId} already processed, skipping duplicate`);
-    return;
-  }
-  
-  // Mark as processed
-  await markMessageIdempotency(messageId, 24); // 24 hours TTL
-  
   try {
+    const messageId = message.id;
+    
+    if (!messageId) {
+      console.log('⚠️ Message missing ID, skipping');
+      return;
+    }
+    
+    // Check idempotency using Redis + fallback
+    if (await checkMessageIdempotency(messageId)) {
+      console.log(`⚠️ Message ${messageId} already processed, skipping duplicate`);
+      return;
+    }
+    
+    // Mark as processed
+    await markMessageIdempotency(messageId, 24); // 24 hours TTL
+    
     const { from, timestamp, type, text, interactive, button, context } = message;
     
     console.log(`📨 Processing inbound message from ${from}: ${text || '[interactive]'}`);

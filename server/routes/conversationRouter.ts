@@ -85,8 +85,27 @@ router.post('/', async (req: RequestWithRawBody, res: Response) => {
     console.log(`⚡ ACK sent in ${ackTime}ms`);
     res.status(200).send('OK');
     
-    // 3) Process the webhook data
-    const entry = req.body?.entry?.[0];
+    // 3) Process the webhook data asynchronously (don't await)
+    processWebhookAsync(req.body, req.rawBody).catch(error => {
+      console.error('❌ Error in async webhook processing:', error);
+    });
+    
+  } catch (error) {
+    console.error('❌ Error processing webhook:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+});
+
+/**
+ * Process webhook data asynchronously
+ */
+async function processWebhookAsync(body: any, rawBody: string | undefined) {
+  try {
+    console.log('🔄 Processing webhook data asynchronously...');
+    
+    const entry = body?.entry?.[0];
     const change = entry?.changes?.[0];
     const value = change?.value || {};
     
@@ -95,7 +114,7 @@ router.post('/', async (req: RequestWithRawBody, res: Response) => {
     const isAcctEvt = typeof change?.field === "string" &&
                      (change.field.startsWith("account_") || change.field.includes("quality"));
     
-    // 4) Determine forwarding targets based on message type
+    // Determine forwarding targets based on message type
     const targets = [];
     if (hasInbound) {
       targets.push(DASH_URL);        // inbound → Admin Dashboard only
@@ -106,9 +125,9 @@ router.post('/', async (req: RequestWithRawBody, res: Response) => {
     
     console.log(`🎯 Forwarding to ${targets.length} targets:`, targets);
     
-    // 5) Forward to target services (fire-and-forget)
-    if (targets.length > 0 && req.rawBody) {
-      const sig = relaySignature(req.rawBody);
+    // Forward to target services (fire-and-forget)
+    if (targets.length > 0 && rawBody) {
+      const sig = relaySignature(rawBody);
       
       await Promise.allSettled(targets.map(url =>
         fetch(url, {
@@ -119,7 +138,7 @@ router.post('/', async (req: RequestWithRawBody, res: Response) => {
             "x-forwarded-from": "conversation-router",
             "x-message-id": value?.messages?.[0]?.id || value?.statuses?.[0]?.id || 'unknown'
           },
-          body: JSON.stringify(req.body),
+          body: JSON.stringify(body),
           signal: AbortSignal.timeout(5000) // 5 second timeout
         }).then(response => {
           if (response.ok) {
@@ -137,13 +156,11 @@ router.post('/', async (req: RequestWithRawBody, res: Response) => {
       ));
     }
     
+    console.log('✅ Webhook processing completed');
   } catch (error) {
-    console.error('❌ Error processing webhook:', error);
-    if (!res.headersSent) {
-      res.status(500).json({ error: 'Internal server error' });
-    }
+    console.error('❌ Error in webhook processing:', error);
   }
-});
+}
 
 /**
  * Verify Meta webhook signature
