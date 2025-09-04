@@ -144,6 +144,20 @@ app.use('/api/messages', messagesRoutes);
 // Use vendor routes
 app.use('/api/vendor', vendorRoutes);
 
+// Environment variables debug endpoint
+app.get('/api/debug/env', (req, res) => {
+    res.json({
+        NODE_ENV: process.env.NODE_ENV,
+        META_ACCESS_TOKEN: process.env.META_ACCESS_TOKEN ? 'SET' : 'NOT_SET',
+        META_PHONE_NUMBER_ID: process.env.META_PHONE_NUMBER_ID || 'NOT_SET',
+        META_VERIFY_TOKEN: process.env.META_VERIFY_TOKEN || 'NOT_SET',
+        META_APP_SECRET: process.env.META_APP_SECRET ? 'SET' : 'NOT_SET',
+        RELAY_SECRET: process.env.RELAY_SECRET ? 'SET' : 'NOT_SET',
+        MONGODB_URI: process.env.MONGODB_URI ? 'SET' : 'NOT_SET',
+        JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'NOT_SET'
+    });
+});
+
 // Health check endpoint with campaign tracking
 app.get('/api/health', async (req, res) => {
     try {

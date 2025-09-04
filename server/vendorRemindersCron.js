@@ -3,7 +3,7 @@ import cron from 'node-cron';
 import moment from 'moment-timezone';
 import { Message } from './models/Message.js';
 import { User } from './models/User.js';
-import { sendTemplateMessage } from './meta.js';
+import { sendTemplateMessage, areMetaCredentialsAvailable } from './meta.js';
 
 const TEMPLATE_NAME = 'location_update_reminder';
 
@@ -70,8 +70,8 @@ const checkAndSendReminders = async () => {
     const now = moment().tz('Asia/Kolkata');
     console.log(`🕐 Running vendor reminders check at ${now.format('YYYY-MM-DD HH:mm:ss')}`);
     
-    // Validate Meta WhatsApp API credentials
-    if (!process.env.META_ACCESS_TOKEN || !process.env.META_PHONE_NUMBER_ID) {
+    // Validate Meta WhatsApp API credentials at runtime
+    if (!areMetaCredentialsAvailable()) {
       console.error('❌ Meta WhatsApp API credentials not available - skipping reminders');
       return;
     }
@@ -224,8 +224,8 @@ cron.schedule('0 9 * * *', async () => {
     const now = moment().tz('Asia/Kolkata');
     console.log(`🕐 Running daily backup reminder at ${now.format('YYYY-MM-DD HH:mm:ss')}`);
     
-    // Validate Meta WhatsApp API credentials
-    if (!process.env.META_ACCESS_TOKEN || !process.env.META_PHONE_NUMBER_ID) {
+    // Validate Meta WhatsApp API credentials at runtime
+    if (!areMetaCredentialsAvailable()) {
       console.error('❌ Meta WhatsApp API credentials not available - skipping backup reminders');
       return;
     }

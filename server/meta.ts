@@ -12,9 +12,27 @@ console.log('Access Token exists:', !!META_ACCESS_TOKEN);
 console.log('Phone Number ID exists:', !!META_PHONE_NUMBER_ID);
 console.log('Verify Token exists:', !!META_VERIFY_TOKEN);
 console.log('Webhook URL exists:', !!META_WEBHOOK_URL);
+console.log('Access Token length:', META_ACCESS_TOKEN?.length || 0);
+console.log('Phone Number ID value:', META_PHONE_NUMBER_ID || 'NOT_SET');
+console.log('Verify Token value:', META_VERIFY_TOKEN || 'NOT_SET');
+console.log('NODE_ENV:', process.env.NODE_ENV);
 
 // Meta WhatsApp API base URL
 const META_API_BASE_URL = `https://graph.facebook.com/v18.0/${META_PHONE_NUMBER_ID}`;
+
+// Function to check if Meta credentials are available at runtime
+export function areMetaCredentialsAvailable(): boolean {
+  const accessToken = process.env.META_ACCESS_TOKEN;
+  const phoneNumberId = process.env.META_PHONE_NUMBER_ID;
+  const appSecret = process.env.META_APP_SECRET;
+  
+  console.log('🔍 Runtime Meta credentials check:');
+  console.log('- META_ACCESS_TOKEN:', !!accessToken, accessToken?.length || 0);
+  console.log('- META_PHONE_NUMBER_ID:', !!phoneNumberId, phoneNumberId || 'NOT_SET');
+  console.log('- META_APP_SECRET:', !!appSecret, appSecret?.length || 0);
+  
+  return !!(accessToken && phoneNumberId && appSecret);
+}
 
 // Message templates configuration
 export const MESSAGE_TEMPLATES = {

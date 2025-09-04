@@ -48,7 +48,9 @@
     "test:conversation-system": "tsx scripts/test-conversation-system.ts",
     "test:webhook-verification": "tsx scripts/test-webhook-verification.ts",
     "test:support-call-button": "tsx scripts/test-support-call-button.ts",
-    "test:meta-webhook": "tsx scripts/test-meta-webhook.ts"
+    "test:meta-webhook": "tsx scripts/test-meta-webhook.ts",
+    "test:env": "tsx scripts/test-environment-variables.ts",
+    "test:webhook-signature": "tsx scripts/test-webhook-signature.ts"
   },
   "dependencies": {
     "axios": "^1.6.0",
