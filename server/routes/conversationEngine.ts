@@ -546,14 +546,29 @@ async function handleGreetingConversation(from: string) {
     return;
   }
   
-  // Send default hi and loan prompt template
-  await sendTemplateMessage(from, 'default_hi_and_loan_prompt');
+  // Send greeting response
+  const greetingMessage = "👋 Namaste from Laari Khojo!\n🙏 लारी खोजो की ओर से नमस्ते!\n\n📩 Thanks for reaching out!\n📞 संपर्क करने के लिए धन्यवाद!\n\nWe help you get discovered by more customers by showing your updates and services on our platform.\n🧺 हम आपके अपडेट्स और सेवाओं को अपने प्लेटफॉर्म पर दिखाकर आपको ज़्यादा ग्राहकों तक पहुँचाने में मदद करते हैं।\n\n💰 Interested in future loan support?\nJust reply with: *loan*\nभविष्य में लोन सहायता चाहिए?\n➡️ जवाब में भेजें: *loan*";
+  
+  try {
+    // Try to send as template first, fallback to text message
+    try {
+      await sendTemplateMessage(from, 'default_hi_and_loan_prompt');
+      console.log('✅ Sent greeting via template message');
+    } catch (templateError) {
+      console.log('⚠️ Template failed, sending as text message:', templateError.message);
+      await sendTextMessage(from, greetingMessage);
+      console.log('✅ Sent greeting via text message');
+    }
+  } catch (error) {
+    console.error('❌ Failed to send greeting message:', error);
+    return;
+  }
   
   // Save the outbound message to database
   await Message.create({
     from: process.env.META_PHONE_NUMBER_ID,
     to: from,
-    body: "👋 Namaste from Laari Khojo!\n🙏 लारी खोजो की ओर से नमस्ते!\n\n📩 Thanks for reaching out!\n📞 संपर्क करने के लिए धन्यवाद!\n\nWe help you get discovered by more customers by showing your updates and services on our platform.\n🧺 हम आपके अपडेट्स और सेवाओं को अपने प्लेटफॉर्म पर दिखाकर आपको ज़्यादा ग्राहकों तक पहुँचाने में मदद करते हैं।\n\n💰 Interested in future loan support?\nJust reply with: *loan*\nभविष्य में लोन सहायता चाहिए?\n➡️ जवाब में भेजें: *loan*",
+    body: greetingMessage,
     direction: 'outbound',
     timestamp: new Date(),
     meta: {

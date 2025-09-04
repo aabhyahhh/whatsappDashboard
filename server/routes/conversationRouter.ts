@@ -70,7 +70,7 @@ router.post('/', async (req: RequestWithRawBody, res: Response) => {
   const startTime = Date.now();
   
   try {
-    console.log('📨 Incoming Meta webhook payload:', JSON.stringify(req.body, null, 2));
+    console.log('📨 Incoming Meta webhook payload');
     
     // 1) Verify Meta signature
     if (!verifyMetaSignature(req)) {
@@ -119,7 +119,8 @@ router.post('/', async (req: RequestWithRawBody, res: Response) => {
             "x-forwarded-from": "conversation-router",
             "x-message-id": value?.messages?.[0]?.id || value?.statuses?.[0]?.id || 'unknown'
           },
-          body: JSON.stringify(req.body)
+          body: JSON.stringify(req.body),
+          signal: AbortSignal.timeout(5000) // 5 second timeout
         }).then(response => {
           if (response.ok) {
             console.log(`✅ Successfully forwarded to ${url}`);
@@ -127,7 +128,11 @@ router.post('/', async (req: RequestWithRawBody, res: Response) => {
             console.log(`❌ Failed to forward to ${url}: ${response.status} ${response.statusText}`);
           }
         }).catch(error => {
-          console.error(`❌ Error forwarding to ${url}:`, error.message);
+          if (error.name === 'AbortError') {
+            console.error(`⏰ Timeout forwarding to ${url}`);
+          } else {
+            console.error(`❌ Error forwarding to ${url}:`, error.message);
+          }
         })
       ));
     }
