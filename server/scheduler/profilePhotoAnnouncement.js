@@ -1,6 +1,6 @@
 import schedule from 'node-schedule';
 import { User } from '../models/User.js';
-import { client } from '../twilio.js';
+import { sendTextMessage } from '../meta.js';
 import { Message } from '../models/Message.js';
 
 // Template ID for the profile photo announcement message
@@ -60,19 +60,23 @@ async function sendProfilePhotoAnnouncement() {
       }
       
       try {
-        // Send WhatsApp message
-        await client.messages.create({
-          from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
-          to: `whatsapp:${contact}`,
-          contentSid: TEMPLATE_SID,
-          contentVariables: JSON.stringify({}),
-        });
+        // Check if Meta WhatsApp API credentials are available
+        if (!process.env.META_ACCESS_TOKEN || !process.env.META_PHONE_NUMBER_ID) {
+          console.log('⚠️ Meta WhatsApp API credentials not available - skipping message');
+          skipped++;
+          continue;
+        }
+        
+        // Send WhatsApp message via Meta API
+        const messageText = `📸 Profile Photo Campaign Reminder\n\nHello! Don't forget to upload your profile photo to help customers recognize your stall.\n\nUpload your photo through the admin dashboard to participate in our campaign!\n\nBest regards,\nLaari Khojo Team`;
+        
+        await sendTextMessage(contact, messageText);
         
         // Save message to database
         await Message.create({
-          from: process.env.TWILIO_PHONE_NUMBER,
+          from: process.env.META_PHONE_NUMBER_ID,
           to: contact,
-          body: TEMPLATE_SID,
+          body: messageText,
           direction: 'outbound',
           timestamp: new Date(),
           meta: { 

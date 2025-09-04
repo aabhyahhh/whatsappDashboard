@@ -1,12 +1,10 @@
 import { Router } from 'express';
 import { Message } from '../models/Message.js';
-import twilio from 'twilio';
+import { sendTextMessage } from '../meta.js';
 const router = Router();
-// Initialize Twilio client
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
-const fromNumber = process.env.TWILIO_PHONE_NUMBER;
-const twilioClient = twilio(accountSid, authToken);
+// Meta WhatsApp API configuration
+const META_ACCESS_TOKEN = process.env.META_ACCESS_TOKEN;
+const META_PHONE_NUMBER_ID = process.env.META_PHONE_NUMBER_ID;
 // POST /api/send - Send WhatsApp message via Twilio
 router.post('/send', async (req, res, next) => {
     try {
@@ -17,29 +15,24 @@ router.post('/send', async (req, res, next) => {
                 error: 'Missing required fields: to and body are required'
             });
         }
-        // Validate Twilio configuration
-        if (!accountSid || !authToken || !fromNumber) {
-            console.error('Twilio configuration missing:', {
-                accountSid: !!accountSid,
-                authToken: !!authToken,
-                fromNumber: !!fromNumber
+        // Validate Meta WhatsApp configuration
+        if (!META_ACCESS_TOKEN || !META_PHONE_NUMBER_ID) {
+            console.error('Meta WhatsApp configuration missing:', {
+                accessToken: !!META_ACCESS_TOKEN,
+                phoneNumberId: !!META_PHONE_NUMBER_ID
             });
             return res.status(500).json({
-                error: 'Twilio configuration not properly set up'
+                error: 'Meta WhatsApp configuration not properly set up'
             });
         }
         console.log(`📤 Sending WhatsApp message to ${to}: "${body}"`);
-        // Send message via Twilio
-        const message = await twilioClient.messages.create({
-            body: body,
-            from: `whatsapp:${fromNumber}`,
-            to: `whatsapp:${to}`
-        });
-        console.log(`✅ Message sent successfully! SID: ${message.sid}`);
-        // Save outbound message to MongoDB (Task 22)
+        // Send message via Meta WhatsApp API
+        const result = await sendTextMessage(to, body);
+        console.log(`✅ Message sent successfully via Meta API!`);
+        // Save outbound message to MongoDB
         try {
             await Message.create({
-                from: fromNumber,
+                from: META_PHONE_NUMBER_ID,
                 to: to,
                 body: body,
                 direction: 'outbound',
@@ -52,8 +45,8 @@ router.post('/send', async (req, res, next) => {
         }
         res.json({
             success: true,
-            messageId: message.sid,
-            status: message.status,
+            messageId: result.messageId || 'meta-' + Date.now(),
+            status: 'sent',
             to: to,
             body: body
         });
