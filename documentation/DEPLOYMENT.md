@@ -9,10 +9,20 @@ Set these environment variables in your Render dashboard:
 NODE_ENV=production
 MONGODB_URI=mongodb+srv://YOUR_USERNAME:YOUR_PASSWORD@cluster0.dztbn64.mongodb.net/test?retryWrites=true&w=majority&appName=Cluster0
 JWT_SECRET=your_jwt_secret_here
-TWILIO_ACCOUNT_SID=your_twilio_account_sid
-TWILIO_AUTH_TOKEN=your_twilio_auth_token
-TWILIO_PHONE_NUMBER=your_twilio_phone_number
-TWILIO_MESSAGING_SERVICE_SID=your_messaging_service_sid
+
+# Meta WhatsApp API (Required for all messaging)
+META_ACCESS_TOKEN=your_meta_access_token_here
+META_PHONE_NUMBER_ID=your_phone_number_id_here
+META_VERIFY_TOKEN=your_webhook_verify_token_here
+META_APP_SECRET=your_meta_app_secret_here
+META_WEBHOOK_URL=https://whatsappdashboard-1.onrender.com/api/webhook
+
+# Relay System
+RELAY_SECRET=your_shared_secret_here
+
+# Target URLs for forwarding
+LK_URL=https://laari-khojo-backend.onrender.com/api/webhook
+DASH_URL=https://whatsappdashboard-1.onrender.com/api/conversation
 ```
 
 ### Deployment Steps:

@@ -3,13 +3,14 @@ import cron from 'node-cron';
 import moment from 'moment-timezone';
 import { Message } from './models/Message.js';
 import { User } from './models/User.js';
-import { createFreshClient } from './twilio.js';
+import { sendTemplateMessage } from './meta.js';
 
-const TEMPLATE_SID = 'HXbdb716843483717790c45c951b71701e';
+const TEMPLATE_NAME = 'location_update_reminder';
 
 // Validate required environment variables
-if (!process.env.TWILIO_PHONE_NUMBER) {
-  console.error('❌ TWILIO_PHONE_NUMBER environment variable is not set');
+if (!process.env.META_ACCESS_TOKEN || !process.env.META_PHONE_NUMBER_ID) {
+  console.error('❌ Meta WhatsApp API credentials are not set');
+  console.error('Required: META_ACCESS_TOKEN, META_PHONE_NUMBER_ID');
   process.exit(1);
 }
 
@@ -69,10 +70,9 @@ const checkAndSendReminders = async () => {
     const now = moment().tz('Asia/Kolkata');
     console.log(`🕐 Running vendor reminders check at ${now.format('YYYY-MM-DD HH:mm:ss')}`);
     
-    // Get a fresh Twilio client
-    const twilioClient = createFreshClient();
-    if (!twilioClient) {
-      console.error('❌ Twilio client not available - skipping reminders');
+    // Validate Meta WhatsApp API credentials
+    if (!process.env.META_ACCESS_TOKEN || !process.env.META_PHONE_NUMBER_ID) {
+      console.error('❌ Meta WhatsApp API credentials not available - skipping reminders');
       return;
     }
     
@@ -134,17 +134,12 @@ const checkAndSendReminders = async () => {
         if (diff >= 14 && diff <= 16) {
           if (!(await hasReminderSentToday(user.contactNumber, 'vendor_location_15min'))) {
             try {
-              const result = await twilioClient.messages.create({
-                from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
-                to: `whatsapp:${user.contactNumber}`,
-                contentSid: TEMPLATE_SID,
-                contentVariables: JSON.stringify({}),
-              });
+              const result = await sendTemplateMessage(user.contactNumber, TEMPLATE_NAME, []);
               
               await Message.create({
-                from: process.env.TWILIO_PHONE_NUMBER,
+                from: process.env.META_PHONE_NUMBER_ID,
                 to: user.contactNumber,
-                body: TEMPLATE_SID,
+                body: `Template: ${TEMPLATE_NAME}`,
                 direction: 'outbound',
                 timestamp: new Date(),
                 meta: { 
@@ -152,7 +147,7 @@ const checkAndSendReminders = async () => {
                   vendorName: user.name,
                   openTime: user.operatingHours.openTime
                 },
-                twilioSid: result.sid
+                messageId: result.messageId || 'meta-' + Date.now()
               });
               
               console.log(`✅ Sent 15-min reminder to ${user.name} (${user.contactNumber}) at ${now.format('HH:mm')}`);
@@ -177,17 +172,12 @@ const checkAndSendReminders = async () => {
             skippedCount++;
           } else if (!(await hasReminderSentToday(user.contactNumber, 'vendor_location_open'))) {
             try {
-              const result = await twilioClient.messages.create({
-                from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
-                to: `whatsapp:${user.contactNumber}`,
-                contentSid: TEMPLATE_SID,
-                contentVariables: JSON.stringify({}),
-              });
+              const result = await sendTemplateMessage(user.contactNumber, TEMPLATE_NAME, []);
               
               await Message.create({
-                from: process.env.TWILIO_PHONE_NUMBER,
+                from: process.env.META_PHONE_NUMBER_ID,
                 to: user.contactNumber,
-                body: TEMPLATE_SID,
+                body: `Template: ${TEMPLATE_NAME}`,
                 direction: 'outbound',
                 timestamp: new Date(),
                 meta: { 
@@ -195,7 +185,7 @@ const checkAndSendReminders = async () => {
                   vendorName: user.name,
                   openTime: user.operatingHours.openTime
                 },
-                twilioSid: result.sid
+                messageId: result.messageId || 'meta-' + Date.now()
               });
               
               console.log(`✅ Sent open-time reminder to ${user.name} (${user.contactNumber}) at ${now.format('HH:mm')}`);
@@ -234,9 +224,9 @@ cron.schedule('0 9 * * *', async () => {
     const now = moment().tz('Asia/Kolkata');
     console.log(`🕐 Running daily backup reminder at ${now.format('YYYY-MM-DD HH:mm:ss')}`);
     
-    const twilioClient = createFreshClient();
-    if (!twilioClient) {
-      console.error('❌ Twilio client not available - skipping backup reminders');
+    // Validate Meta WhatsApp API credentials
+    if (!process.env.META_ACCESS_TOKEN || !process.env.META_PHONE_NUMBER_ID) {
+      console.error('❌ Meta WhatsApp API credentials not available - skipping backup reminders');
       return;
     }
     
@@ -272,24 +262,19 @@ cron.schedule('0 9 * * *', async () => {
         }
         
         try {
-          const result = await twilioClient.messages.create({
-            from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
-            to: `whatsapp:${user.contactNumber}`,
-            contentSid: TEMPLATE_SID,
-            contentVariables: JSON.stringify({}),
-          });
+          const result = await sendTemplateMessage(user.contactNumber, TEMPLATE_NAME, []);
           
           await Message.create({
-            from: process.env.TWILIO_PHONE_NUMBER,
+            from: process.env.META_PHONE_NUMBER_ID,
             to: user.contactNumber,
-            body: TEMPLATE_SID,
+            body: `Template: ${TEMPLATE_NAME}`,
             direction: 'outbound',
             timestamp: new Date(),
             meta: { 
               reminderType: 'vendor_location_backup',
               vendorName: user.name
             },
-            twilioSid: result.sid
+            messageId: result.messageId || 'meta-' + Date.now()
           });
           
           console.log(`✅ Sent backup reminder to ${user.name} (${user.contactNumber})`);
