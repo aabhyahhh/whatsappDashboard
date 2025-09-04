@@ -49,10 +49,18 @@ export default function SupportCalls() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`${apiBaseUrl}/api/webhook/support-calls`);
-        if (!res.ok) throw new Error('Failed to fetch support call requests');
-        const data = await res.json();
-        setCalls(data);
+        // Try Meta endpoint first, fallback to webhook endpoint
+        const res = await fetch(`${apiBaseUrl}/api/meta-health/meta-support-calls`);
+        if (!res.ok) {
+          // Fallback to original endpoint
+          const fallbackRes = await fetch(`${apiBaseUrl}/api/webhook/support-calls`);
+          if (!fallbackRes.ok) throw new Error('Failed to fetch support call requests');
+          const data = await fallbackRes.json();
+          setCalls(data);
+        } else {
+          const data = await res.json();
+          setCalls(data);
+        }
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Failed to fetch support calls');
       } finally {
@@ -75,13 +83,26 @@ export default function SupportCalls() {
     setUpdatingId(id);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${apiBaseUrl}/api/webhook/support-calls/${id}/complete`, {
+      // Try Meta endpoint first, fallback to webhook endpoint
+      let res = await fetch(`${apiBaseUrl}/api/meta-health/meta-support-calls/${id}/complete`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
       });
+      
+      if (!res.ok) {
+        // Fallback to original endpoint
+        res = await fetch(`${apiBaseUrl}/api/webhook/support-calls/${id}/complete`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+      }
+      
       if (!res.ok) throw new Error('Failed to mark as completed');
       const updated = await res.json();
       setCalls((prev) => prev.map((c) => c._id === id ? { ...c, ...updated } : c));

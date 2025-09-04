@@ -1249,15 +1249,24 @@ router.get('/message-health', async (req, res) => {
             timestamp: { $gte: fortyEightHoursAgo }
         }).sort({ timestamp: -1 });
         
-        // Define message types and their template IDs
+        // Define message types and their template IDs (both Twilio and Meta)
         const messageTypes = {
+            // Twilio templates (legacy)
             'Vendor Reminder': 'HXbdb716843483717790c45c951b71701e',
             'Support Call Reminder': 'HX4c78928e13eda15597c00ea0915f1f77',
             'Loan Support': 'HXcdbf14c73f068958f96efc216961834d',
             'Welcome Message': 'HXc2e10711c3a3cbb31203854bccc39d2d',
             'Greeting Response': 'HX46464a13f80adebb4b9d552d63acfae9',
             'Loan Support Template': 'HXf4635b59c1abf466a77814b40dc1c362',
-            'General Template': 'HX5364d2f0c0cce7ac9e38673572a45d15'
+            'General Template': 'HX5364d2f0c0cce7ac9e38673572a45d15',
+            
+            // Meta templates (new)
+            'Meta Location Update': 'update_location_cron',
+            'Meta Support Prompt': 'inactive_vendors_support_prompt',
+            'Meta Support Confirmation': 'inactive_vendors_reply_to_yes_support_call',
+            'Meta Greeting Response': 'default_hi_and_loan_prompt',
+            'Meta Loan Prompt': 'reply_to_default_hi_loan_ready_to_verify_aadhar_or_not',
+            'Meta Welcome Message': 'welcome_message_for_onboarding'
         };
         
         // Categorize messages by type
@@ -1267,9 +1276,9 @@ router.get('/message-health', async (req, res) => {
         for (const message of outboundMessages) {
             let categorized = false;
             
-            // Check if message body contains template ID
+            // Check if message body contains template ID or meta template name
             for (const [type, templateId] of Object.entries(messageTypes)) {
-                if (message.body && message.body.includes(templateId)) {
+                if (message.body && (message.body.includes(templateId) || message.body === templateId)) {
                     if (!categorizedMessages[type]) {
                         categorizedMessages[type] = [];
                     }
@@ -1280,6 +1289,25 @@ router.get('/message-health', async (req, res) => {
                     });
                     categorized = true;
                     break;
+                }
+            }
+            
+            // Also check meta field for template information
+            if (!categorized && message.meta && message.meta.template) {
+                const metaTemplate = message.meta.template;
+                for (const [type, templateId] of Object.entries(messageTypes)) {
+                    if (metaTemplate === templateId) {
+                        if (!categorizedMessages[type]) {
+                            categorizedMessages[type] = [];
+                        }
+                        categorizedMessages[type].push({
+                            to: message.to,
+                            timestamp: message.timestamp,
+                            body: message.body.substring(0, 100) + '...'
+                        });
+                        categorized = true;
+                        break;
+                    }
                 }
             }
             
@@ -1307,6 +1335,7 @@ router.get('/message-health', async (req, res) => {
             totalOutboundMessages: outboundMessages.length,
             totalSupportCallReminders: supportCallLogs.length,
             totalLoanReplies: loanReplyLogs.length,
+            totalVendorUpdateLocationMessages: (categorizedMessages['Meta Location Update']?.length || 0) + (categorizedMessages['Vendor Reminder']?.length || 0),
             messageTypes: Object.keys(categorizedMessages).map(type => ({
                 type,
                 count: categorizedMessages[type]?.length || 0

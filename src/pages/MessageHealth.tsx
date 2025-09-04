@@ -69,10 +69,11 @@ export default function MessageHealth() {
       setLoading(true);
       setError(null);
       try {
-        // Fetch both data sources
-        const [healthRes, todayRes] = await Promise.all([
+        // Fetch all data sources including Meta health data
+        const [healthRes, todayRes, metaHealthRes] = await Promise.all([
           fetch(`${apiBaseUrl}/api/webhook/message-health`),
-          fetch(`${apiBaseUrl}/api/messages/health`)
+          fetch(`${apiBaseUrl}/api/messages/health`),
+          fetch(`${apiBaseUrl}/api/meta-health/meta-health`)
         ]);
 
         if (!healthRes.ok) throw new Error('Failed to fetch message health data');
@@ -80,6 +81,18 @@ export default function MessageHealth() {
 
         const healthData = await healthRes.json();
         const todayData = await todayRes.json();
+        
+        // Merge Meta health data if available
+        if (metaHealthRes.ok) {
+          const metaHealthData = await metaHealthRes.json();
+          // Merge Meta categorized messages into main data
+          healthData.categorizedMessages = {
+            ...healthData.categorizedMessages,
+            ...metaHealthData.categorizedMessages
+          };
+          // Update stats to include Meta messages
+          healthData.stats.totalOutboundMessages += metaHealthData.stats.totalMetaMessages;
+        }
 
         setData(healthData);
         setTodayHealth(todayData);
@@ -210,6 +223,27 @@ export default function MessageHealth() {
 
 
 
+        {/* Meta Integration Message Details */}
+        <div className="mb-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+          <h3 className="text-xl font-bold mb-4 text-blue-800">Meta WhatsApp Integration Messages</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Object.entries(data.categorizedMessages)
+              .filter(([type]) => type.startsWith('Meta'))
+              .map(([type, messages]) => (
+                <div key={type} className="bg-white p-4 rounded-lg shadow-sm border">
+                  <h4 className="font-semibold text-blue-600 mb-2">{type}</h4>
+                  <div className="text-2xl font-bold text-blue-600 mb-1">{messages.length}</div>
+                  <div className="text-sm text-gray-600">Messages Sent</div>
+                  {messages.length > 0 && (
+                    <div className="mt-2 text-xs text-gray-500">
+                      Latest: {new Date(messages[0].timestamp).toLocaleString()}
+                    </div>
+                  )}
+                </div>
+              ))}
+          </div>
+        </div>
+
         {/* Detailed Message Lists */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Support Call Reminders */}
@@ -289,13 +323,32 @@ export default function MessageHealth() {
         {/* Health Summary */}
         <div className="mt-8 p-4 bg-gray-50 rounded-lg">
           <h3 className="text-lg font-semibold mb-2">Health Summary</h3>
-          <div className="space-y-1 text-sm">
-            <p>• <strong>Vendor Update Location Messages:</strong> {data.stats.totalVendorUpdateLocationMessages} sent</p>
-            <p>• <strong>Support Call Reminders:</strong> {data.stats.totalSupportCallReminders} sent</p>
-            <p>• <strong>Loan Support Messages:</strong> {(data.stats.messageTypes || []).find(t => t.type === 'Loan Support')?.count || 0} sent</p>
-            <p>• <strong>Welcome Messages:</strong> {(data.stats.messageTypes || []).find(t => t.type === 'Welcome Message')?.count || 0} sent</p>
-            <p>• <strong>Greeting Responses:</strong> {(data.stats.messageTypes || []).find(t => t.type === 'Greeting Response')?.count || 0} sent</p>
-
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div className="space-y-1">
+              <h4 className="font-semibold text-blue-600">Meta WhatsApp Integration</h4>
+              <p>• <strong>Location Updates:</strong> {(data.stats.messageTypes || []).find(t => t.type === 'Meta Location Update')?.count || 0} sent</p>
+              <p>• <strong>Support Prompts:</strong> {(data.stats.messageTypes || []).find(t => t.type === 'Meta Support Prompt')?.count || 0} sent</p>
+              <p>• <strong>Support Confirmations:</strong> {(data.stats.messageTypes || []).find(t => t.type === 'Meta Support Confirmation')?.count || 0} sent</p>
+              <p>• <strong>Greeting Responses:</strong> {(data.stats.messageTypes || []).find(t => t.type === 'Meta Greeting Response')?.count || 0} sent</p>
+              <p>• <strong>Loan Prompts:</strong> {(data.stats.messageTypes || []).find(t => t.type === 'Meta Loan Prompt')?.count || 0} sent</p>
+              <p>• <strong>Welcome Messages:</strong> {(data.stats.messageTypes || []).find(t => t.type === 'Meta Welcome Message')?.count || 0} sent</p>
+            </div>
+            <div className="space-y-1">
+              <h4 className="font-semibold text-gray-600">Legacy Twilio Integration</h4>
+              <p>• <strong>Vendor Update Location:</strong> {(data.stats.messageTypes || []).find(t => t.type === 'Vendor Reminder')?.count || 0} sent</p>
+              <p>• <strong>Support Call Reminders:</strong> {(data.stats.messageTypes || []).find(t => t.type === 'Support Call Reminder')?.count || 0} sent</p>
+              <p>• <strong>Loan Support:</strong> {(data.stats.messageTypes || []).find(t => t.type === 'Loan Support')?.count || 0} sent</p>
+              <p>• <strong>Welcome Messages:</strong> {(data.stats.messageTypes || []).find(t => t.type === 'Welcome Message')?.count || 0} sent</p>
+              <p>• <strong>Greeting Responses:</strong> {(data.stats.messageTypes || []).find(t => t.type === 'Greeting Response')?.count || 0} sent</p>
+            </div>
+          </div>
+          <div className="mt-4 pt-4 border-t border-gray-300">
+            <p className="text-sm text-gray-600">
+              <strong>Total Messages:</strong> {data.stats.totalOutboundMessages} | 
+              <strong> Support Calls:</strong> {data.stats.totalSupportCallReminders} | 
+              <strong> Loan Replies:</strong> {data.stats.totalLoanReplies} | 
+              <strong> Unknown:</strong> {data.stats.unknownMessagesCount}
+            </p>
           </div>
         </div>
       </div>

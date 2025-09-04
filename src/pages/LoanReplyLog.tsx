@@ -21,10 +21,18 @@ export default function LoanReplyLog() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`${apiBaseUrl}/api/webhook/loan-replies`);
-        if (!res.ok) throw new Error('Failed to fetch loan reply logs');
-        const data = await res.json();
-        setLogs(data);
+        // Try Meta endpoint first, fallback to webhook endpoint
+        const res = await fetch(`${apiBaseUrl}/api/meta-health/meta-loan-replies`);
+        if (!res.ok) {
+          // Fallback to original endpoint
+          const fallbackRes = await fetch(`${apiBaseUrl}/api/webhook/loan-replies`);
+          if (!fallbackRes.ok) throw new Error('Failed to fetch loan reply logs');
+          const data = await fallbackRes.json();
+          setLogs(data);
+        } else {
+          const data = await res.json();
+          setLogs(data);
+        }
       } catch (err: any) {
         setError(err.message || 'Failed to fetch logs');
       } finally {

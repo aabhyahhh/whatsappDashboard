@@ -9,6 +9,8 @@ import { Admin } from './models/Admin.js';
 import adminRoutes from './routes/admin.js';
 import userRoutes from './routes/users.js';
 import webhookRoutes from './routes/webhook.js';
+import metaWebhookRoutes from './routes/metaWebhook.js';
+import metaHealthRoutes from './routes/metaHealth.js';
 import contactsRoutes from './routes/contacts.js';
 import messagesRoutes from './routes/messages.js';
 import verifyRoutes from './routes/verify.js';
@@ -114,6 +116,12 @@ app.use('/api/users', userRoutes);
 
 // Use webhook routes - no auth required
 app.use('/api/webhook', webhookRoutes);
+
+// Use Meta webhook routes - no auth required
+app.use('/api/meta-webhook', metaWebhookRoutes);
+
+// Use Meta health routes - no auth required
+app.use('/api/meta-health', metaHealthRoutes);
 
 // Use contacts routes
 app.use('/api/contacts', contactsRoutes);
@@ -292,11 +300,15 @@ async function initializeBackgroundJobs() {
     try {
         console.log('🔄 Initializing background jobs...');
         
-        // Import and start the support call reminder scheduler
+        // Import and start the Meta WhatsApp scheduler
+        await import('./scheduler/metaScheduler.js');
+        console.log('✅ Meta WhatsApp scheduler initialized');
+        
+        // Import and start the support call reminder scheduler (legacy Twilio)
         await import('./scheduler/supportCallReminder.js');
         console.log('✅ Support call reminder scheduler initialized');
         
-        // Import and start the vendor reminders cron job
+        // Import and start the vendor reminders cron job (legacy Twilio)
         await import('./vendorRemindersCron.js');
         console.log('✅ Vendor reminders cron job initialized');
         
