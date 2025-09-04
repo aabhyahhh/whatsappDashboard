@@ -2,7 +2,7 @@ import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User.js';
-import { client } from '../twilio.js';
+import { sendTextMessage } from '../meta.js';
 import multer from 'multer';
 import schedule from 'node-schedule';
 
@@ -178,31 +178,21 @@ router.post('/', authenticateToken, (req: Request, res: Response, next: NextFunc
         if (location) newUser.location = location;
         await newUser.save();
 
-        // Send WhatsApp message to the new user based on preferred language
+        // Send WhatsApp welcome message to the new user
         try {
-            if (client) {
-                // Always use the common message SID for all vendors
-                const contentSid = 'HXc2e10711c3a3cbb31203854bccc39d2d';
-                console.log(`Attempting to send welcome message with template SID: ${contentSid} to vendor: ${contactNumber}`);
-                const msgPayload: any = {
-                    from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
-                    to: `whatsapp:${contactNumber}`,
-                    contentSid,
-                    contentVariables: JSON.stringify({})
-                };
-                if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
-                    msgPayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
-                }
+            if (process.env.META_ACCESS_TOKEN && process.env.META_PHONE_NUMBER_ID) {
+                const welcomeMessage = `Welcome to Laari Khojo! 🎉\n\nThank you for joining our platform. We're excited to help you connect with customers.\n\nIf you have any questions, feel free to reach out to our support team.\n\nBest regards,\nLaari Khojo Team`;
+                
+                console.log(`Attempting to send welcome message to vendor: ${contactNumber}`);
+                
                 try {
-                    const twilioResp = await client.messages.create(msgPayload);
-                    console.log(`✅ Sent welcome template message ${contentSid} to new user. Twilio response:`, twilioResp);
+                    const result = await sendTextMessage(contactNumber, welcomeMessage);
+                    console.log(`✅ Sent welcome message to new user via Meta API:`, result);
                 } catch (err: any) {
-                    if (err.code === 63038) {
-                        console.error('Twilio daily message limit reached. Skipping WhatsApp send.');
-                    } else {
-                        console.error('Failed to send WhatsApp message to new user:', err?.message || err, err);
-                    }
+                    console.error('Failed to send WhatsApp welcome message to new user:', err?.message || err, err);
                 }
+            } else {
+                console.log('⚠️ Meta WhatsApp API credentials not available - skipping welcome message');
             }
         } catch (err: any) {
             console.error('Unexpected error in WhatsApp message send:', err?.message || err, err);

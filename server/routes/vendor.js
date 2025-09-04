@@ -5,7 +5,7 @@ import Vendor from '../models/Vendor.js';
 import { checkAndSendReminders } from '../vendorRemindersCron.js';
 import { Message } from '../models/Message.js';
 import { User } from '../models/User.js';
-import { client } from '../twilio.js';
+import { sendTextMessage } from '../meta.js';
 const router = express.Router();
 // GET /api/vendor/check-vendor-reminders
 router.get('/check-vendor-reminders', async (_req, res) => {
@@ -65,19 +65,23 @@ router.post('/send-profile-photo-announcement', async (req, res) => {
             }
             
             try {
-                // Send WhatsApp message
-                await client.messages.create({
-                    from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
-                    to: `whatsapp:${contact}`,
-                    contentSid: 'HX5364d2f0c0cce7ac9e38673572a45d15', // Template ID
-                    contentVariables: JSON.stringify({}),
-                });
+                // Check if Meta WhatsApp API credentials are available
+                if (!process.env.META_ACCESS_TOKEN || !process.env.META_PHONE_NUMBER_ID) {
+                    console.log('⚠️ Meta WhatsApp API credentials not available - skipping message');
+                    skipped++;
+                    continue;
+                }
+                
+                // Send WhatsApp message via Meta API
+                const messageText = `📸 Profile Photo Campaign Reminder\n\nHello! Don't forget to upload your profile photo to help customers recognize your stall.\n\nUpload your photo through the admin dashboard to participate in our campaign!\n\nBest regards,\nLaari Khojo Team`;
+                
+                await sendTextMessage(contact, messageText);
                 
                 // Save message to database
                 await Message.create({
-                    from: process.env.TWILIO_PHONE_NUMBER,
+                    from: process.env.META_PHONE_NUMBER_ID,
                     to: contact,
-                    body: 'HX5364d2f0c0cce7ac9e38673572a45d15',
+                    body: messageText,
                     direction: 'outbound',
                     timestamp: new Date(),
                     meta: { 

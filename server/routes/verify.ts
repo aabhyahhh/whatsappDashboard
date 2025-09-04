@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import type { RequestHandler } from 'express';
 import Verification from '../models/Verification.js';
-import { client } from '../twilio.js'; // adjust import if needed
+import { sendTextMessage } from '../meta.js';
 
 const router = Router();
 
@@ -22,26 +22,24 @@ const requestOTP: RequestHandler = async (req, res) => {
     { upsert: true }
   );
 
-  // Check if Twilio client is available
-  if (!client) {
-    console.log(`📱 OTP for ${phone}: ${otp} (Twilio not configured)`);
+  // Check if Meta WhatsApp API credentials are available
+  if (!process.env.META_ACCESS_TOKEN || !process.env.META_PHONE_NUMBER_ID) {
+    console.log(`📱 OTP for ${phone}: ${otp} (Meta WhatsApp API not configured)`);
     res.json({ success: true, message: 'OTP sent (development mode)', otp });
     return;
   }
 
   try {
-    console.log('Attempting to send OTP to:', phone); // Logging before Twilio call
-    // Use WhatsApp template for OTP
-    await client.messages.create({
-      from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER!}`,
-      to: `whatsapp:${phone}`,
-      contentSid: 'HX53634524df0195b948e15de6fd0c602c', // Your template SID
-      contentVariables: JSON.stringify({ '1': otp }), // Assuming your template uses {{1}} for OTP
-    });
+    console.log('Attempting to send OTP to:', phone);
+    
+    // Send OTP via Meta WhatsApp API
+    const otpMessage = `Your Laari Khojo verification code is: ${otp}\n\nThis code will expire in 5 minutes.\n\nDo not share this code with anyone.`;
+    
+    await sendTextMessage(phone, otpMessage);
 
     res.json({ success: true, message: 'OTP sent' });
   } catch (err: any) {
-    console.error('Twilio error:', err); // Detailed error logging
+    console.error('Meta WhatsApp API error:', err);
     res.status(500).json({ success: false, error: err.message, details: err });
   }
 };

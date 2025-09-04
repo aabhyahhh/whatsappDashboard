@@ -2,7 +2,7 @@ import schedule from 'node-schedule';
 import mongoose from 'mongoose';
 import { Contact } from '../models/Contact.js';
 import { User } from '../models/User.js';
-import { createFreshClient } from '../twilio.js';
+import { sendTemplateMessage } from '../meta.js';
 import SupportCallReminderLog from '../models/SupportCallReminderLog.js';
 
 const SUPPORT_TEMPLATE_ID = 'HX4c78928e13eda15597c00ea0915f1f77';
@@ -16,28 +16,15 @@ if (mongoose.connection.readyState === 0) {
 
 // Helper to send WhatsApp template message
 async function sendSupportReminder(phone, vendorName = null) {
-  // Get a fresh Twilio client
-  const twilioClient = createFreshClient();
-  
-  if (!twilioClient) {
-    console.error('❌ No Twilio client available - missing credentials');
+  // Check if Meta WhatsApp API credentials are available
+  if (!process.env.META_ACCESS_TOKEN || !process.env.META_PHONE_NUMBER_ID) {
+    console.error('❌ Meta WhatsApp API credentials not available');
     return false;
   }
   
   try {
-    const messagePayload = {
-      from: `whatsapp:${TWILIO_NUMBER}`,
-      to: `whatsapp:${phone}`,
-      contentSid: SUPPORT_TEMPLATE_ID,
-      contentVariables: JSON.stringify({})
-    };
-    
-    if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
-      messagePayload.messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
-    }
-    
-    const result = await twilioClient.messages.create(messagePayload);
-    console.log(`✅ Sent support reminder to ${vendorName || phone} (${phone}) - SID: ${result.sid}`);
+    const result = await sendTemplateMessage(phone, 'post_support_call_message_for_vendors', []);
+    console.log(`✅ Sent support reminder to ${vendorName || phone} (${phone}) via Meta API`);
     return true;
   } catch (err) {
     console.error(`❌ Failed to send to ${phone}:`, err?.message || err);
