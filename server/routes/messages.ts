@@ -2,6 +2,7 @@ import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { Message } from '../models/Message.js';
 import twilio from 'twilio';
+import { sendTemplateMessage } from '../meta.js';
 
 const router = Router();
 
@@ -309,6 +310,65 @@ router.get('/:phone', async (req: Request, res: Response) => {
     }
 });
 
+// POST /api/messages/send-support-call - Send support call message to vendor
+router.post('/send-support-call', async (req: Request, res: Response) => {
+    try {
+        const { to, vendorName, template } = req.body;
 
+        // Validate required fields
+        if (!to || !vendorName) {
+            return res.status(400).json({ 
+                error: 'Missing required fields: to and vendorName are required' 
+            });
+        }
+
+        console.log(`📞 Sending support call message to ${vendorName} (${to})`);
+
+        // Send template message via Meta WhatsApp API
+        const templateName = template || 'post_support_call_message_for_vendors';
+        const result = await sendTemplateMessage(to, templateName);
+
+        if (!result) {
+            throw new Error('Failed to send template message');
+        }
+
+        // Save outbound message to MongoDB
+        try {
+            await Message.create({
+                from: process.env.META_PHONE_NUMBER_ID,
+                to: to,
+                body: `Support call message sent to ${vendorName}`,
+                direction: 'outbound',
+                timestamp: new Date(),
+                meta: {
+                    type: 'support_call_message',
+                    template: templateName,
+                    vendorName: vendorName,
+                    contactNumber: to
+                }
+            });
+            console.log('💾 Support call message saved to MongoDB');
+        } catch (dbError) {
+            console.error('❌ Failed to save support call message to MongoDB:', dbError);
+        }
+
+        console.log(`✅ Support call message sent successfully to ${vendorName} (${to})`);
+
+        res.json({ 
+            success: true, 
+            message: `Support call message sent to ${vendorName}`,
+            vendorName: vendorName,
+            contactNumber: to,
+            template: templateName
+        });
+
+    } catch (error) {
+        console.error('❌ Error sending support call message:', error);
+        res.status(500).json({ 
+            error: 'Failed to send support call message',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        });
+    }
+});
 
 export default router; 

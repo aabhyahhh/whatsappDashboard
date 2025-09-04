@@ -1,6 +1,12 @@
 import { Router } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import fetch from 'node-fetch';
+
+// Extend Request interface to include rawBody
+interface RequestWithRawBody extends Request {
+  rawBody?: string;
+}
 
 const router = Router();
 
@@ -19,7 +25,7 @@ const TARGETS = [
 const processedMessages = new Set<string>();
 
 // Middleware to capture raw body for signature verification
-router.use((req, res, next) => {
+router.use((req: RequestWithRawBody, res, next) => {
   if (req.method === 'POST') {
     let data = '';
     req.setEncoding('utf8');
@@ -41,7 +47,7 @@ router.use((req, res, next) => {
 });
 
 /** GET: Webhook verification */
-router.get('/', (req, res) => {
+router.get('/', (req: Request, res: Response) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
@@ -54,7 +60,7 @@ router.get('/', (req, res) => {
 });
 
 /** POST: Webhook events */
-router.post('/', async (req, res) => {
+router.post('/', async (req: RequestWithRawBody, res: Response) => {
   const startTime = Date.now();
   
   try {
@@ -69,7 +75,7 @@ router.post('/', async (req, res) => {
     
     const expected = 'sha256=' + crypto
       .createHmac('sha256', APP_SECRET)
-      .update(req.rawBody)
+      .update(req.rawBody || '')
       .digest('hex');
     
     if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
@@ -118,8 +124,7 @@ router.post('/', async (req, res) => {
             'X-Forwarded-From': 'webhook-router',
             'X-Message-Id': messages[0]?.id || 'unknown'
           },
-          body: JSON.stringify(req.body),
-          timeout: 10000 // 10 second timeout
+          body: JSON.stringify(req.body)
         });
         
         if (response.ok) {

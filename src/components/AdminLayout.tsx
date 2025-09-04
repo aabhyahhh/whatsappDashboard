@@ -113,6 +113,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       icon: '🏥',
       show: userRole === 'admin' || userRole === 'super_admin'
     },
+    {
+      name: 'Conversation Management',
+      path: '/conversation-management',
+      icon: '💬',
+      show: userRole === 'admin' || userRole === 'super_admin'
+    },
   ];
 
   return (

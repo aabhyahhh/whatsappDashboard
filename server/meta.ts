@@ -99,6 +99,18 @@ export const MESSAGE_TEMPLATES = {
         parameters: []
       }
     ]
+  },
+  
+  // Post support call message for vendors
+  post_support_call_message_for_vendors: {
+    name: 'post_support_call_message_for_vendors',
+    language: 'hi',
+    components: [
+      {
+        type: 'body',
+        parameters: []
+      }
+    ]
   }
 };
 

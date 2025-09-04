@@ -646,6 +646,42 @@ export default function UserManagement() {
     return <div className="text-center py-10">Loading users...</div>;
   }
 
+  // Handle sending support call message to vendor
+  const handleSendSupportCall = async (vendor: User) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Please log in to send support call messages');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/messages/send-support-call`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          to: vendor.contactNumber,
+          vendorName: vendor.name,
+          template: 'post_support_call_message_for_vendors'
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to send support call message');
+      }
+
+      const result = await response.json();
+      alert(`Support call message sent successfully to ${vendor.name} (${vendor.contactNumber})`);
+      console.log('Support call message sent:', result);
+    } catch (error) {
+      console.error('Error sending support call message:', error);
+      alert(`Failed to send support call message: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
   if (error) {
     return <div className="text-center py-10 text-red-600">Error: {error}</div>;
   }
@@ -1705,6 +1741,16 @@ export default function UserManagement() {
                 <span style={{ fontSize: 16, color: '#374151', marginTop: 2 }}>{selectedVendor.contactNumber}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <button
+                  onClick={() => handleSendSupportCall(selectedVendor)}
+                  className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center gap-2"
+                  title="Send support call message to vendor"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                  </svg>
+                  Support Call
+                </button>
                 {getFoodTypeDisplay(selectedVendor.foodType).label && (
                   <span style={{ fontSize: 18, fontWeight: 600, color: getFoodTypeDisplay(selectedVendor.foodType).color }}>
                     {getFoodTypeDisplay(selectedVendor.foodType).label}

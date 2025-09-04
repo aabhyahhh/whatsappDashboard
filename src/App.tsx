@@ -14,6 +14,7 @@ import ActiveVendors24h from './pages/ActiveVendors24h';
 import SupportCalls from './pages/SupportCalls';
 import InactiveVendors from './pages/InactiveVendors';
 import MessageHealth from './pages/MessageHealth';
+import ConversationManagement from './pages/ConversationManagement';
 
 function App() {
   return (
@@ -79,6 +80,11 @@ function App() {
           <Route path="/message-health" element={
             <ProtectedRoute>
               <MessageHealth />
+            </ProtectedRoute>
+          } />
+          <Route path="/conversation-management" element={
+            <ProtectedRoute>
+              <ConversationManagement />
             </ProtectedRoute>
           } />
           <Route path="/" element={<Navigate to="/login" replace />} />

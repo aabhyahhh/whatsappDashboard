@@ -11,6 +11,8 @@ import userRoutes from './routes/users.js';
 import webhookRoutes from './routes/webhook.js';
 import metaWebhookRoutes from './routes/metaWebhook.js';
 import webhookRouterRoutes from './routes/webhookRouter.js';
+import conversationRouterRoutes from './routes/conversationRouter.js';
+import conversationEngineRoutes from './routes/conversationEngine.js';
 import metaHealthRoutes from './routes/metaHealth.js';
 import contactsRoutes from './routes/contacts.js';
 import messagesRoutes from './routes/messages.js';
@@ -115,8 +117,14 @@ app.use('/api/verify', verifyRoutes);
 // Use user routes
 app.use('/api/users', userRoutes);
 
-// Use webhook router - no auth required (main entry point for Meta webhooks)
-app.use('/api/webhook', webhookRouterRoutes);
+// Use conversation router - no auth required (main entry point for Meta webhooks)
+app.use('/api/webhook', conversationRouterRoutes);
+
+// Use conversation engine - no auth required (processes forwarded messages)
+app.use('/api/conversation', conversationEngineRoutes);
+
+// Use webhook router - no auth required (legacy webhook router)
+app.use('/api/webhook-router', webhookRouterRoutes);
 
 // Use webhook routes - no auth required (legacy Twilio webhooks)
 app.use('/api/webhook-legacy', webhookRoutes);
