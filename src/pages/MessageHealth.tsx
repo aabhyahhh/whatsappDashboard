@@ -8,6 +8,7 @@ interface MessageHealthData {
     totalOutboundMessages: number;
     totalSupportCallReminders: number;
     totalVendorUpdateLocationMessages: number;
+    totalLoanReplies: number;
     messageTypes: Array<{
       type: string;
       count: number;

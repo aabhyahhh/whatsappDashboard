@@ -190,7 +190,7 @@ async function handleTextMessage(from: string, text: string) {
           vendorName: vendorName || 'Unknown',
           contactNumber: from,
           timestamp: new Date(),
-          aadharVerified: user?.aadharVerified ? true : false
+          aadharVerified: (user as any)?.aadharVerified ? true : false
         });
         console.log(`✅ Logged loan reply from ${vendorName || 'Unknown'} (${from})`);
       }
@@ -245,8 +245,8 @@ async function handleTextMessage(from: string, text: string) {
       const user = await User.findOne({ contactNumber: { $in: userNumbers } });
       if (user) {
         // Update Aadhaar verification status
-        user.aadharVerified = true;
-        user.aadharVerificationDate = new Date();
+        (user as any).aadharVerified = true;
+        (user as any).aadharVerificationDate = new Date();
         await user.save();
         console.log(`✅ Updated Aadhaar verification status for ${user.name} (${from})`);
         
@@ -380,8 +380,8 @@ async function handleButtonResponse(from: string, button: any) {
       const user = await User.findOne({ contactNumber: { $in: userNumbers } });
       if (user) {
         // Update Aadhaar verification status
-        user.aadharVerified = true;
-        user.aadharVerificationDate = new Date();
+        (user as any).aadharVerified = true;
+        (user as any).aadharVerificationDate = new Date();
         await user.save();
         console.log(`✅ Updated Aadhaar verification status for ${user.name} (${from}) via button click`);
         

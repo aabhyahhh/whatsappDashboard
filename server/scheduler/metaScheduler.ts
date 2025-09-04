@@ -10,7 +10,7 @@ import operatingHoursModel from '../models/operatingHoursModel.js';
 // Connect to MongoDB if not already connected
 if (mongoose.connection.readyState === 0) {
   const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/whatsapp';
-  mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
+  mongoose.connect(MONGO_URI);
 }
 
 // Helper to send WhatsApp template message via Meta
@@ -48,7 +48,7 @@ schedule.scheduleJob('* * * * *', async () => {
     
     // Get all vendors with operating hours
     const vendors = await User.find({ 
-      contactNumber: { $exists: true, $ne: null, $ne: '' },
+      contactNumber: { $exists: true, $nin: [null, ''] },
       operatingHours: { $exists: true, $ne: null }
     }).select('name contactNumber operatingHours').lean();
     
@@ -60,12 +60,12 @@ schedule.scheduleJob('* * * * *', async () => {
     
     for (const vendor of vendors) {
       try {
-        if (!vendor.operatingHours || !vendor.operatingHours.length) {
+        if (!vendor.operatingHours || !(vendor.operatingHours as any).length) {
           continue;
         }
         
         // Check if vendor is open today
-        const todayHours = vendor.operatingHours.find((hours: any) => hours.day === currentDay);
+        const todayHours = (vendor.operatingHours as any).find((hours: any) => hours.day === currentDay);
         if (!todayHours || !todayHours.isOpen) {
           continue;
         }
@@ -199,7 +199,7 @@ schedule.scheduleJob('0 10 * * *', async () => {
         }).sort({ sentAt: -1 });
         
         const shouldSendToday = !lastSent || 
-          (new Date() - lastSent.sentAt) >= 24 * 60 * 60 * 1000; // 24 hours
+          (new Date().getTime() - lastSent.sentAt.getTime()) >= 24 * 60 * 60 * 1000; // 24 hours
         
         if (shouldSendToday) {
           console.log(`📱 Sending support reminder to ${vendorName} (${contact.phone})...`);
@@ -220,7 +220,7 @@ schedule.scheduleJob('0 10 * * *', async () => {
           // Small delay to avoid rate limits
           await new Promise(resolve => setTimeout(resolve, 1000));
         } else {
-          const hoursSinceLastSent = Math.floor((new Date() - lastSent.sentAt) / (60 * 60 * 1000));
+          const hoursSinceLastSent = Math.floor((new Date().getTime() - lastSent.sentAt.getTime()) / (60 * 60 * 1000));
           console.log(`⏩ Skipping ${vendorName} (${contact.phone}), sent ${hoursSinceLastSent}h ago.`);
           skippedCount++;
         }

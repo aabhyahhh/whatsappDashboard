@@ -37,7 +37,6 @@
     "test:login-performance": "tsx scripts/test-login-performance.ts",
     "test:vendor-reminders": "tsx scripts/test-vendor-reminders-manual.ts",
     "test:location-improvements": "tsx scripts/test-location-reminder-improvements.ts",
-    "test:login-performance": "tsx scripts/test-login-performance.ts",
     "add-indexes": "tsx scripts/add-performance-indexes.js",
     "monitor:cron": "tsx scripts/monitor-cron-status.ts",
     "test:meta-integration": "tsx scripts/test-meta-integration.ts",

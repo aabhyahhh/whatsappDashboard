@@ -79,7 +79,7 @@ router.get('/meta-health', async (req, res) => {
     
     // Calculate Meta statistics
     const metaStats = {
-      totalMetaMessages: Object.values(metaCategorizedMessages).reduce((sum, messages) => sum + messages.length, 0),
+      totalMetaMessages: Object.values(metaCategorizedMessages).reduce((sum, messages: any) => sum + messages.length, 0),
       totalSupportCalls: metaSupportCallLogs.length,
       totalLoanReplies: metaLoanReplyLogs.length,
       messageTypes: Object.keys(metaCategorizedMessages).map(type => ({
