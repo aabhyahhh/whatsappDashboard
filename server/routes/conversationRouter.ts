@@ -233,6 +233,12 @@ async function processInboundMessage(message: any) {
       }
     }
     
+    // Handle button clicks
+    if (type === 'interactive' && button) {
+      console.log(`🔘 Button click from ${fromE164}: ${button.id} - ${button.title}`);
+      await handleButtonClick(fromWaId, fromE164, button);
+    }
+    
     console.log(`✅ Processed message from ${fromE164}`);
   } catch (error) {
     console.error('❌ Error processing inbound message:', error);
@@ -321,9 +327,9 @@ async function handleLoanReply(fromWaId: string, fromE164: string, originalText:
         vendorName: vendorName,
         contactNumber: fromE164,
         timestamp: new Date(),
-        aadharVerified: (vendor as any)?.aadharVerified ? true : false
+        aadharVerified: false // Always start as false, will be updated when button is clicked
       });
-      console.log(`✅ Logged loan reply from ${vendorName} (${fromE164})`);
+      console.log(`✅ Logged loan reply from ${vendorName} (${fromE164}) with aadharVerified: false`);
     }
     
     // Send loan template with Aadhaar verification
@@ -355,6 +361,92 @@ async function handleLoanReply(fromWaId: string, fromE164: string, originalText:
     console.log(`✅ Loan reply sent to ${fromE164}`);
   } catch (error) {
     console.error('❌ Error handling loan reply:', error);
+  }
+}
+
+/**
+ * Handle button clicks
+ */
+async function handleButtonClick(fromWaId: string, fromE164: string, button: any) {
+  try {
+    const { id, title } = button;
+    console.log(`🔘 Handling button click: ${id} - ${title}`);
+    
+    // Handle Aadhaar verification button
+    if (id === 'yes_verify_aadhar' || title === 'Yes, I will verify Aadhar') {
+      await handleAadhaarVerificationButton(fromWaId, fromE164);
+    } else {
+      console.log(`❓ Unknown button: ${id}`);
+    }
+  } catch (error) {
+    console.error('❌ Error handling button click:', error);
+  }
+}
+
+/**
+ * Handle Aadhaar verification button click
+ */
+async function handleAadhaarVerificationButton(fromWaId: string, fromE164: string) {
+  try {
+    console.log(`✅ Handling Aadhaar verification button for ${fromE164}`);
+    
+    // Check if Meta credentials are available
+    if (!areMetaCredentialsAvailable()) {
+      console.log('⚠️ Meta credentials not available - logging Aadhaar verification only');
+      return;
+    }
+    
+    // Find vendor details
+    const userNumbers = [fromE164];
+    if (fromE164.startsWith('+91')) userNumbers.push(fromE164.replace('+91', '91'));
+    if (fromE164.startsWith('+')) userNumbers.push(fromE164.substring(1));
+    userNumbers.push(fromE164.slice(-10));
+    
+    const vendor = await User.findOne({ contactNumber: { $in: userNumbers } });
+    const vendorName = vendor ? vendor.name : 'Unknown Vendor';
+    
+    if (vendor) {
+      // Update vendor's Aadhaar verification status
+      (vendor as any).aadharVerified = true;
+      (vendor as any).aadharVerificationDate = new Date();
+      await vendor.save();
+      console.log(`✅ Updated Aadhaar verification status for ${vendor.name} (${fromE164}) via button click`);
+    }
+    
+    // Update LoanReplyLog entry to show Aadhaar verification
+    const LoanReplyLog = (await import('../models/LoanReplyLog.js')).default;
+    await LoanReplyLog.findOneAndUpdate(
+      { contactNumber: fromE164 },
+      { aadharVerified: true },
+      { new: true }
+    );
+    console.log(`✅ Updated LoanReplyLog Aadhaar verification status for ${fromE164}`);
+    
+    // Send visual confirmation message with tick mark
+    const visualConfirmationText = `✅ *Aadhaar Verification Successful!*\n\n🎉 Your Aadhaar verification has been registered successfully!\n\n📅 Verified on: ${new Date().toLocaleDateString('en-IN')}\n⏰ Time: ${new Date().toLocaleTimeString('en-IN')}\n\n✅ Status: *VERIFIED*\n\nThank you for completing the verification process! 🙏\n\nआपका आधार सत्यापन सफलतापूर्वक पंजीकृत हो गया है! ✅`;
+    
+    await sendTextMessage(fromWaId, visualConfirmationText);
+    console.log('✅ Sent Aadhaar verification confirmation message');
+    
+    // Save the visual confirmation message to database
+    await Message.create({
+      from: process.env.META_PHONE_NUMBER_ID,
+      to: fromE164, // Use E.164 format for database consistency
+      body: visualConfirmationText,
+      direction: 'outbound',
+      timestamp: new Date(),
+      meta: {
+        type: 'aadhaar_verification_button_confirmation',
+        vendorPhone: fromE164,
+        verificationDate: new Date(),
+        trigger: 'button_click',
+        waId: fromWaId // Store original WhatsApp ID
+      }
+    });
+    
+    console.log(`✅ Aadhaar verification completed for ${fromE164}`);
+  } catch (error) {
+    console.error('❌ Error handling Aadhaar verification button:', error);
   }
 }
 
