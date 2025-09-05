@@ -71,10 +71,20 @@ router.post('/', async (req: RequestWithRawBody, res: Response) => {
   
   try {
     console.log('📨 Incoming Meta webhook payload');
+    console.log('🔍 Request headers:', {
+      'content-type': req.get('content-type'),
+      'x-hub-signature-256': req.get('x-hub-signature-256'),
+      'user-agent': req.get('user-agent')
+    });
+    console.log('🔍 Request body preview:', JSON.stringify(req.body, null, 2).substring(0, 500));
     
     // 1) Verify Meta signature
     if (!verifyMetaSignature(req)) {
       console.log('❌ Meta signature verification failed');
+      console.log('🔍 Debug info:');
+      console.log('- META_APP_SECRET available:', !!META_APP_SECRET);
+      console.log('- X-Hub-Signature-256 header:', req.get("X-Hub-Signature-256"));
+      console.log('- Raw body length:', req.rawBody?.length || 0);
       return res.sendStatus(403);
     }
     

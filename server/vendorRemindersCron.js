@@ -5,7 +5,7 @@ import { Message } from './models/Message.js';
 import { User } from './models/User.js';
 import { sendTemplateMessage, areMetaCredentialsAvailable } from './meta.js';
 
-const TEMPLATE_NAME = 'location_update_reminder';
+const TEMPLATE_NAME = 'update_location_cron';
 
 // Validate required environment variables
 if (!process.env.META_ACCESS_TOKEN || !process.env.META_PHONE_NUMBER_ID) {
@@ -136,6 +136,9 @@ const checkAndSendReminders = async () => {
             try {
               const result = await sendTemplateMessage(user.contactNumber, TEMPLATE_NAME, []);
               
+              // Handle case where result might be null or missing messageId
+              const messageId = result?.messageId || `meta-${Date.now()}-${user.contactNumber}`;
+              
               await Message.create({
                 from: process.env.META_PHONE_NUMBER_ID,
                 to: user.contactNumber,
@@ -145,9 +148,10 @@ const checkAndSendReminders = async () => {
                 meta: { 
                   reminderType: 'vendor_location_15min',
                   vendorName: user.name,
-                  openTime: user.operatingHours.openTime
+                  openTime: user.operatingHours.openTime,
+                  templateResult: result
                 },
-                messageId: result.messageId || 'meta-' + Date.now()
+                messageId: messageId
               });
               
               console.log(`✅ Sent 15-min reminder to ${user.name} (${user.contactNumber}) at ${now.format('HH:mm')}`);
@@ -174,6 +178,9 @@ const checkAndSendReminders = async () => {
             try {
               const result = await sendTemplateMessage(user.contactNumber, TEMPLATE_NAME, []);
               
+              // Handle case where result might be null or missing messageId
+              const messageId = result?.messageId || `meta-${Date.now()}-${user.contactNumber}`;
+              
               await Message.create({
                 from: process.env.META_PHONE_NUMBER_ID,
                 to: user.contactNumber,
@@ -183,9 +190,10 @@ const checkAndSendReminders = async () => {
                 meta: { 
                   reminderType: 'vendor_location_open',
                   vendorName: user.name,
-                  openTime: user.operatingHours.openTime
+                  openTime: user.operatingHours.openTime,
+                  templateResult: result
                 },
-                messageId: result.messageId || 'meta-' + Date.now()
+                messageId: messageId
               });
               
               console.log(`✅ Sent open-time reminder to ${user.name} (${user.contactNumber}) at ${now.format('HH:mm')}`);
@@ -264,6 +272,9 @@ cron.schedule('0 9 * * *', async () => {
         try {
           const result = await sendTemplateMessage(user.contactNumber, TEMPLATE_NAME, []);
           
+          // Handle case where result might be null or missing messageId
+          const messageId = result?.messageId || `meta-${Date.now()}-${user.contactNumber}`;
+          
           await Message.create({
             from: process.env.META_PHONE_NUMBER_ID,
             to: user.contactNumber,
@@ -272,9 +283,10 @@ cron.schedule('0 9 * * *', async () => {
             timestamp: new Date(),
             meta: { 
               reminderType: 'vendor_location_backup',
-              vendorName: user.name
+              vendorName: user.name,
+              templateResult: result
             },
-            messageId: result.messageId || 'meta-' + Date.now()
+            messageId: messageId
           });
           
           console.log(`✅ Sent backup reminder to ${user.name} (${user.contactNumber})`);

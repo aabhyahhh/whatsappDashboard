@@ -62,6 +62,7 @@ router.post('/', async (req: RequestWithRawBody, res: Response) => {
     }
     
     console.log('📨 Conversation engine received webhook');
+    console.log('🔍 Webhook payload preview:', JSON.stringify(req.body, null, 2).substring(0, 500));
     
     // ACK immediately
     res.status(200).send('OK');
@@ -147,6 +148,13 @@ async function handleInboundMessage(message: any) {
     const { from, timestamp, type, text, interactive, button, context } = message;
     
     console.log(`📨 Processing inbound message from ${from}: ${text || '[interactive]'}`);
+    console.log(`🔍 Message details:`, {
+      type,
+      text,
+      timestamp,
+      hasInteractive: !!interactive,
+      hasButton: !!button
+    });
     
     // Save message to database
     const messageData = {
@@ -203,8 +211,11 @@ async function handleInboundMessage(message: any) {
 async function handleTextConversation(from: string, text: string) {
   const normalizedText = text.trim().toLowerCase();
   
+  console.log(`🔍 Processing text conversation from ${from}: "${text}" -> normalized: "${normalizedText}"`);
+  
   // Support conversation flow
   if (await isSupportConversation(from, normalizedText)) {
+    console.log(`✅ Detected support conversation for ${from}`);
     await handleSupportConversation(from, normalizedText);
     return;
   }
@@ -229,6 +240,7 @@ async function handleTextConversation(from: string, text: string) {
   
   // Default greeting handler
   if (/^(hi+|hello+|hey+)$/.test(normalizedText)) {
+    console.log(`✅ Detected greeting conversation for ${from}: "${normalizedText}"`);
     await handleGreetingConversation(from);
     return;
   }
@@ -569,7 +581,7 @@ async function handleOnboardingConversation(from: string, text: string) {
 }
 
 async function handleGreetingConversation(from: string) {
-  console.log('👋 Handling greeting conversation');
+  console.log(`👋 Handling greeting conversation for ${from}`);
   
   // Check if we've already sent a greeting response recently
   const thirtySecondsAgo = new Date(Date.now() - 30 * 1000);
@@ -590,11 +602,13 @@ async function handleGreetingConversation(from: string) {
   const greetingMessage = "👋 Namaste from Laari Khojo!\n🙏 लारी खोजो की ओर से नमस्ते!\n\n📩 Thanks for reaching out!\n📞 संपर्क करने के लिए धन्यवाद!\n\nWe help you get discovered by more customers by showing your updates and services on our platform.\n🧺 हम आपके अपडेट्स और सेवाओं को अपने प्लेटफॉर्म पर दिखाकर आपको ज़्यादा ग्राहकों तक पहुँचाने में मदद करते हैं।\n\n💰 Interested in future loan support?\nJust reply with: *loan*\nभविष्य में लोन सहायता चाहिए?\n➡️ जवाब में भेजें: *loan*";
   
   // Check if Meta credentials are available at runtime
+  console.log(`🔍 Checking Meta credentials for greeting to ${from}...`);
   if (!areMetaCredentialsAvailable()) {
     console.log('⚠️ Meta WhatsApp API credentials not available - logging greeting message only');
     console.log(`📝 Would send greeting to ${from}: ${greetingMessage}`);
     // Still save to database for tracking
   } else {
+    console.log('✅ Meta credentials available, sending greeting...');
     try {
       // Try to send as template first, fallback to text message
       try {

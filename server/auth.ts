@@ -26,6 +26,16 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 // Connect to MongoDB
 connectDB().catch(console.error);
 
+// Middleware - Body parsing (but skip for webhook routes that handle raw body)
+app.use((req, res, next) => {
+  // Skip body parsing for webhook routes that need raw body
+  if (req.path === '/api/webhook' || req.path === '/api/conversation') {
+    return next();
+  }
+  // Use express.json() for other routes
+  express.json()(req, res, next);
+});
+
 // Middleware - Optimized CORS for better performance
 app.use(cors({
   origin: function (origin, callback) {
