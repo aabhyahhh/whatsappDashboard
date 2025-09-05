@@ -24,7 +24,7 @@ const processedMessages = new Set<string>();
 
 // Middleware to capture raw body for signature verification
 router.use((req: RequestWithRawBody, res, next) => {
-  if (req.method === 'POST') {
+  if (req.method === 'POST' && !req.rawBody) {
     let data = '';
     req.setEncoding('utf8');
     req.on('data', (chunk) => {
@@ -117,20 +117,38 @@ async function processWebhookAsync(body: any, rawBody: string | undefined) {
     // Determine forwarding targets based on message type
     const targets = [];
     if (hasInbound) {
-      targets.push(DASH_URL);        // inbound → Admin Dashboard only
+      targets.push(DASH_URL); // Only dashboard for inbound messages
     }
     if (hasStatus || isAcctEvt) {
-      targets.push(DASH_URL, LK_URL); // statuses → both
+      if (!targets.includes(DASH_URL)) targets.push(DASH_URL);
+      targets.push(LK_URL); // Both for statuses/account events
     }
-    
-    console.log(`🎯 Forwarding to ${targets.length} targets:`, targets);
+    // Avoid duplicate forwarding by filtering:
+    const uniqueTargets = Array.from(new Set(targets));
+    console.log(`🎯 Forwarding to ${uniqueTargets.length} targets:`, uniqueTargets);
     
     // Forward to target services (fire-and-forget)
-    if (targets.length > 0 && rawBody) {
+    if (uniqueTargets.length > 0 && rawBody) {
       const sig = relaySignature(rawBody);
       
-      await Promise.allSettled(targets.map(url =>
-        fetch(url, {
+      // Create forward promises with improved AbortController support
+      const forwardPromises = uniqueTargets.map(url => {
+        // Check AbortController support and create manual timeout
+        let controller: AbortController | undefined = undefined;
+        let signal: AbortSignal | undefined = undefined;
+        
+        try {
+          if (typeof AbortController !== "undefined") {
+            controller = new AbortController();
+            signal = controller.signal;
+            // Manual timeout after 5 seconds
+            setTimeout(() => controller?.abort(), 5000);
+          }
+        } catch (error) {
+          console.log(`⚠️ AbortController not supported for ${url}, using fallback`);
+        }
+        
+        return fetch(url, {
           method: "POST",
           headers: {
             "content-type": "application/json",
@@ -139,7 +157,7 @@ async function processWebhookAsync(body: any, rawBody: string | undefined) {
             "x-message-id": value?.messages?.[0]?.id || value?.statuses?.[0]?.id || 'unknown'
           },
           body: JSON.stringify(body),
-          signal: AbortSignal.timeout(5000) // 5 second timeout
+          ...(signal ? { signal } : {})
         }).then(response => {
           if (response.ok) {
             console.log(`✅ Successfully forwarded to ${url}`);
@@ -152,8 +170,17 @@ async function processWebhookAsync(body: any, rawBody: string | undefined) {
           } else {
             console.error(`❌ Error forwarding to ${url}:`, error.message);
           }
-        })
-      ));
+        });
+      });
+      
+      // Fire-and-forget: don't await, just start the promises
+      Promise.allSettled(forwardPromises).then(results => {
+        const successful = results.filter(r => r.status === 'fulfilled').length;
+        const failed = results.filter(r => r.status === 'rejected').length;
+        console.log(`📊 Forwarding complete: ${successful} successful, ${failed} failed`);
+      }).catch(error => {
+        console.error('❌ Error in forwarding batch:', error);
+      });
     }
     
     console.log('✅ Webhook processing completed');

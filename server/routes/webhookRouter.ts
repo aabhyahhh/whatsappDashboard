@@ -18,7 +18,6 @@ const RELAY_SECRET = process.env.RELAY_SECRET;            // your own secret
 // Target services to forward webhook payloads to
 const TARGETS = [
   "https://laari-khojo-backend.onrender.com/api/webhook",
-  "https://whatsappdashboard-1.onrender.com/api/webhook",
 ];
 
 // Store for idempotency - in production, use Redis or database

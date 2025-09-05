@@ -88,24 +88,33 @@ async function processConversationWebhookAsync(body: any) {
     
     const value = body?.entry?.[0]?.changes?.[0]?.value || {};
     
-    // Process messages
+    // Process messages and statuses in parallel (fire-and-forget)
     const messages = value?.messages || [];
-    for (const message of messages) {
-      try {
-        await handleInboundMessage(message);
-      } catch (error) {
-        console.error('❌ Error processing message:', error);
-      }
-    }
-    
-    // Process statuses
     const statuses = value?.statuses || [];
-    for (const status of statuses) {
-      try {
-        await handleMessageStatus(status);
-      } catch (error) {
+    
+    // Create processing promises
+    const messagePromises = messages.map(message => 
+      handleInboundMessage(message).catch(error => {
+        console.error('❌ Error processing message:', error);
+      })
+    );
+    
+    const statusPromises = statuses.map(status => 
+      handleMessageStatus(status).catch(error => {
         console.error('❌ Error processing status:', error);
-      }
+      })
+    );
+    
+    // Fire-and-forget: start all processing in parallel
+    const allPromises = [...messagePromises, ...statusPromises];
+    if (allPromises.length > 0) {
+      Promise.allSettled(allPromises).then(results => {
+        const successful = results.filter(r => r.status === 'fulfilled').length;
+        const failed = results.filter(r => r.status === 'rejected').length;
+        console.log(`📊 Processing complete: ${successful} successful, ${failed} failed`);
+      }).catch(error => {
+        console.error('❌ Error in processing batch:', error);
+      });
     }
     
     console.log('✅ Conversation webhook processing completed');

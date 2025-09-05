@@ -127,7 +127,7 @@ app.use('/api/conversation', conversationEngineRoutes);
 app.use('/api/webhook-router', webhookRouterRoutes);
 
 // Use webhook routes - no auth required (legacy Twilio webhooks)
-app.use('/api/webhook-legacy', webhookRoutes);
+//app.use('/api/webhook-legacy', webhookRoutes);
 
 // Use Meta webhook routes - no auth required (direct Meta webhooks)
 app.use('/api/meta-webhook', metaWebhookRoutes);
