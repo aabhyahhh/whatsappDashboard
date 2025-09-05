@@ -14,8 +14,8 @@ if (mongoose.connection.readyState === 0) {
   mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
 }
 
-// Helper to send WhatsApp template message
-async function sendSupportReminder(phone, vendorName = null) {
+// Helper to send inactive vendor support prompt
+async function sendInactiveVendorSupportPrompt(phone, vendorName = null) {
   // Check if Meta WhatsApp API credentials are available
   if (!process.env.META_ACCESS_TOKEN || !process.env.META_PHONE_NUMBER_ID) {
     console.error('❌ Meta WhatsApp API credentials not available');
@@ -23,8 +23,8 @@ async function sendSupportReminder(phone, vendorName = null) {
   }
   
   try {
-    const result = await sendTemplateMessage(phone, 'post_support_call_message_for_vendors', []);
-    console.log(`✅ Sent support reminder to ${vendorName || phone} (${phone}) via Meta API`);
+    const result = await sendTemplateMessage(phone, 'inactive_vendors_support_prompt', []);
+    console.log(`✅ Sent inactive vendor support prompt to ${vendorName || phone} (${phone}) via Meta API`);
     return true;
   } catch (err) {
     console.error(`❌ Failed to send to ${phone}:`, err?.message || err);
@@ -81,8 +81,8 @@ schedule.scheduleJob('0 10 * * *', async () => {
         (new Date() - lastSent.sentAt) >= 24 * 60 * 60 * 1000; // 24 hours
       
       if (shouldSendToday) {
-        console.log(`📱 Sending reminder to ${vendorName} (${contact.phone})...`);
-        const sent = await sendSupportReminder(contact.phone, vendorName);
+        console.log(`📱 Sending inactive vendor support prompt to ${vendorName} (${contact.phone})...`);
+        const sent = await sendInactiveVendorSupportPrompt(contact.phone, vendorName);
         
         if (sent) {
           await SupportCallReminderLog.create({ 

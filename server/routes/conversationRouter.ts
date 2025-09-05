@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import fetch from 'node-fetch';
 import { Message } from '../models/Message.js';
 import { Contact } from '../models/Contact.js';
+import { User } from '../models/User.js';
 import { sendTemplateMessage, sendTextMessage, areMetaCredentialsAvailable } from '../meta.js';
 
 // No interface needed - using express.raw() middleware
@@ -21,6 +22,15 @@ const DASH_URL = process.env.DASH_URL || "https://whatsappdashboard-1.onrender.c
 
 // Store for idempotency - in production, use Redis or database
 const processedMessages = new Set<string>();
+
+/**
+ * Normalize WhatsApp ID to E.164 format
+ * waId from Meta is digits without '+'. Prepend '+' for E.164
+ * e.g. '918130026321' -> '+918130026321'
+ */
+function normalizeE164(waId: string): string {
+  return `+${waId}`;
+}
 
 // No middleware needed - express.raw() in auth.ts handles this
 
@@ -149,11 +159,15 @@ async function processInboundMessage(message: any) {
   try {
     const { from, timestamp, type, text, interactive, button, context } = message;
     
-    console.log(`🔍 Processing message from ${from}: "${text?.body || '[interactive]'}"`);
+    // Normalize phone numbers
+    const fromWaId = from;                    // '918130026321' (digits without '+')
+    const fromE164 = normalizeE164(fromWaId); // '+918130026321' (E.164 format)
+    
+    console.log(`🔍 Processing message from ${fromE164}: "${text?.body || '[interactive]'}"`);
     
     // Save message to database
     await Message.create({
-      from: from,
+      from: fromE164, // Use E.164 format for consistency
       to: process.env.META_PHONE_NUMBER_ID,
       body: text?.body || '[interactive message]',
       direction: 'inbound',
@@ -163,20 +177,44 @@ async function processInboundMessage(message: any) {
         type: type,
         interactive: interactive,
         button: button,
-        context: context
+        context: context,
+        waId: fromWaId // Store original WhatsApp ID
       }
     });
     
-    // Update contact information
+    // Update contact information using correct schema field
     await Contact.findOneAndUpdate(
-      { phoneNumber: from },
+      { phoneNumber: fromE164 }, // Use E.164 format
       { 
-        phoneNumber: from,
+        phoneNumber: fromE164,
         lastMessageAt: new Date(),
         lastMessageDirection: 'inbound'
       },
       { upsert: true, new: true }
     );
+    
+    // Find vendor using correct schema fields (contactNumber)
+    const vendor = await User.findOneAndUpdate(
+      { 
+        $or: [
+          { contactNumber: fromE164 },    // E.164 format: '+918130026321'
+          { contactNumber: fromWaId }     // WhatsApp ID format: '918130026321'
+        ]
+      },
+      { 
+        $set: { 
+          lastInboundAt: new Date(),
+          lastInboundText: text?.body || ''
+        }
+      },
+      { new: true, upsert: false } // Don't upsert - only update existing vendors
+    ).lean();
+    
+    if (vendor) {
+      console.log(`👤 Found vendor: ${vendor.name} (${vendor.contactNumber})`);
+    } else {
+      console.log(`❓ Message from unknown number: ${fromE164}`);
+    }
     
     // Handle text messages
     if (type === 'text' && text?.body) {
@@ -184,14 +222,14 @@ async function processInboundMessage(message: any) {
       
       // Check for greeting
       if (/^(hi+|hello+|hey+)$/.test(normalizedText)) {
-        console.log(`✅ Detected greeting from ${from}: "${normalizedText}"`);
-        await handleGreetingResponse(from);
+        console.log(`✅ Detected greeting from ${fromE164}: "${normalizedText}"`);
+        await handleGreetingResponse(fromWaId); // Use waId for Meta API
       } else {
-        console.log(`❓ Unknown message from ${from}: ${text.body}`);
+        console.log(`❓ Unknown message from ${fromE164}: ${text.body}`);
       }
     }
     
-    console.log(`✅ Processed message from ${from}`);
+    console.log(`✅ Processed message from ${fromE164}`);
   } catch (error) {
     console.error('❌ Error processing inbound message:', error);
   }
@@ -200,9 +238,10 @@ async function processInboundMessage(message: any) {
 /**
  * Handle greeting response
  */
-async function handleGreetingResponse(from: string) {
+async function handleGreetingResponse(fromWaId: string) {
   try {
-    console.log(`👋 Handling greeting response for ${from}`);
+    const fromE164 = normalizeE164(fromWaId);
+    console.log(`👋 Handling greeting response for ${fromE164}`);
     
     // Check if Meta credentials are available
     if (!areMetaCredentialsAvailable()) {
@@ -213,29 +252,31 @@ async function handleGreetingResponse(from: string) {
     const greetingMessage = "👋 Namaste from Laari Khojo!\n🙏 लारी खोजो की ओर से नमस्ते!\n\n📩 Thanks for reaching out!\n📞 संपर्क करने के लिए धन्यवाद!\n\nWe help you get discovered by more customers by showing your updates and services on our platform.\n🧺 हम आपके अपडेट्स और सेवाओं को अपने प्लेटफॉर्म पर दिखाकर आपको ज़्यादा ग्राहकों तक पहुँचाने में मदद करते हैं।\n\n💰 Interested in future loan support?\nJust reply with: *loan*\nभविष्य में लोन सहायता चाहिए?\n➡️ जवाब में भेजें: *loan*";
     
     // Try template first, fallback to text
+    // Use waId (digits without '+') for Meta API calls
     try {
-      await sendTemplateMessage(from, 'default_hi_and_loan_prompt');
+      await sendTemplateMessage(fromWaId, 'default_hi_and_loan_prompt');
       console.log('✅ Sent greeting via template');
     } catch (templateError) {
       console.log('⚠️ Template failed, sending text message');
-      await sendTextMessage(from, greetingMessage);
+      await sendTextMessage(fromWaId, greetingMessage);
       console.log('✅ Sent greeting via text');
     }
     
-    // Save outbound message
+    // Save outbound message using E.164 format for consistency
     await Message.create({
       from: process.env.META_PHONE_NUMBER_ID,
-      to: from,
+      to: fromE164, // Use E.164 format for database consistency
       body: greetingMessage,
       direction: 'outbound',
       timestamp: new Date(),
       meta: {
         type: 'greeting_response',
-        template: 'default_hi_and_loan_prompt'
+        template: 'default_hi_and_loan_prompt',
+        waId: fromWaId // Store original WhatsApp ID
       }
     });
     
-    console.log(`✅ Greeting response sent to ${from}`);
+    console.log(`✅ Greeting response sent to ${fromE164}`);
   } catch (error) {
     console.error('❌ Error handling greeting response:', error);
   }
