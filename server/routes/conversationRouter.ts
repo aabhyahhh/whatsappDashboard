@@ -184,11 +184,10 @@ async function processInboundMessage(message: any) {
     
     // Update contact information using correct schema field
     await Contact.findOneAndUpdate(
-      { phoneNumber: fromE164 }, // Use E.164 format
+      { phone: fromE164 }, // Use E.164 format
       { 
-        phoneNumber: fromE164,
-        lastMessageAt: new Date(),
-        lastMessageDirection: 'inbound'
+        phone: fromE164,
+        lastSeen: new Date()
       },
       { upsert: true, new: true }
     );
