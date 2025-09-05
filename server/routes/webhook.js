@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import LoanReplyLog from '../models/LoanReplyLog.js';
+import SupportCallLog from '../models/SupportCallLog.js';
 
 const router = Router();
 
@@ -21,6 +23,32 @@ router.get('/', (req, res) => {
     message: 'Legacy Twilio webhook endpoint - deprecated',
     note: 'All WhatsApp functionality now uses Meta WhatsApp API at /api/webhook'
   });
+});
+
+// Loan replies endpoint for backward compatibility
+router.get('/loan-replies', async (req, res) => {
+    try {
+    console.log('📋 Fetching loan reply logs...');
+        const loanReplies = await LoanReplyLog.find({}).sort({ timestamp: -1 });
+    console.log(`✅ Found ${loanReplies.length} loan reply logs`);
+        res.json(loanReplies);
+    } catch (error) {
+    console.error('❌ Error fetching loan reply logs:', error);
+    res.status(500).json({ error: 'Failed to fetch loan reply logs' });
+  }
+});
+
+// Support calls endpoint for backward compatibility
+router.get('/support-calls', async (req, res) => {
+  try {
+    console.log('📞 Fetching support call logs...');
+    const supportCalls = await SupportCallLog.find({}).sort({ timestamp: -1 });
+    console.log(`✅ Found ${supportCalls.length} support call logs`);
+    res.json(supportCalls);
+    } catch (error) {
+    console.error('❌ Error fetching support call logs:', error);
+    res.status(500).json({ error: 'Failed to fetch support call logs' });
+    }
 });
 
 export default router;

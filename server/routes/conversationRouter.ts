@@ -223,6 +223,11 @@ async function processInboundMessage(message: any) {
       if (/^(hi+|hello+|hey+)$/.test(normalizedText)) {
         console.log(`✅ Detected greeting from ${fromE164}: "${normalizedText}"`);
         await handleGreetingResponse(fromWaId); // Use waId for Meta API
+      } 
+      // Check for loan reply
+      else if (/\bloan\b/i.test(normalizedText)) {
+        console.log(`✅ Detected loan reply from ${fromE164}: "${normalizedText}"`);
+        await handleLoanReply(fromWaId, fromE164, text.body);
       } else {
         console.log(`❓ Unknown message from ${fromE164}: ${text.body}`);
       }
@@ -278,6 +283,78 @@ async function handleGreetingResponse(fromWaId: string) {
     console.log(`✅ Greeting response sent to ${fromE164}`);
   } catch (error) {
     console.error('❌ Error handling greeting response:', error);
+  }
+}
+
+/**
+ * Handle loan reply
+ */
+async function handleLoanReply(fromWaId: string, fromE164: string, originalText: string) {
+  try {
+    console.log(`💰 Handling loan reply for ${fromE164}`);
+    
+    // Check if Meta credentials are available
+    if (!areMetaCredentialsAvailable()) {
+      console.log('⚠️ Meta credentials not available - logging loan reply only');
+      return;
+    }
+    
+    // Find vendor details
+    const userNumbers = [fromE164];
+    if (fromE164.startsWith('+91')) userNumbers.push(fromE164.replace('+91', '91'));
+    if (fromE164.startsWith('+')) userNumbers.push(fromE164.substring(1));
+    userNumbers.push(fromE164.slice(-10));
+    
+    const vendor = await User.findOne({ contactNumber: { $in: userNumbers } });
+    const vendorName = vendor ? vendor.name : 'Unknown Vendor';
+    
+    // Log the loan reply
+    const LoanReplyLog = (await import('../models/LoanReplyLog.js')).default;
+    const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
+    const existingLog = await LoanReplyLog.findOne({
+      contactNumber: fromE164,
+      timestamp: { $gte: oneMinuteAgo }
+    });
+    
+    if (!existingLog) {
+      await LoanReplyLog.create({
+        vendorName: vendorName,
+        contactNumber: fromE164,
+        timestamp: new Date(),
+        aadharVerified: (vendor as any)?.aadharVerified ? true : false
+      });
+      console.log(`✅ Logged loan reply from ${vendorName} (${fromE164})`);
+    }
+    
+    // Send loan template with Aadhaar verification
+    try {
+      await sendTemplateMessage(fromWaId, 'reply_to_default_hi_loan_ready_to_verify_aadhar_or_not');
+      console.log('✅ Sent loan reply template');
+    } catch (templateError) {
+      console.log('⚠️ Template failed, sending text message');
+      const loanMessage = "Certainly! ✅ ज़रूर !\n\nWe're here to help you with loan support. To proceed, we need to verify your Aadhaar details.\nहम आपकी लोन सहायता के लिए यहाँ हैं। आगे बढ़ने के लिए, हमें आपके आधार विवरण की पुष्टि करनी होगी।\n\nPlease click the button below to confirm your Aadhaar verification:\nकृपया अपने आधार सत्यापन की पुष्टि करने के लिए नीचे दिए गए बटन पर क्लिक करें:";
+      await sendTextMessage(fromWaId, loanMessage);
+      console.log('✅ Sent loan reply via text');
+    }
+    
+    // Save outbound message using E.164 format for consistency
+    await Message.create({
+      from: process.env.META_PHONE_NUMBER_ID,
+      to: fromE164, // Use E.164 format for database consistency
+      body: "Loan support response sent",
+      direction: 'outbound',
+      timestamp: new Date(),
+      meta: {
+        type: 'loan_response',
+        template: 'reply_to_default_hi_loan_ready_to_verify_aadhar_or_not',
+        vendorName: vendorName,
+        waId: fromWaId // Store original WhatsApp ID
+      }
+    });
+    
+    console.log(`✅ Loan reply sent to ${fromE164}`);
+  } catch (error) {
+    console.error('❌ Error handling loan reply:', error);
   }
 }
 
