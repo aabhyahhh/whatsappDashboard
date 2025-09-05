@@ -3,10 +3,7 @@ import type { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import fetch from 'node-fetch';
 
-// Extend Request interface to include rawBody
-interface RequestWithRawBody extends Request {
-  rawBody?: string;
-}
+// No interface needed - using express.raw() middleware
 
 const router = Router();
 
@@ -22,27 +19,7 @@ const DASH_URL = process.env.DASH_URL || "https://whatsappdashboard-1.onrender.c
 // Store for idempotency - in production, use Redis or database
 const processedMessages = new Set<string>();
 
-// Middleware to capture raw body for signature verification
-router.use((req: RequestWithRawBody, res, next) => {
-  if (req.method === 'POST' && !req.rawBody) {
-    let data = '';
-    req.setEncoding('utf8');
-    req.on('data', (chunk) => {
-      data += chunk;
-    });
-    req.on('end', () => {
-      req.rawBody = data;
-      try {
-        req.body = JSON.parse(data);
-      } catch (e) {
-        req.body = {};
-      }
-      next();
-    });
-  } else {
-    next();
-  }
-});
+// No middleware needed - express.raw() in auth.ts handles this
 
 /**
  * GET: Meta webhook verification
@@ -63,28 +40,26 @@ router.get('/', (req: Request, res: Response) => {
 });
 
 /**
+ * POST: Ping endpoint for testing (bypasses signature verification)
+ */
+router.post('/ping', (req: any, res: Response) => {
+  console.log('🏓 Ping received');
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+/**
  * POST: Main webhook handler
  * Verifies Meta signature, ACKs immediately, and conditionally forwards to targets
  */
-router.post('/', async (req: RequestWithRawBody, res: Response) => {
+router.post('/', (req: any, res: Response) => {
   const startTime = Date.now();
   
   try {
     console.log('📨 Incoming Meta webhook payload');
-    console.log('🔍 Request headers:', {
-      'content-type': req.get('content-type'),
-      'x-hub-signature-256': req.get('x-hub-signature-256'),
-      'user-agent': req.get('user-agent')
-    });
-    console.log('🔍 Request body preview:', JSON.stringify(req.body, null, 2).substring(0, 500));
     
-    // 1) Verify Meta signature
+    // 1) Verify Meta signature using raw body
     if (!verifyMetaSignature(req)) {
       console.log('❌ Meta signature verification failed');
-      console.log('🔍 Debug info:');
-      console.log('- META_APP_SECRET available:', !!META_APP_SECRET);
-      console.log('- X-Hub-Signature-256 header:', req.get("X-Hub-Signature-256"));
-      console.log('- Raw body length:', req.rawBody?.length || 0);
       return res.sendStatus(403);
     }
     
@@ -95,23 +70,25 @@ router.post('/', async (req: RequestWithRawBody, res: Response) => {
     console.log(`⚡ ACK sent in ${ackTime}ms`);
     res.status(200).send('OK');
     
-    // 3) Process the webhook data asynchronously (don't await)
-    processWebhookAsync(req.body, req.rawBody).catch(error => {
-      console.error('❌ Error in async webhook processing:', error);
-    });
+    // 3) Parse and process AFTER responding
+    const body = JSON.parse(req.body.toString('utf8'));
+    
+    // 4) Offload work (setImmediate is the minimum)
+    setImmediate(() => handleInbound(body));
     
   } catch (error) {
     console.error('❌ Error processing webhook:', error);
+    // Do NOT throw; Meta already got 200 or 403
     if (!res.headersSent) {
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).send('Internal server error');
     }
   }
 });
 
 /**
- * Process webhook data asynchronously
+ * Handle inbound webhook data asynchronously
  */
-async function processWebhookAsync(body: any, rawBody: string | undefined) {
+function handleInbound(body: any) {
   try {
     console.log('🔄 Processing webhook data asynchronously...');
     
@@ -133,32 +110,17 @@ async function processWebhookAsync(body: any, rawBody: string | undefined) {
       if (!targets.includes(DASH_URL)) targets.push(DASH_URL);
       targets.push(LK_URL); // Both for statuses/account events
     }
-    // Avoid duplicate forwarding by filtering:
+    
     const uniqueTargets = Array.from(new Set(targets));
     console.log(`🎯 Forwarding to ${uniqueTargets.length} targets:`, uniqueTargets);
     
     // Forward to target services (fire-and-forget)
-    if (uniqueTargets.length > 0 && rawBody) {
+    if (uniqueTargets.length > 0) {
+      const rawBody = JSON.stringify(body);
       const sig = relaySignature(rawBody);
       
-      // Create forward promises with improved AbortController support
-      const forwardPromises = uniqueTargets.map(url => {
-        // Check AbortController support and create manual timeout
-        let controller: AbortController | undefined = undefined;
-        let signal: AbortSignal | undefined = undefined;
-        
-        try {
-          if (typeof AbortController !== "undefined") {
-            controller = new AbortController();
-            signal = controller.signal;
-            // Manual timeout after 5 seconds
-            setTimeout(() => controller?.abort(), 5000);
-          }
-        } catch (error) {
-          console.log(`⚠️ AbortController not supported for ${url}, using fallback`);
-        }
-        
-        return fetch(url, {
+      uniqueTargets.forEach(url => {
+        fetch(url, {
           method: "POST",
           headers: {
             "content-type": "application/json",
@@ -166,8 +128,7 @@ async function processWebhookAsync(body: any, rawBody: string | undefined) {
             "x-forwarded-from": "conversation-router",
             "x-message-id": value?.messages?.[0]?.id || value?.statuses?.[0]?.id || 'unknown'
           },
-          body: JSON.stringify(body),
-          ...(signal ? { signal } : {})
+          body: rawBody
         }).then(response => {
           if (response.ok) {
             console.log(`✅ Successfully forwarded to ${url}`);
@@ -175,21 +136,8 @@ async function processWebhookAsync(body: any, rawBody: string | undefined) {
             console.log(`❌ Failed to forward to ${url}: ${response.status} ${response.statusText}`);
           }
         }).catch(error => {
-          if (error.name === 'AbortError') {
-            console.error(`⏰ Timeout forwarding to ${url}`);
-          } else {
-            console.error(`❌ Error forwarding to ${url}:`, error.message);
-          }
+          console.error(`❌ Error forwarding to ${url}:`, error.message);
         });
-      });
-      
-      // Fire-and-forget: don't await, just start the promises
-      Promise.allSettled(forwardPromises).then(results => {
-        const successful = results.filter(r => r.status === 'fulfilled').length;
-        const failed = results.filter(r => r.status === 'rejected').length;
-        console.log(`📊 Forwarding complete: ${successful} successful, ${failed} failed`);
-      }).catch(error => {
-        console.error('❌ Error in forwarding batch:', error);
       });
     }
     
@@ -200,19 +148,23 @@ async function processWebhookAsync(body: any, rawBody: string | undefined) {
 }
 
 /**
- * Verify Meta webhook signature
+ * Verify Meta webhook signature using raw body
  */
-function verifyMetaSignature(req: RequestWithRawBody): boolean {
-  const sig = req.get("X-Hub-Signature-256");
+function verifyMetaSignature(req: any): boolean {
+  const sig = req.get("x-hub-signature-256"); // "sha256=..."
   if (!sig || !META_APP_SECRET) {
     return false;
   }
   
-  const expected = "sha256=" + crypto.createHmac("sha256", META_APP_SECRET)
-    .update(req.rawBody || '')
+  const hmac = crypto
+    .createHmac("sha256", META_APP_SECRET)
+    .update(req.body) // Buffer from express.raw
     .digest("hex");
   
-  return crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
+  return crypto.timingSafeEqual(
+    Buffer.from(sig),
+    Buffer.from(`sha256=${hmac}`)
+  );
 }
 
 /**
