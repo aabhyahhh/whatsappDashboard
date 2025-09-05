@@ -37,10 +37,10 @@ async function testMetaIntegration() {
     const templates = [
       'default_hi_and_loan_prompt',
       'update_location_cron',
-      'inactive_vendors_support_prompt',
-      'inactive_vendors_reply_to_yes_support_call',
-      'reply_to_default_hi_loan_ready_to_verify_aadhar_or_not',
-      'welcome_message_for_onboarding'
+      'inactive_vendors_support_prompt_util',
+      'inactive_vendors_reply_to_yes_support_call_util',
+      'reply_to_default_hi_loan_ready_to_verify_aadhar_or_not_util',
+      'welcome_message_for_onboarding_util'
     ];
     
     for (const templateName of templates) {

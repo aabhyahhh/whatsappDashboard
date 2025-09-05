@@ -334,7 +334,7 @@ async function handleLoanReply(fromWaId: string, fromE164: string, originalText:
     
     // Send loan template with Aadhaar verification
     try {
-      await sendTemplateMessage(fromWaId, 'reply_to_default_hi_loan_ready_to_verify_aadhar_or_not');
+      await sendTemplateMessage(fromWaId, 'reply_to_default_hi_loan_ready_to_verify_aadhar_or_not_util');
       console.log('✅ Sent loan reply template');
     } catch (templateError) {
       console.log('⚠️ Template failed, sending text message');
@@ -352,7 +352,7 @@ async function handleLoanReply(fromWaId: string, fromE164: string, originalText:
       timestamp: new Date(),
       meta: {
         type: 'loan_response',
-        template: 'reply_to_default_hi_loan_ready_to_verify_aadhar_or_not',
+        template: 'reply_to_default_hi_loan_ready_to_verify_aadhar_or_not_util',
         vendorName: vendorName,
         waId: fromWaId // Store original WhatsApp ID
       }
@@ -422,21 +422,27 @@ async function handleAadhaarVerificationButton(fromWaId: string, fromE164: strin
     );
     console.log(`✅ Updated LoanReplyLog Aadhaar verification status for ${fromE164}`);
     
-    // Send visual confirmation message with tick mark
-    const visualConfirmationText = `✅ *Aadhaar Verification Successful!*\n\n🎉 Your Aadhaar verification has been registered successfully!\n\n📅 Verified on: ${new Date().toLocaleDateString('en-IN')}\n⏰ Time: ${new Date().toLocaleTimeString('en-IN')}\n\n✅ Status: *VERIFIED*\n\nThank you for completing the verification process! 🙏\n\nआपका आधार सत्यापन सफलतापूर्वक पंजीकृत हो गया है! ✅`;
+    // Send template confirmation message
+    try {
+      await sendTemplateMessage(fromWaId, 'reply_to_yes_to_aadhar_verification_util');
+      console.log('✅ Sent Aadhaar verification template message');
+    } catch (templateError) {
+      console.log('⚠️ Template failed, sending text message fallback');
+      const visualConfirmationText = `✅ *Aadhaar Verification Successful!*\n\n🎉 Your Aadhaar verification has been registered successfully!\n\n📅 Verified on: ${new Date().toLocaleDateString('en-IN')}\n⏰ Time: ${new Date().toLocaleTimeString('en-IN')}\n\n✅ Status: *VERIFIED*\n\nThank you for completing the verification process! 🙏\n\nआपका आधार सत्यापन सफलतापूर्वक पंजीकृत हो गया है! ✅`;
+      await sendTextMessage(fromWaId, visualConfirmationText);
+      console.log('✅ Sent Aadhaar verification text message fallback');
+    }
     
-    await sendTextMessage(fromWaId, visualConfirmationText);
-    console.log('✅ Sent Aadhaar verification confirmation message');
-    
-    // Save the visual confirmation message to database
+    // Save the confirmation message to database
     await Message.create({
       from: process.env.META_PHONE_NUMBER_ID,
       to: fromE164, // Use E.164 format for database consistency
-      body: visualConfirmationText,
+      body: "Aadhaar verification confirmation sent",
       direction: 'outbound',
       timestamp: new Date(),
       meta: {
         type: 'aadhaar_verification_button_confirmation',
+        template: 'reply_to_yes_to_aadhar_verification_util',
         vendorPhone: fromE164,
         verificationDate: new Date(),
         trigger: 'button_click',

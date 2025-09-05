@@ -7,7 +7,7 @@ async function sendWelcomeMessage(contactNumber, vendorName = null) {
   try {
     console.log(`📤 Sending welcome message to ${vendorName || contactNumber} (${contactNumber})...`);
     
-    const result = await sendTemplateMessage(contactNumber, 'welcome_message_for_onboarding');
+    const result = await sendTemplateMessage(contactNumber, 'welcome_message_for_onboarding_util');
     
     if (result) {
       console.log(`✅ Welcome message sent successfully to ${contactNumber}`);

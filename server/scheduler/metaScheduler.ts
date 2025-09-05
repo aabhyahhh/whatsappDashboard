@@ -203,7 +203,7 @@ schedule.scheduleJob('0 10 * * *', async () => {
         
         if (shouldSendToday) {
           console.log(`📱 Sending support reminder to ${vendorName} (${contact.phone})...`);
-          const sent = await sendMetaTemplateMessage(contact.phone, 'inactive_vendors_support_prompt', vendorName);
+          const sent = await sendMetaTemplateMessage(contact.phone, 'inactive_vendors_support_prompt_util', vendorName);
           
           if (sent) {
             await SupportCallReminderLog.create({ 

@@ -316,7 +316,7 @@ router.post('/send-support-call', async (req: Request, res: Response) => {
         console.log(`📞 Sending support call message to ${vendorName} (${to})`);
 
         // Send template message via Meta WhatsApp API
-        const templateName = template || 'post_support_call_message_for_vendors';
+        const templateName = template || 'post_support_call_message_for_vendors_util';
         const result = await sendTemplateMessage(to, templateName);
 
         if (!result) {

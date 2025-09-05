@@ -385,7 +385,7 @@ async function handleSupportConversation(from: string, text: string) {
     const recentSupportReminder = await Message.findOne({
       to: from,
       direction: 'outbound',
-      body: { $regex: /inactive_vendors_support_prompt/ },
+      body: { $regex: /inactive_vendors_support_prompt_util/ },
       timestamp: { $gte: oneHourAgo }
     });
     
@@ -420,7 +420,7 @@ async function handleSupportConversation(from: string, text: string) {
         console.log(`✅ Created support call log for ${vendorName} (${from}) via text response`);
         
         // Send confirmation message
-        await sendTemplateMessage(from, 'inactive_vendors_reply_to_yes_support_call');
+        await sendTemplateMessage(from, 'inactive_vendors_reply_to_yes_support_call_util');
         
         // Save the confirmation message to database
         await Message.create({
@@ -483,7 +483,7 @@ async function handleLoanConversation(from: string, text: string) {
     }
     
     // Send loan template with Aadhaar verification button
-    await sendTemplateMessage(from, 'reply_to_default_hi_loan_ready_to_verify_aadhar_or_not');
+    await sendTemplateMessage(from, 'reply_to_default_hi_loan_ready_to_verify_aadhar_or_not_util');
     
     // Save the outbound message to database
     await Message.create({
@@ -494,7 +494,7 @@ async function handleLoanConversation(from: string, text: string) {
       timestamp: new Date(),
       meta: {
         type: 'loan_response',
-        template: 'reply_to_default_hi_loan_ready_to_verify_aadhar_or_not'
+        template: 'reply_to_default_hi_loan_ready_to_verify_aadhar_or_not_util'
       }
     });
     
@@ -564,7 +564,7 @@ async function handleOnboardingConversation(from: string, text: string) {
   console.log('🚀 Handling onboarding conversation');
   
   // Send welcome message for onboarding
-  await sendTemplateMessage(from, 'welcome_message_for_onboarding');
+  await sendTemplateMessage(from, 'welcome_message_for_onboarding_util');
   
   // Save the outbound message to database
   await Message.create({
@@ -575,7 +575,7 @@ async function handleOnboardingConversation(from: string, text: string) {
     timestamp: new Date(),
     meta: {
       type: 'onboarding_welcome',
-      template: 'welcome_message_for_onboarding'
+      template: 'welcome_message_for_onboarding_util'
     }
   });
 }
@@ -721,7 +721,7 @@ async function handleSupportRequestButton(from: string) {
     console.log(`✅ Created support call log for ${vendorName} (${from})`);
     
     // Send confirmation message
-    await sendTemplateMessage(from, 'inactive_vendors_reply_to_yes_support_call');
+    await sendTemplateMessage(from, 'inactive_vendors_reply_to_yes_support_call_util');
     
     // Save the confirmation message to database
     await Message.create({

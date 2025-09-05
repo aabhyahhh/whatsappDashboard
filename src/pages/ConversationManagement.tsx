@@ -48,7 +48,7 @@ export default function ConversationManagement() {
           name: 'Support Request',
           description: 'Handles vendor support requests',
           keywords: ['support', 'help', 'problem'],
-          template: 'inactive_vendors_support_prompt',
+          template: 'inactive_vendors_support_prompt_util',
           active: true,
           responses: 45,
           lastUsed: '2024-01-15T10:30:00Z'
@@ -58,7 +58,7 @@ export default function ConversationManagement() {
           name: 'Loan Inquiry',
           description: 'Processes loan-related inquiries',
           keywords: ['loan', 'money', 'funding'],
-          template: 'reply_to_default_hi_loan_ready_to_verify_aadhar_or_not',
+          template: 'reply_to_default_hi_loan_ready_to_verify_aadhar_or_not_util',
           active: true,
           responses: 23,
           lastUsed: '2024-01-14T15:45:00Z'

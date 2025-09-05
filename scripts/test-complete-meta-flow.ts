@@ -58,7 +58,7 @@ async function testCompleteMetaFlow() {
     console.log('✅ Loan interest message saved to database');
     
     // Send loan prompt with Aadhaar verification button
-    const loanResult = await sendTemplateMessage(testPhoneNumber, 'reply_to_default_hi_loan_ready_to_verify_aadhar_or_not');
+    const loanResult = await sendTemplateMessage(testPhoneNumber, 'reply_to_default_hi_loan_ready_to_verify_aadhar_or_not_util');
     if (loanResult) {
       console.log('✅ Loan prompt with Aadhaar verification sent successfully');
     }
@@ -140,7 +140,7 @@ async function testCompleteMetaFlow() {
     console.log('✅ Support call log created');
     
     // Send support confirmation
-    const supportResult = await sendTemplateMessage(testPhoneNumber, 'inactive_vendors_reply_to_yes_support_call');
+    const supportResult = await sendTemplateMessage(testPhoneNumber, 'inactive_vendors_reply_to_yes_support_call_util');
     if (supportResult) {
       console.log('✅ Support call confirmation sent successfully');
     }
@@ -158,7 +158,7 @@ async function testCompleteMetaFlow() {
     console.log('Sending welcome message...');
     
     // Send welcome message
-    const welcomeResult = await sendTemplateMessage(testPhoneNumber, 'welcome_message_for_onboarding');
+    const welcomeResult = await sendTemplateMessage(testPhoneNumber, 'welcome_message_for_onboarding_util');
     if (welcomeResult) {
       console.log('✅ Welcome message sent successfully');
     }

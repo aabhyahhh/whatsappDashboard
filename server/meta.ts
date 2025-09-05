@@ -49,8 +49,8 @@ export const MESSAGE_TEMPLATES = {
   },
   
   // Inactive vendors support prompt (sent to vendors inactive for 3+ days)
-  inactive_vendors_support_prompt: {
-    name: 'inactive_vendors_support_prompt',
+  inactive_vendors_support_prompt_util: {
+    name: 'inactive_vendors_support_prompt_util',
     language: 'hi',
     components: [
       {
@@ -61,8 +61,8 @@ export const MESSAGE_TEMPLATES = {
   },
   
   // Reply to yes for support call
-  inactive_vendors_reply_to_yes_support_call: {
-    name: 'inactive_vendors_reply_to_yes_support_call',
+  inactive_vendors_reply_to_yes_support_call_util: {
+    name: 'inactive_vendors_reply_to_yes_support_call_util',
     language: 'hi',
     components: [
       {
@@ -85,8 +85,8 @@ export const MESSAGE_TEMPLATES = {
   },
   
   // Reply to loan with Aadhaar verification button
-  reply_to_default_hi_loan_ready_to_verify_aadhar_or_not: {
-    name: 'reply_to_default_hi_loan_ready_to_verify_aadhar_or_not',
+  reply_to_default_hi_loan_ready_to_verify_aadhar_or_not_util: {
+    name: 'reply_to_default_hi_loan_ready_to_verify_aadhar_or_not_util',
     language: 'hi',
     components: [
       {
@@ -107,9 +107,21 @@ export const MESSAGE_TEMPLATES = {
     ]
   },
   
+  // Reply to Aadhaar verification confirmation
+  reply_to_yes_to_aadhar_verification_util: {
+    name: 'reply_to_yes_to_aadhar_verification_util',
+    language: 'hi',
+    components: [
+      {
+        type: 'body',
+        parameters: []
+      }
+    ]
+  },
+  
   // Welcome message for onboarding
-  welcome_message_for_onboarding: {
-    name: 'welcome_message_for_onboarding',
+  welcome_message_for_onboarding_util: {
+    name: 'welcome_message_for_onboarding_util',
     language: 'hi',
     components: [
       {
@@ -120,8 +132,8 @@ export const MESSAGE_TEMPLATES = {
   },
   
   // Post support call message for vendors
-  post_support_call_message_for_vendors: {
-    name: 'post_support_call_message_for_vendors',
+  post_support_call_message_for_vendors_util: {
+    name: 'post_support_call_message_for_vendors_util',
     language: 'hi',
     components: [
       {

@@ -21,11 +21,11 @@ router.get('/meta-health', async (req, res) => {
     // Define Meta message types
     const metaMessageTypes = {
       'Meta Location Update': 'update_location_cron',
-      'Meta Support Prompt': 'inactive_vendors_support_prompt',
-      'Meta Support Confirmation': 'inactive_vendors_reply_to_yes_support_call',
+      'Meta Support Prompt': 'inactive_vendors_support_prompt_util',
+      'Meta Support Confirmation': 'inactive_vendors_reply_to_yes_support_call_util',
       'Meta Greeting Response': 'default_hi_and_loan_prompt',
-      'Meta Loan Prompt': 'reply_to_default_hi_loan_ready_to_verify_aadhar_or_not',
-      'Meta Welcome Message': 'welcome_message_for_onboarding'
+      'Meta Loan Prompt': 'reply_to_default_hi_loan_ready_to_verify_aadhar_or_not_util',
+      'Meta Welcome Message': 'welcome_message_for_onboarding_util'
     };
     
     // Categorize Meta messages

@@ -664,7 +664,7 @@ export default function UserManagement() {
         body: JSON.stringify({
           to: vendor.contactNumber,
           vendorName: vendor.name,
-          template: 'post_support_call_message_for_vendors'
+          template: 'post_support_call_message_for_vendors_util'
         }),
       });
 

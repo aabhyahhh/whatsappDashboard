@@ -41,7 +41,7 @@ async function sendInactiveVendorReminders() {
         
         console.log(`📤 Sending support reminder to ${vendorName} (${contact.phone})...`);
         
-        const result = await sendTemplateMessage(contact.phone, 'inactive_vendors_support_prompt');
+        const result = await sendTemplateMessage(contact.phone, 'inactive_vendors_support_prompt_util');
         
         if (result) {
           console.log(`✅ Sent support reminder to ${vendorName} (${contact.phone})`);

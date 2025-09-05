@@ -15,7 +15,7 @@ const TEST_TOKEN = process.env.TEST_TOKEN || 'your-test-jwt-token';
 const testVendor = {
   contactNumber: '+919876543210',
   name: 'Test Vendor',
-  template: 'post_support_call_message_for_vendors'
+  template: 'post_support_call_message_for_vendors_util'
 };
 
 /**

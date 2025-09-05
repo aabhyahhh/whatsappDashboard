@@ -23,7 +23,7 @@ async function sendInactiveVendorSupportPrompt(phone, vendorName = null) {
   }
   
   try {
-    const result = await sendTemplateMessage(phone, 'inactive_vendors_support_prompt', []);
+    const result = await sendTemplateMessage(phone, 'inactive_vendors_support_prompt_util', []);
     console.log(`✅ Sent inactive vendor support prompt to ${vendorName || phone} (${phone}) via Meta API`);
     return true;
   } catch (err) {
