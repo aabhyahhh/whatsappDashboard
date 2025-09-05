@@ -50,7 +50,8 @@
     "test:support-call-button": "tsx scripts/test-support-call-button.ts",
     "test:meta-webhook": "tsx scripts/test-meta-webhook.ts",
     "test:env": "tsx scripts/test-environment-variables.ts",
-    "test:webhook-signature": "tsx scripts/test-webhook-signature.ts"
+    "test:webhook-signature": "tsx scripts/test-webhook-signature.ts",
+    "test:webhook-ping": "tsx scripts/test-webhook-ping.ts"
   },
   "dependencies": {
     "axios": "^1.6.0",

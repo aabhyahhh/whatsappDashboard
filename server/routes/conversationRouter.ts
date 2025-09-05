@@ -2,6 +2,9 @@ import { Router } from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import fetch from 'node-fetch';
+import { Message } from '../models/Message.js';
+import { Contact } from '../models/Contact.js';
+import { sendTemplateMessage, sendTextMessage, areMetaCredentialsAvailable } from '../meta.js';
 
 // No interface needed - using express.raw() middleware
 
@@ -87,6 +90,7 @@ router.post('/', (req: any, res: Response) => {
 
 /**
  * Handle inbound webhook data asynchronously
+ * Process messages directly since Admin Dashboard is the only consumer
  */
 function handleInbound(body: any) {
   try {
@@ -101,49 +105,139 @@ function handleInbound(body: any) {
     const isAcctEvt = typeof change?.field === "string" &&
                      (change.field.startsWith("account_") || change.field.includes("quality"));
     
-    // Determine forwarding targets based on message type
-    const targets = [];
+    console.log(`📊 Webhook data: ${hasInbound ? 'inbound messages' : ''} ${hasStatus ? 'statuses' : ''} ${isAcctEvt ? 'account events' : ''}`);
+    
+    // Process inbound messages directly
     if (hasInbound) {
-      targets.push(DASH_URL); // Only dashboard for inbound messages
-    }
-    if (hasStatus || isAcctEvt) {
-      if (!targets.includes(DASH_URL)) targets.push(DASH_URL);
-      targets.push(LK_URL); // Both for statuses/account events
-    }
-    
-    const uniqueTargets = Array.from(new Set(targets));
-    console.log(`🎯 Forwarding to ${uniqueTargets.length} targets:`, uniqueTargets);
-    
-    // Forward to target services (fire-and-forget)
-    if (uniqueTargets.length > 0) {
-      const rawBody = JSON.stringify(body);
-      const sig = relaySignature(rawBody);
-      
-      uniqueTargets.forEach(url => {
-        fetch(url, {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "x-relay-signature": sig,
-            "x-forwarded-from": "conversation-router",
-            "x-message-id": value?.messages?.[0]?.id || value?.statuses?.[0]?.id || 'unknown'
-          },
-          body: rawBody
-        }).then(response => {
-          if (response.ok) {
-            console.log(`✅ Successfully forwarded to ${url}`);
-          } else {
-            console.log(`❌ Failed to forward to ${url}: ${response.status} ${response.statusText}`);
-          }
-        }).catch(error => {
-          console.error(`❌ Error forwarding to ${url}:`, error.message);
+      console.log('📨 Processing inbound messages directly...');
+      const messages = value.messages || [];
+      messages.forEach((message: any) => {
+        console.log(`📨 Message from ${message.from}: ${message.text?.body || '[interactive]'}`);
+        // Process message directly
+        processInboundMessage(message).catch(error => {
+          console.error('❌ Error processing message:', error);
         });
       });
+    }
+    
+    // Process status updates
+    if (hasStatus) {
+      console.log('📊 Processing status updates...');
+      const statuses = value.statuses || [];
+      statuses.forEach((status: any) => {
+        console.log(`📊 Status update: ${status.status} for message ${status.id}`);
+        // TODO: Add status processing logic here
+      });
+    }
+    
+    // Process account events
+    if (isAcctEvt) {
+      console.log('🔔 Processing account events...');
+      // TODO: Add account event processing logic here
     }
     
     console.log('✅ Webhook processing completed');
   } catch (error) {
     console.error('❌ Error in webhook processing:', error);
+  }
+}
+
+/**
+ * Process inbound message directly
+ */
+async function processInboundMessage(message: any) {
+  try {
+    const { from, timestamp, type, text, interactive, button, context } = message;
+    
+    console.log(`🔍 Processing message from ${from}: "${text?.body || '[interactive]'}"`);
+    
+    // Save message to database
+    await Message.create({
+      from: from,
+      to: process.env.META_PHONE_NUMBER_ID,
+      body: text?.body || '[interactive message]',
+      direction: 'inbound',
+      timestamp: new Date(parseInt(timestamp) * 1000),
+      meta: {
+        messageId: message.id,
+        type: type,
+        interactive: interactive,
+        button: button,
+        context: context
+      }
+    });
+    
+    // Update contact information
+    await Contact.findOneAndUpdate(
+      { phoneNumber: from },
+      { 
+        phoneNumber: from,
+        lastMessageAt: new Date(),
+        lastMessageDirection: 'inbound'
+      },
+      { upsert: true, new: true }
+    );
+    
+    // Handle text messages
+    if (type === 'text' && text?.body) {
+      const normalizedText = text.body.trim().toLowerCase();
+      
+      // Check for greeting
+      if (/^(hi+|hello+|hey+)$/.test(normalizedText)) {
+        console.log(`✅ Detected greeting from ${from}: "${normalizedText}"`);
+        await handleGreetingResponse(from);
+      } else {
+        console.log(`❓ Unknown message from ${from}: ${text.body}`);
+      }
+    }
+    
+    console.log(`✅ Processed message from ${from}`);
+  } catch (error) {
+    console.error('❌ Error processing inbound message:', error);
+  }
+}
+
+/**
+ * Handle greeting response
+ */
+async function handleGreetingResponse(from: string) {
+  try {
+    console.log(`👋 Handling greeting response for ${from}`);
+    
+    // Check if Meta credentials are available
+    if (!areMetaCredentialsAvailable()) {
+      console.log('⚠️ Meta credentials not available - logging greeting only');
+      return;
+    }
+    
+    const greetingMessage = "👋 Namaste from Laari Khojo!\n🙏 लारी खोजो की ओर से नमस्ते!\n\n📩 Thanks for reaching out!\n📞 संपर्क करने के लिए धन्यवाद!\n\nWe help you get discovered by more customers by showing your updates and services on our platform.\n🧺 हम आपके अपडेट्स और सेवाओं को अपने प्लेटफॉर्म पर दिखाकर आपको ज़्यादा ग्राहकों तक पहुँचाने में मदद करते हैं।\n\n💰 Interested in future loan support?\nJust reply with: *loan*\nभविष्य में लोन सहायता चाहिए?\n➡️ जवाब में भेजें: *loan*";
+    
+    // Try template first, fallback to text
+    try {
+      await sendTemplateMessage(from, 'default_hi_and_loan_prompt');
+      console.log('✅ Sent greeting via template');
+    } catch (templateError) {
+      console.log('⚠️ Template failed, sending text message');
+      await sendTextMessage(from, greetingMessage);
+      console.log('✅ Sent greeting via text');
+    }
+    
+    // Save outbound message
+    await Message.create({
+      from: process.env.META_PHONE_NUMBER_ID,
+      to: from,
+      body: greetingMessage,
+      direction: 'outbound',
+      timestamp: new Date(),
+      meta: {
+        type: 'greeting_response',
+        template: 'default_hi_and_loan_prompt'
+      }
+    });
+    
+    console.log(`✅ Greeting response sent to ${from}`);
+  } catch (error) {
+    console.error('❌ Error handling greeting response:', error);
   }
 }
 
