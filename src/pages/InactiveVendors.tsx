@@ -180,33 +180,71 @@ export default function InactiveVendors() {
 
     try {
       setSendingToAll(true);
+      
+      let sentCount = 0;
+      let errorCount = 0;
+      const errors = [];
 
-      // Use the bulk endpoint for better performance
-      const response = await fetch(`${apiBaseUrl}/api/webhook/send-reminder-to-all`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      // Send reminders to each vendor individually using the working messages/send endpoint
+      for (const vendor of vendorsToRemind) {
+        try {
+          console.log(`📤 Sending reminder to ${vendor.name} (${vendor.contactNumber})...`);
+          
+          // Use the existing messages/send endpoint
+          const response = await fetch(`${apiBaseUrl}/api/messages/send`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              to: vendor.contactNumber,
+              body: 'Hello! We noticed you haven\'t been active on WhatsApp recently. Please update your location and let us know if you need any support. Reply with "support" if you need help.'
+            }),
+          });
 
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Bulk reminder send result:', result);
-        
-        // Show results
-        if (result.errorCount === 0) {
-          alert(`✅ Successfully sent reminders to all ${result.sentCount} vendors!`);
-        } else {
-          alert(`⚠️ Sent reminders to ${result.sentCount} vendors, failed for ${result.errorCount} vendors.`);
+          if (response.ok) {
+            sentCount++;
+            console.log(`✅ Sent reminder to ${vendor.name}`);
+            
+            // Update local state
+            setVendors(prev => prev.map(v => 
+              v._id === vendor._id 
+                ? { 
+                    ...v, 
+                    reminderStatus: 'Sent', 
+                    reminderSentAt: new Date().toISOString() 
+                  }
+                : v
+            ));
+          } else {
+            errorCount++;
+            const errorData = await response.json().catch(() => ({}));
+            const errorMsg = `Failed to send to ${vendor.name}: ${errorData.error || 'Unknown error'}`;
+            console.error(`❌ ${errorMsg}`);
+            errors.push(errorMsg);
+          }
+          
+          // Small delay to avoid rate limits
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+        } catch (vendorError) {
+          errorCount++;
+          const errorMsg = `Error sending to ${vendor.name}: ${vendorError.message}`;
+          console.error(`❌ ${errorMsg}`);
+          errors.push(errorMsg);
         }
-
-        // Refresh the data to get updated counts
-        await fetchInactiveVendors(currentPage);
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Failed to send bulk reminders:', errorData);
-        alert(`Failed to send bulk reminders: ${errorData.error || 'Unknown error'}`);
       }
+      
+      // Show results
+      if (errorCount === 0) {
+        alert(`✅ Successfully sent reminders to all ${sentCount} vendors!`);
+      } else {
+        alert(`⚠️ Sent reminders to ${sentCount} vendors, but ${errorCount} failed. Check console for details.`);
+        console.log('Errors:', errors);
+      }
+      
+      // Refresh the data to get updated counts
+      await fetchInactiveVendors(currentPage);
 
     } catch (err) {
       console.error('Error sending reminders to all vendors:', err);
