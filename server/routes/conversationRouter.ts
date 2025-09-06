@@ -5,6 +5,9 @@ import fetch from 'node-fetch';
 import { Message } from '../models/Message.js';
 import { Contact } from '../models/Contact.js';
 import { User } from '../models/User.js';
+import Vendor from '../models/Vendor.js';
+import LoanReplyLog from '../models/LoanReplyLog.js';
+import SupportCallLog from '../models/SupportCallLog.js';
 import { sendTemplateMessage, sendTextMessage, areMetaCredentialsAvailable } from '../meta.js';
 import { toE164, variants } from '../utils/phone.js';
 
@@ -634,5 +637,85 @@ function relaySignature(raw: string): string {
     .update(raw)
     .digest("hex");
 }
+
+/**
+ * GET: Loan replies endpoint
+ */
+router.get('/loan-replies', async (req: Request, res: Response) => {
+  try {
+    console.log('📋 Fetching loan reply logs...');
+    const loanReplies = await LoanReplyLog.find({}).sort({ timestamp: -1 });
+    console.log(`✅ Found ${loanReplies.length} loan reply logs`);
+    res.json(loanReplies);
+  } catch (error) {
+    console.error('❌ Error fetching loan reply logs:', error);
+    res.status(500).json({ error: 'Failed to fetch loan reply logs' });
+  }
+});
+
+/**
+ * GET: Support calls endpoint
+ */
+router.get('/support-calls', async (req: Request, res: Response) => {
+  try {
+    console.log('📞 Fetching support call logs...');
+    const supportCalls = await SupportCallLog.find({}).sort({ timestamp: -1 });
+    console.log(`✅ Found ${supportCalls.length} support call logs`);
+    res.json(supportCalls);
+  } catch (error) {
+    console.error('❌ Error fetching support call logs:', error);
+    res.status(500).json({ error: 'Failed to fetch support call logs' });
+  }
+});
+
+/**
+ * GET: Inactive vendors endpoint
+ */
+router.get('/inactive-vendors', async (req: Request, res: Response) => {
+  try {
+    console.log('📊 Fetching inactive vendors...');
+    
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 50;
+    const skip = (page - 1) * limit;
+    
+    // Calculate date 7 days ago
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    // Find vendors who haven't sent messages in the last 7 days
+    const inactiveVendors = await Vendor.find({
+      $or: [
+        { lastMessageDate: { $lt: sevenDaysAgo } },
+        { lastMessageDate: { $exists: false } }
+      ]
+    })
+    .sort({ lastMessageDate: -1 })
+    .skip(skip)
+    .limit(limit);
+    
+    const total = await Vendor.countDocuments({
+      $or: [
+        { lastMessageDate: { $lt: sevenDaysAgo } },
+        { lastMessageDate: { $exists: false } }
+      ]
+    });
+    
+    console.log(`✅ Found ${inactiveVendors.length} inactive vendors (${total} total)`);
+    
+    res.json({
+      vendors: inactiveVendors,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error fetching inactive vendors:', error);
+    res.status(500).json({ error: 'Failed to fetch inactive vendors' });
+  }
+});
 
 export default router;
