@@ -5,7 +5,6 @@ import fetch from 'node-fetch';
 import { Message } from '../models/Message.js';
 import { Contact } from '../models/Contact.js';
 import { User } from '../models/User.js';
-import Vendor from '../models/Vendor.js';
 import LoanReplyLog from '../models/LoanReplyLog.js';
 import SupportCallLog from '../models/SupportCallLog.js';
 import { sendTemplateMessage, sendTextMessage, areMetaCredentialsAvailable } from '../meta.js';
@@ -673,7 +672,7 @@ router.get('/support-calls', async (req: Request, res: Response) => {
  */
 router.get('/inactive-vendors', async (req: Request, res: Response) => {
   try {
-    console.log('📊 Fetching inactive vendors...');
+    console.log('📊 Fetching inactive vendors from User collection...');
     
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 50;
@@ -683,25 +682,25 @@ router.get('/inactive-vendors', async (req: Request, res: Response) => {
     const threeDaysAgo = new Date();
     threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
     
-    // Get all vendors
-    const allVendors = await Vendor.find({}).sort({ updatedAt: -1 });
+    // Get all users (vendors) from User collection
+    const allUsers = await User.find({}).sort({ updatedAt: -1 });
     
-    // Find vendors who haven't interacted (sent inbound messages) in the last 3 days
+    // Find users who haven't interacted (sent inbound messages) in the last 3 days
     const inactiveVendors = [];
     
-    for (const vendor of allVendors) {
-      // Check if vendor has sent any inbound messages in the last 3 days
+    for (const user of allUsers) {
+      // Check if user has sent any inbound messages in the last 3 days
       const recentMessages = await Message.find({
-        from: vendor.contactNumber,
+        from: user.contactNumber,
         direction: 'inbound',
         timestamp: { $gte: threeDaysAgo }
       }).limit(1);
       
-      // If no recent inbound messages, vendor is inactive
+      // If no recent inbound messages, user is inactive
       if (recentMessages.length === 0) {
         // Get the last interaction date
         const lastMessage = await Message.findOne({
-          from: vendor.contactNumber,
+          from: user.contactNumber,
           direction: 'inbound'
         }).sort({ timestamp: -1 });
         
@@ -711,7 +710,7 @@ router.get('/inactive-vendors', async (req: Request, res: Response) => {
           : null;
         
         inactiveVendors.push({
-          ...vendor.toObject(),
+          ...user.toObject(),
           lastInteractionDate,
           daysInactive
         });
