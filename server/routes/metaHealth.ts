@@ -22,7 +22,7 @@ router.get('/meta-health', async (req, res) => {
     const metaMessageTypes = {
       'Meta Location Update': {
         bodyPatterns: ['Template: update_location_cron', 'update_location_cron_util'],
-        metaPatterns: ['vendor_location_open', 'update_location_cron'],
+        metaPatterns: ['vendor_location_open', 'vendor_location_15min', 'update_location_cron'],
         templateNames: ['update_location_cron_util', 'update_location_cron']
       },
       'Meta Support Prompt': {

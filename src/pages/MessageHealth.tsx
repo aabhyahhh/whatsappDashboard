@@ -28,6 +28,7 @@ interface MessageHealthData {
   supportCallLogs: Array<{
     contactNumber: string;
     sentAt: string;
+    vendorName?: string;
   }>;
   vendorUpdateLocationLogs: Array<{
     contactNumber: string;
@@ -74,7 +75,7 @@ export default function MessageHealth() {
         const [healthRes, todayRes, metaHealthRes] = await Promise.all([
           fetch(`${apiBaseUrl}/api/webhook/message-health`),
           fetch(`${apiBaseUrl}/api/messages/health`),
-          fetch(`${apiBaseUrl}/api/meta-health/meta-health`)
+          fetch(`${apiBaseUrl}/api/meta-health`)
         ]);
 
         if (!healthRes.ok) throw new Error('Failed to fetch message health data');
@@ -93,6 +94,58 @@ export default function MessageHealth() {
           };
           // Update stats to include Meta messages
           healthData.stats.totalOutboundMessages += metaHealthData.stats.totalMetaMessages;
+          
+          // Process Meta data for support call reminders and location messages
+          if (metaHealthData.categorizedMessages) {
+            // Extract support call reminders from categorized messages
+            const supportCallReminders = metaHealthData.categorizedMessages['Meta Support Prompt'] || [];
+            healthData.supportCallLogs = supportCallReminders.map((msg: any) => ({
+              contactNumber: msg.to,
+              sentAt: msg.timestamp,
+              vendorName: msg.vendorName || 'Unknown'
+            }));
+            
+            // Extract vendor update location messages
+            const locationMessages = metaHealthData.categorizedMessages['Meta Location Update'] || [];
+            healthData.vendorUpdateLocationLogs = locationMessages.map((msg: any) => ({
+              contactNumber: msg.to,
+              sentAt: msg.timestamp,
+              vendorName: msg.vendorName || 'Unknown',
+              minutesBefore: msg.meta?.reminderType === 'vendor_location_15min' ? '15' : '0',
+              reminderType: msg.meta?.reminderType || 'unknown',
+              openTime: msg.meta?.openTime || 'Unknown'
+            }));
+          }
+          
+          // Also use support reminder logs if available
+          if (metaHealthData.supportReminderLogs && metaHealthData.supportReminderLogs.length > 0) {
+            // If we don't have support call reminders from categorized messages, use the logs
+            if (!healthData.supportCallLogs || healthData.supportCallLogs.length === 0) {
+              healthData.supportCallLogs = metaHealthData.supportReminderLogs.map((log: any) => ({
+                contactNumber: log.contactNumber,
+                sentAt: log.sentAt,
+                vendorName: 'Unknown' // Will be resolved by vendor lookup
+              }));
+            }
+          }
+          
+          // Resolve vendor names for support call logs
+          if (healthData.supportCallLogs && healthData.supportCallLogs.length > 0) {
+            try {
+              const vendorNumbers = healthData.supportCallLogs.map(log => log.contactNumber);
+              const vendorRes = await fetch(`${apiBaseUrl}/api/users?contactNumbers=${vendorNumbers.join(',')}`);
+              if (vendorRes.ok) {
+                const vendors = await vendorRes.json();
+                const vendorMap = new Map(vendors.map((v: any) => [v.contactNumber, v.name]));
+                healthData.supportCallLogs = healthData.supportCallLogs.map(log => ({
+                  ...log,
+                  vendorName: vendorMap.get(log.contactNumber) || 'Unknown Vendor'
+                }));
+              }
+            } catch (error) {
+              console.error('Error resolving vendor names:', error);
+            }
+          }
         }
 
         setData(healthData);
@@ -257,15 +310,20 @@ export default function MessageHealth() {
                 <div className="space-y-2">
                   {(data.supportCallLogs || []).map((log, index) => (
                     <div key={index} className="bg-white p-3 rounded border">
-                      <p 
-                        className="font-medium text-blue-600 hover:text-blue-800 cursor-pointer"
-                        onClick={() => window.open(`/dashboard/chat/${log.contactNumber}`, '_blank')}
-                      >
-                        {log.contactNumber}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Sent: {new Date(log.sentAt).toLocaleString()}
-                      </p>
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="font-medium">{log.vendorName || 'Unknown Vendor'}</p>
+                          <p 
+                            className="text-sm text-blue-600 hover:text-blue-800 cursor-pointer"
+                            onClick={() => window.open(`/dashboard/chat/${log.contactNumber}`, '_blank')}
+                          >
+                            {log.contactNumber}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Sent: {new Date(log.sentAt).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>

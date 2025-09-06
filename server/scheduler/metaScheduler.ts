@@ -60,40 +60,40 @@ schedule.scheduleJob('* * * * *', async () => {
     
     for (const vendor of vendors) {
       try {
-        if (!vendor.operatingHours) {
+        if (!vendor.operatingHours || !(vendor.operatingHours as any).length) {
           continue;
         }
         
         // Check if vendor is open today
-        const operatingHours = vendor.operatingHours as any;
-        if (!operatingHours || !operatingHours.days || !operatingHours.days.includes(currentDay)) {
+        const todayHours = (vendor.operatingHours as any).find((hours: any) => hours.day === currentDay);
+        if (!todayHours || !todayHours.isOpen) {
           continue;
         }
         
-        // Parse open time (format: "HH:MM" or "H:MM AM/PM")
-        const openTimeStr = operatingHours.openTime;
-        let openTimeMinutes: number;
-        
-        if (openTimeStr.includes('AM') || openTimeStr.includes('PM')) {
-          // Handle 12-hour format
-          const [time, period] = openTimeStr.split(' ');
-          const [hours, minutes] = time.split(':').map(Number);
-          let hour24 = hours;
-          if (period === 'PM' && hours !== 12) hour24 += 12;
-          if (period === 'AM' && hours === 12) hour24 = 0;
-          openTimeMinutes = hour24 * 60 + minutes;
-        } else {
-          // Handle 24-hour format
-          const [hours, minutes] = openTimeStr.split(':').map(Number);
-          openTimeMinutes = hours * 60 + minutes;
-        }
+        const openTime = todayHours.openTime;
+        const openTimeMinutes = openTime.hours * 60 + openTime.minutes;
         
         // Check if vendor is opening in 15 minutes or at open time
         const timeDiff = openTimeMinutes - currentTime;
         
         if (timeDiff === 15 || timeDiff === 0) {
+          // Check if we've already sent a location update message today
           const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
           const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+          
+          const existingMessage = await Message.findOne({
+            to: vendor.contactNumber,
+            direction: 'outbound',
+            'meta.type': 'location_update',
+            'meta.vendorId': vendor._id,
+            timestamp: { $gte: todayStart, $lt: todayEnd }
+          });
+          
+          if (existingMessage) {
+            console.log(`⏩ Skipping ${vendor.name} (${vendor.contactNumber}) - location update already sent today`);
+            skippedCount++;
+            continue;
+          }
           
           // Check if vendor has already sent their location today
           const vendorLocationMessage = await Message.findOne({
@@ -103,47 +103,29 @@ schedule.scheduleJob('* * * * *', async () => {
             timestamp: { $gte: todayStart, $lt: todayEnd }
           });
           
-          if (vendorLocationMessage) {
+          if (vendorLocationMessage && timeDiff === 0) {
             console.log(`⏩ Skipping ${vendor.name} (${vendor.contactNumber}) - already sent location today`);
-            skippedCount++;
-            continue;
-          }
-          
-          // Check if we've already sent this specific type of message today
-          const existingMessage = await Message.findOne({
-            to: vendor.contactNumber,
-            direction: 'outbound',
-            'meta.type': 'location_update',
-            'meta.vendorId': vendor._id,
-            'meta.timeType': timeDiff === 15 ? '15_minutes_before' : 'at_open_time',
-            timestamp: { $gte: todayStart, $lt: todayEnd }
-          });
-          
-          if (existingMessage) {
-            console.log(`⏩ Skipping ${vendor.name} (${vendor.contactNumber}) - ${timeDiff === 15 ? '15-min' : 'open-time'} message already sent today`);
             skippedCount++;
             continue;
           }
           
           console.log(`📍 Sending location update to ${vendor.name} (${vendor.contactNumber}) - ${timeDiff === 15 ? '15 mins before' : 'at'} open time`);
           
-          const sent = await sendMetaTemplateMessage(vendor.contactNumber, 'update_location_cron_util', vendor.name);
+          const sent = await sendMetaTemplateMessage(vendor.contactNumber, 'update_location_cron', vendor.name);
           
           if (sent) {
             // Save the message to database
             await Message.create({
               from: process.env.META_PHONE_NUMBER_ID,
               to: vendor.contactNumber,
-              body: 'Template: update_location_cron_util',
+              body: 'update_location_cron',
               direction: 'outbound',
               timestamp: new Date(),
               meta: {
                 type: 'location_update',
-                template: 'update_location_cron_util',
                 vendorName: vendor.name,
                 vendorId: vendor._id,
-                timeType: timeDiff === 15 ? '15_minutes_before' : 'at_open_time',
-                reminderType: 'vendor_location_15min'
+                timeType: timeDiff === 15 ? '15_minutes_before' : 'at_open_time'
               }
             });
             
@@ -181,12 +163,12 @@ schedule.scheduleJob('0 10 * * *', async () => {
     return;
   }
   
-  const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
-  console.log(`📅 Five days ago: ${fiveDaysAgo.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`);
+  const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+  console.log(`📅 Three days ago: ${threeDaysAgo.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`);
   
   try {
-    // Find contacts not seen in 5+ days
-    const inactiveContacts = await Contact.find({ lastSeen: { $lte: fiveDaysAgo } });
+    // Find contacts not seen in 3+ days
+    const inactiveContacts = await Contact.find({ lastSeen: { $lte: threeDaysAgo } });
     console.log(`📊 Found ${inactiveContacts.length} inactive contacts`);
     
     if (inactiveContacts.length === 0) {
@@ -224,20 +206,6 @@ schedule.scheduleJob('0 10 * * *', async () => {
           const sent = await sendMetaTemplateMessage(contact.phone, 'inactive_vendors_support_prompt_util', vendorName);
           
           if (sent) {
-            // Save the message to database
-            await Message.create({
-              from: process.env.META_PHONE_NUMBER_ID,
-              to: contact.phone,
-              body: 'Template: inactive_vendors_support_prompt_util',
-              direction: 'outbound',
-              timestamp: new Date(),
-              meta: {
-                reminderType: 'support_prompt',
-                vendorName: vendorName,
-                template: 'inactive_vendors_support_prompt_util'
-              }
-            });
-            
             await SupportCallReminderLog.create({ 
               contactNumber: contact.phone,
               sentAt: new Date()
@@ -271,6 +239,6 @@ schedule.scheduleJob('0 10 * * *', async () => {
 
 console.log('✅ Meta WhatsApp scheduler started');
 console.log('📍 Location update scheduler: runs every minute to check for vendors opening soon');
-console.log('📞 Support reminder scheduler: runs daily at 10:00 AM IST for inactive vendors (5+ days)');
+console.log('📞 Support reminder scheduler: runs daily at 10:00 AM IST for inactive vendors (3+ days)');
 console.log('🔧 Using Meta WhatsApp API for all messaging');
 
