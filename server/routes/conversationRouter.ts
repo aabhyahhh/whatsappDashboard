@@ -718,4 +718,110 @@ router.get('/inactive-vendors', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * GET: Message health endpoint
+ */
+router.get('/message-health', async (req: Request, res: Response) => {
+  try {
+    console.log('📊 Fetching message health data...');
+    
+    const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+    
+    // Get all outbound messages in the last 48 hours
+    const outboundMessages = await Message.find({
+      direction: 'outbound',
+      timestamp: { $gte: fortyEightHoursAgo }
+    }).sort({ timestamp: -1 });
+    
+    // Define Meta message types
+    const metaMessageTypes = {
+      'Meta Location Update': 'update_location_cron',
+      'Meta Support Prompt': 'inactive_vendors_support_prompt_util',
+      'Meta Support Confirmation': 'inactive_vendors_reply_to_yes_support_call_util',
+      'Meta Greeting Response': 'default_hi_and_loan_prompt',
+      'Meta Loan Prompt': 'reply_to_default_hi_loan_ready_to_verify_aadhar_or_not_util',
+      'Meta Welcome Message': 'welcome_message_for_onboarding_util'
+    };
+    
+    // Categorize Meta messages
+    const metaCategorizedMessages: any = {};
+    const metaUnknownMessages: any[] = [];
+    
+    for (const message of outboundMessages) {
+      let categorized = false;
+      
+      // Check if message is from Meta integration
+      if (message.from === process.env.META_PHONE_NUMBER_ID || 
+          (message.meta && message.meta.type && message.meta.type.includes('meta'))) {
+        
+        // Check message body for template names
+        for (const [type, templateName] of Object.entries(metaMessageTypes)) {
+          if (message.body === templateName || 
+              (message.meta && message.meta.template === templateName)) {
+            if (!metaCategorizedMessages[type]) {
+              metaCategorizedMessages[type] = [];
+            }
+            metaCategorizedMessages[type].push({
+              to: message.to,
+              timestamp: message.timestamp,
+              body: message.body,
+              meta: message.meta
+            });
+            categorized = true;
+            break;
+          }
+        }
+        
+        if (!categorized) {
+          metaUnknownMessages.push({
+            to: message.to,
+            timestamp: message.timestamp,
+            body: message.body,
+            meta: message.meta
+          });
+        }
+      }
+    }
+    
+    // Get Meta-specific logs
+    const metaSupportCallLogs = await SupportCallLog.find({
+      timestamp: { $gte: fortyEightHoursAgo }
+    }).sort({ timestamp: -1 });
+    
+    const metaLoanReplyLogs = await LoanReplyLog.find({
+      timestamp: { $gte: fortyEightHoursAgo }
+    }).sort({ timestamp: -1 });
+    
+    // Calculate Meta statistics
+    const metaStats = {
+      totalMetaMessages: Object.values(metaCategorizedMessages).reduce((sum: number, messages: any) => sum + messages.length, 0),
+      totalSupportCalls: metaSupportCallLogs.length,
+      totalLoanReplies: metaLoanReplyLogs.length,
+      messageTypes: Object.keys(metaCategorizedMessages).map(type => ({
+        type,
+        count: metaCategorizedMessages[type]?.length || 0
+      })),
+      unknownMessagesCount: metaUnknownMessages.length
+    };
+    
+    console.log(`✅ Found ${metaStats.totalMetaMessages} Meta messages, ${metaStats.totalSupportCalls} support calls, ${metaStats.totalLoanReplies} loan replies`);
+    
+    res.json({
+      stats: metaStats,
+      categorizedMessages: metaCategorizedMessages,
+      unknownMessages: metaUnknownMessages.slice(0, 10),
+      supportCallLogs: metaSupportCallLogs.slice(0, 10),
+      loanReplyLogs: metaLoanReplyLogs.slice(0, 10),
+      timeRange: {
+        from: fortyEightHoursAgo,
+        to: new Date()
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error fetching message health data:', error);
+    res.status(500).json({ error: 'Failed to fetch message health data' });
+  }
+});
+
 export default router;
