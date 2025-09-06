@@ -319,11 +319,23 @@ async function processInboundMessage(message: any) {
         await handleLoanReply(fromWaId, fromE164, text.body);
       }
       // Check for Aadhaar verification confirmation (text message)
-      else if (/yes.*verify.*aadhar/i.test(normalizedText) || /verify.*aadhar/i.test(normalizedText)) {
+      else if (/yes.*verify.*aadha?r/i.test(normalizedText) || /verify.*aadha?r/i.test(normalizedText)) {
         console.log(`✅ Detected Aadhaar verification confirmation from ${fromE164}: "${normalizedText}"`);
+        console.log(`🔍 Regex test results:`, {
+          pattern1: /yes.*verify.*aadha?r/i.test(normalizedText),
+          pattern2: /verify.*aadha?r/i.test(normalizedText),
+          normalizedText: normalizedText
+        });
         await handleAadhaarVerificationButton(fromWaId, fromE164);
       } else {
         console.log(`❓ Unknown message from ${fromE164}: ${text.body}`);
+        console.log(`🔍 Message analysis:`, {
+          originalText: text.body,
+          normalizedText: normalizedText,
+          isGreeting: /^(hi+|hello+|hey+)$/.test(normalizedText),
+          isLoan: /\bloan\b/i.test(normalizedText),
+          isAadhaarVerification: /yes.*verify.*aadha?r/i.test(normalizedText) || /verify.*aadha?r/i.test(normalizedText)
+        });
       }
     }
     
@@ -474,7 +486,7 @@ async function handleButtonClick(fromWaId: string, fromE164: string, button: any
         title === "Yes, I'll verify Aadhar" ||
         title === 'Yes, I will verify Aadhaar' ||
         title === "Yes, I'll verify Aadhaar" ||
-        (title && /yes.*verify.*aadhar/i.test(title))) {
+        (title && /yes.*verify.*aadha?r/i.test(title))) {
       console.log(`✅ Detected Aadhaar verification button click`);
       await handleAadhaarVerificationButton(fromWaId, fromE164);
     } else {
@@ -491,6 +503,7 @@ async function handleButtonClick(fromWaId: string, fromE164: string, button: any
 async function handleAadhaarVerificationButton(fromWaId: string, fromE164: string) {
   try {
     console.log(`✅ Handling Aadhaar verification button for ${fromE164}`);
+    console.log(`🔍 Input parameters:`, { fromWaId, fromE164 });
     
     // Check if Meta credentials are available
     if (!areMetaCredentialsAvailable()) {
@@ -504,8 +517,10 @@ async function handleAadhaarVerificationButton(fromWaId: string, fromE164: strin
     if (fromE164.startsWith('+')) userNumbers.push(fromE164.substring(1));
     userNumbers.push(fromE164.slice(-10));
     
+    console.log(`🔍 Searching for vendor with numbers:`, userNumbers);
     const vendor = await User.findOne({ contactNumber: { $in: userNumbers } });
     const vendorName = vendor ? vendor.name : 'Unknown Vendor';
+    console.log(`🔍 Found vendor:`, { vendorName, vendorId: vendor?._id });
     
     if (vendor) {
       // Update vendor's Aadhaar verification status
@@ -513,16 +528,19 @@ async function handleAadhaarVerificationButton(fromWaId: string, fromE164: strin
       (vendor as any).aadharVerificationDate = new Date();
       await vendor.save();
       console.log(`✅ Updated Aadhaar verification status for ${vendor.name} (${fromE164}) via button click`);
+    } else {
+      console.log(`⚠️ No vendor found for ${fromE164}`);
     }
     
     // Update LoanReplyLog entry to show Aadhaar verification
+    console.log(`🔍 Updating LoanReplyLog for ${fromE164}`);
     const LoanReplyLog = (await import('../models/LoanReplyLog.js')).default;
-    await LoanReplyLog.findOneAndUpdate(
+    const updateResult = await LoanReplyLog.findOneAndUpdate(
       { contactNumber: fromE164 },
       { aadharVerified: true },
       { new: true }
     );
-    console.log(`✅ Updated LoanReplyLog Aadhaar verification status for ${fromE164}`);
+    console.log(`✅ Updated LoanReplyLog Aadhaar verification status for ${fromE164}:`, updateResult);
     
     // Send template confirmation message
     try {
