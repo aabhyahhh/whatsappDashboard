@@ -317,6 +317,11 @@ async function processInboundMessage(message: any) {
       else if (/\bloan\b/i.test(normalizedText)) {
         console.log(`✅ Detected loan reply from ${fromE164}: "${normalizedText}"`);
         await handleLoanReply(fromWaId, fromE164, text.body);
+      }
+      // Check for Aadhaar verification confirmation (text message)
+      else if (/yes.*verify.*aadhar/i.test(normalizedText) || /verify.*aadhar/i.test(normalizedText)) {
+        console.log(`✅ Detected Aadhaar verification confirmation from ${fromE164}: "${normalizedText}"`);
+        await handleAadhaarVerificationButton(fromWaId, fromE164);
       } else {
         console.log(`❓ Unknown message from ${fromE164}: ${text.body}`);
       }
@@ -461,12 +466,19 @@ async function handleButtonClick(fromWaId: string, fromE164: string, button: any
   try {
     const { id, title } = button;
     console.log(`🔘 Handling button click: ${id} - ${title}`);
+    console.log(`🔍 Button details:`, button);
     
-    // Handle Aadhaar verification button
-    if (id === 'yes_verify_aadhar' || title === 'Yes, I will verify Aadhar') {
+    // Handle Aadhaar verification button - check multiple variations
+    if (id === 'yes_verify_aadhar' || 
+        title === 'Yes, I will verify Aadhar' || 
+        title === "Yes, I'll verify Aadhar" ||
+        title === 'Yes, I will verify Aadhaar' ||
+        title === "Yes, I'll verify Aadhaar" ||
+        (title && /yes.*verify.*aadhar/i.test(title))) {
+      console.log(`✅ Detected Aadhaar verification button click`);
       await handleAadhaarVerificationButton(fromWaId, fromE164);
     } else {
-      console.log(`❓ Unknown button: ${id}`);
+      console.log(`❓ Unknown button: ${id} - ${title}`);
     }
   } catch (error) {
     console.error('❌ Error handling button click:', error);
