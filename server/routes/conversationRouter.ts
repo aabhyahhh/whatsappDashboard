@@ -914,37 +914,46 @@ router.get('/message-health', async (req: Request, res: Response) => {
 });
 
 /**
+ * GET: Test endpoint for debugging
+ */
+router.get('/test-reminder-endpoint', async (req: Request, res: Response) => {
+  try {
+    console.log('🧪 Test endpoint called');
+    res.json({
+      success: true,
+      message: 'Test endpoint working',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Test endpoint error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * POST: Send reminder to all inactive vendors
  */
 router.post('/send-reminder-to-all', async (req: Request, res: Response) => {
   try {
     console.log('📤 Sending reminders to all inactive vendors...');
     
-    // Set timeout for the request
-    const timeout = setTimeout(() => {
-      if (!res.headersSent) {
-        res.status(408).json({ error: 'Request timeout - operation took too long' });
-      }
-    }, 30000); // 30 second timeout
-    
     // Check if Meta credentials are available
     if (!process.env.META_ACCESS_TOKEN || !process.env.META_PHONE_NUMBER_ID) {
       console.error('❌ Missing Meta WhatsApp credentials');
-      clearTimeout(timeout);
       return res.status(500).json({ error: 'Meta WhatsApp credentials not configured' });
     }
     
     const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
+    console.log(`📅 Five days ago: ${fiveDaysAgo.toISOString()}`);
     
     // Find inactive contacts (not seen in 5+ days)
     const inactiveContacts = await Contact.find({ 
       lastSeen: { $lte: fiveDaysAgo } 
-    });
+    }).limit(10); // Limit to 10 for testing
     
     console.log(`📊 Found ${inactiveContacts.length} inactive contacts`);
     
     if (inactiveContacts.length === 0) {
-      clearTimeout(timeout);
       return res.json({
         success: true,
         message: 'No inactive vendors found',
@@ -959,8 +968,13 @@ router.post('/send-reminder-to-all', async (req: Request, res: Response) => {
     let errorCount = 0;
     const errors: string[] = [];
     
-    for (const contact of inactiveContacts) {
+    // Process only first 5 contacts for testing
+    const contactsToProcess = inactiveContacts.slice(0, 5);
+    
+    for (const contact of contactsToProcess) {
       try {
+        console.log(`🔍 Processing contact: ${contact.phone}`);
+        
         // Check if this contact is a registered vendor
         const vendor = await User.findOne({ contactNumber: contact.phone });
         if (!vendor) {
@@ -968,6 +982,8 @@ router.post('/send-reminder-to-all', async (req: Request, res: Response) => {
           skippedCount++;
           continue;
         }
+        
+        console.log(`📱 Found vendor: ${vendor.name} (${contact.phone})`);
         
         // Check if reminder was sent in last 24 hours
         const lastSent = await SupportCallReminderLog.findOne({ 
@@ -997,7 +1013,7 @@ router.post('/send-reminder-to-all', async (req: Request, res: Response) => {
           }
           
           // Small delay to avoid rate limits
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise(resolve => setTimeout(resolve, 2000));
         } else {
           const hoursSinceLastSent = Math.floor((new Date().getTime() - lastSent.sentAt.getTime()) / (60 * 60 * 1000));
           console.log(`⏩ Skipping ${vendor.name} (${contact.phone}), sent ${hoursSinceLastSent}h ago`);
@@ -1013,7 +1029,6 @@ router.post('/send-reminder-to-all', async (req: Request, res: Response) => {
     
     console.log(`📊 Bulk reminder summary: ${sentCount} sent, ${skippedCount} skipped, ${errorCount} errors`);
     
-    clearTimeout(timeout);
     res.json({
       success: true,
       message: `Bulk reminder completed: ${sentCount} sent, ${skippedCount} skipped, ${errorCount} errors`,
@@ -1025,12 +1040,10 @@ router.post('/send-reminder-to-all', async (req: Request, res: Response) => {
     
   } catch (error) {
     console.error('❌ Error in bulk reminder send:', error);
-    if (!res.headersSent) {
-      res.status(500).json({ 
-        error: 'Failed to send bulk reminders',
-        details: error.message 
-      });
-    }
+    res.status(500).json({ 
+      error: 'Failed to send bulk reminders',
+      details: error.message 
+    });
   }
 });
 
