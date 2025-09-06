@@ -678,14 +678,14 @@ router.get('/inactive-vendors', async (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 50;
     const skip = (page - 1) * limit;
     
-    // Calculate date 5 days ago
-    const fiveDaysAgo = new Date();
-    fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+    // Calculate date 3 days ago
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
     
     // Use a much simpler approach - just get users who haven't been updated recently
     // This is more reliable and faster than checking individual messages
     const inactiveUsers = await User.find({
-      updatedAt: { $lt: fiveDaysAgo }
+      updatedAt: { $lt: threeDaysAgo }
     })
     .select('name contactNumber updatedAt')
     .sort({ updatedAt: -1 })
@@ -693,10 +693,10 @@ router.get('/inactive-vendors', async (req: Request, res: Response) => {
     .limit(limit);
     
     const total = await User.countDocuments({
-      updatedAt: { $lt: fiveDaysAgo }
+      updatedAt: { $lt: threeDaysAgo }
     });
     
-    console.log(`✅ Found ${inactiveUsers.length} inactive vendors (${total} total) - not updated in last 5 days`);
+    console.log(`✅ Found ${inactiveUsers.length} inactive vendors (${total} total) - not updated in last 3 days`);
     
     const vendors = inactiveUsers.map(user => ({
       _id: user._id,
@@ -729,13 +729,13 @@ router.get('/inactive-vendors-simple', async (req: Request, res: Response) => {
   try {
     console.log('📊 Fetching inactive vendors (simple version)...');
     
-    // Calculate date 5 days ago
-    const fiveDaysAgo = new Date();
-    fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+    // Calculate date 3 days ago
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
     
     // Get recent users who haven't been updated recently
     const inactiveUsers = await User.find({
-      updatedAt: { $lt: fiveDaysAgo }
+      updatedAt: { $lt: threeDaysAgo }
     })
     .select('name contactNumber updatedAt')
     .sort({ updatedAt: -1 })
