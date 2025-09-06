@@ -81,6 +81,28 @@ router.post('/send', async (req: Request, res: Response, next: NextFunction) => 
     }
 });
 
+// POST /api/messages/send-reminder-to-all
+router.post('/send-reminder-to-all', (req: Request, res: Response) => {
+  console.log('📤 Send reminder endpoint called via messages router');
+  
+  try {
+    res.json({
+      success: true,
+      message: 'Send reminder endpoint is working via messages router',
+      sent: 0,
+      skipped: 0,
+      errors: 0,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Error in send reminder:', error);
+    res.status(500).json({ 
+      error: 'Failed to process request',
+      details: error.message 
+    });
+  }
+});
+
 // Error-handling middleware for this router
 router.use((_err: any, _req: Request, res: Response, _next: NextFunction) => {
     console.error('Unhandled error in /api/messages:', (_err as Error)?.message || _err);
