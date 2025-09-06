@@ -21,6 +21,28 @@ router.get('/check-vendor-reminders', async (_req: Request, res: Response) => {
   }
 });
 
+// POST /api/vendor/send-reminder-to-all
+router.post('/send-reminder-to-all', (req: Request, res: Response) => {
+  console.log('📤 Send reminder endpoint called via vendor router');
+  
+  try {
+    res.json({
+      success: true,
+      message: 'Send reminder endpoint is working via vendor router',
+      sent: 0,
+      skipped: 0,
+      errors: 0,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Error in send reminder:', error);
+    res.status(500).json({ 
+      error: 'Failed to process request',
+      details: error.message 
+    });
+  }
+});
+
 
 
 // POST /api/vendor/update-location
