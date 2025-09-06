@@ -304,10 +304,14 @@ router.get('/:phone', async (req: Request, res: Response) => {
 // POST /api/messages/send-support-call - Send support call message to vendor
 router.post('/send-support-call', async (req: Request, res: Response) => {
     try {
+        console.log('📞 Support call endpoint called');
+        console.log('🔍 Request body:', req.body);
+        
         const { to, vendorName, template } = req.body;
 
         // Validate required fields
         if (!to || !vendorName) {
+            console.log('❌ Missing required fields:', { to: !!to, vendorName: !!vendorName });
             return res.status(400).json({ 
                 error: 'Missing required fields: to and vendorName are required' 
             });
@@ -315,13 +319,28 @@ router.post('/send-support-call', async (req: Request, res: Response) => {
 
         console.log(`📞 Sending support call message to ${vendorName} (${to})`);
 
+        // Check Meta credentials
+        const { areMetaCredentialsAvailable } = await import('../meta.js');
+        if (!areMetaCredentialsAvailable()) {
+            console.log('❌ Meta credentials not available');
+            return res.status(500).json({ 
+                error: 'Meta WhatsApp API credentials not configured' 
+            });
+        }
+
         // Send template message via Meta WhatsApp API
         const templateName = template || 'post_support_call_message_for_vendors_util';
+        console.log(`🔍 Using template: ${templateName}`);
+        
+        const { sendTemplateMessage } = await import('../meta.js');
         const result = await sendTemplateMessage(to, templateName);
 
         if (!result) {
+            console.log('❌ Failed to send template message - result is null');
             throw new Error('Failed to send template message');
         }
+
+        console.log('✅ Template message sent successfully:', result);
 
         // Save outbound message to MongoDB
         try {

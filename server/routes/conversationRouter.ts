@@ -75,15 +75,37 @@ router.post('/', (req: any, res: Response) => {
       'user-agent': req.get('user-agent')
     });
     
-    // Skip signature verification for now to test basic functionality
-    console.log('⚠️ Skipping signature verification for testing');
+    // Check if we have the required environment variables
+    if (!META_APP_SECRET) {
+      console.log('⚠️ META_APP_SECRET not set, skipping signature verification');
+      console.log('🔍 Environment check:', {
+        hasAppSecret: !!META_APP_SECRET,
+        hasAccessToken: !!process.env.META_ACCESS_TOKEN,
+        hasPhoneNumberId: !!process.env.META_PHONE_NUMBER_ID,
+        hasVerifyToken: !!process.env.META_VERIFY_TOKEN
+      });
+    } else {
+      // 1) Verify Meta signature using raw body
+      if (!verifyMetaSignature(req)) {
+        console.log('❌ Meta signature verification failed');
+        console.log('🔍 Signature verification details:', {
+          hasSignature: !!req.get('x-hub-signature-256'),
+          hasAppSecret: !!META_APP_SECRET,
+          bodyType: typeof req.body,
+          bodyLength: req.body?.length || 0,
+          signature: req.get('x-hub-signature-256')?.substring(0, 20) + '...'
+        });
+        return res.sendStatus(403);
+      }
+      console.log('✅ Meta signature verification successful');
+    }
     
-    // ACK Meta immediately (don't block Meta)
+    // 2) ACK Meta immediately (don't block Meta)
     const ackTime = Date.now() - startTime;
     console.log(`⚡ ACK sent in ${ackTime}ms`);
     res.status(200).send('OK');
     
-    // Parse and process AFTER responding
+    // 3) Parse and process AFTER responding
     let body;
     try {
       body = JSON.parse(req.body.toString('utf8'));
@@ -99,7 +121,7 @@ router.post('/', (req: any, res: Response) => {
       return; // Exit early if we can't parse the body
     }
     
-    // Offload work (setImmediate is the minimum)
+    // 4) Offload work (setImmediate is the minimum)
     setImmediate(() => handleInbound(body));
     
   } catch (error) {

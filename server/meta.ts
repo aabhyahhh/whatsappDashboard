@@ -146,8 +146,16 @@ export const MESSAGE_TEMPLATES = {
 
 // Helper function to send a template message
 export async function sendTemplateMessage(to: string, templateName: string, parameters: any[] = []) {
+  console.log(`🔍 sendTemplateMessage called with:`, { to, templateName, parameters });
+  
   if (!META_ACCESS_TOKEN || !META_PHONE_NUMBER_ID) {
     console.error('❌ Missing Meta WhatsApp credentials');
+    console.error('🔍 Credentials check:', {
+      hasAccessToken: !!META_ACCESS_TOKEN,
+      hasPhoneNumberId: !!META_PHONE_NUMBER_ID,
+      accessTokenLength: META_ACCESS_TOKEN?.length || 0,
+      phoneNumberId: META_PHONE_NUMBER_ID || 'NOT_SET'
+    });
     return null;
   }
 
@@ -155,12 +163,19 @@ export async function sendTemplateMessage(to: string, templateName: string, para
     const template = MESSAGE_TEMPLATES[templateName];
     if (!template) {
       console.error(`❌ Template ${templateName} not found`);
+      console.error('🔍 Available templates:', Object.keys(MESSAGE_TEMPLATES));
       return null;
     }
 
+    console.log(`🔍 Using template:`, template);
+
+    // Normalize phone number - remove + and ensure it's just digits
+    const normalizedTo = to.replace(/^\+/, '').replace(/\D/g, '');
+    console.log(`🔍 Normalized phone number: ${to} -> ${normalizedTo}`);
+
     const messageData = {
       messaging_product: 'whatsapp',
-      to: to,
+      to: normalizedTo,
       type: 'template',
       template: {
         name: template.name,
@@ -182,6 +197,9 @@ export async function sendTemplateMessage(to: string, templateName: string, para
       }
     };
 
+    console.log(`🔍 Sending message data:`, JSON.stringify(messageData, null, 2));
+    console.log(`🔍 API URL: ${META_API_BASE_URL}/messages`);
+
     const response = await axios.post(
       `${META_API_BASE_URL}/messages`,
       messageData,
@@ -193,10 +211,21 @@ export async function sendTemplateMessage(to: string, templateName: string, para
       }
     );
 
-    console.log(`✅ Sent template message ${templateName} to ${to}:`, response.data);
+    console.log(`✅ Sent template message ${templateName} to ${normalizedTo}:`, response.data);
     return response.data;
   } catch (error) {
     console.error(`❌ Failed to send template message ${templateName} to ${to}:`, error.response?.data || error.message);
+    console.error('🔍 Full error details:', {
+      message: error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      config: {
+        url: error.config?.url,
+        method: error.config?.method,
+        headers: error.config?.headers
+      }
+    });
     return null;
   }
 }
