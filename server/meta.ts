@@ -87,7 +87,7 @@ export const MESSAGE_TEMPLATES = {
   // Reply to loan with Aadhaar verification button
   reply_to_default_hi_loan_ready_to_verify_aadhar_or_not_util: {
     name: 'reply_to_default_hi_loan_ready_to_verify_aadhar_or_not_util',
-    language: 'hi',
+    language: 'en', // Changed from 'hi' to 'en' to match Meta configuration
     components: [
       {
         type: 'body',
@@ -110,7 +110,7 @@ export const MESSAGE_TEMPLATES = {
   // Reply to Aadhaar verification confirmation
   reply_to_yes_to_aadhar_verification_util: {
     name: 'reply_to_yes_to_aadhar_verification_util',
-    language: 'hi',
+    language: 'en', // Changed from 'hi' to 'en' to match Meta configuration
     components: [
       {
         type: 'body',
@@ -134,7 +134,7 @@ export const MESSAGE_TEMPLATES = {
   // Post support call message for vendors
   post_support_call_message_for_vendors_util: {
     name: 'post_support_call_message_for_vendors_util',
-    language: 'hi',
+    language: 'en', // Changed from 'hi' to 'en' to match Meta configuration
     components: [
       {
         type: 'body',

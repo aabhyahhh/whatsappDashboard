@@ -38,7 +38,7 @@ async function testSendSupportCall() {
       }),
     });
     
-    const result = await response.json();
+    const result = await response.json() as { success?: boolean; error?: string; message?: string };
     
     console.log(`📊 Response status: ${response.status}`);
     console.log(`📄 Response body:`, JSON.stringify(result, null, 2));
@@ -75,7 +75,7 @@ async function testMissingFields() {
       }),
     });
     
-    const result = await response.json();
+    const result = await response.json() as { success?: boolean; error?: string; message?: string };
     
     console.log(`📊 Response status: ${response.status}`);
     console.log(`📄 Response body:`, JSON.stringify(result, null, 2));
@@ -113,7 +113,7 @@ async function testWithoutAuth() {
       }),
     });
     
-    const result = await response.json();
+    const result = await response.json() as { success?: boolean; error?: string; message?: string };
     
     console.log(`📊 Response status: ${response.status}`);
     console.log(`📄 Response body:`, JSON.stringify(result, null, 2));
