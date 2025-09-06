@@ -30,14 +30,11 @@ async function testAadhaarButtonFix() {
                     id: 'wamid.test_button_response_' + Date.now(),
                     from: '918130026321',
                     timestamp: Math.floor(Date.now() / 1000).toString(),
-                    interactive: {
-                      type: 'button_reply',
-                      button_reply: {
-                        id: 'yes_verify_aadhar',
-                        title: "Yes, I'll very Aadhar"
-                      }
+                    button: {
+                      id: 'yes_verify_aadhar',
+                      title: "Yes, I'll very Aadhar"
                     },
-                    type: 'interactive'
+                    type: 'button'
                   }
                 ]
               },
@@ -49,7 +46,7 @@ async function testAadhaarButtonFix() {
     };
     
     console.log('\n📤 Sending button response payload...');
-    console.log('🔍 Button details:', buttonPayload.entry[0].changes[0].value.messages[0].interactive.button_reply);
+    console.log('🔍 Button details:', buttonPayload.entry[0].changes[0].value.messages[0].button);
     
     const response = await axios.post(webhookUrl, buttonPayload, {
       headers: {

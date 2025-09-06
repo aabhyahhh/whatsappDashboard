@@ -339,10 +339,17 @@ async function processInboundMessage(message: any) {
       }
     }
     
-    // Handle button clicks
-    if (type === 'interactive' && button) {
-      console.log(`🔘 Button click from ${fromE164}: ${button.id} - ${button.title}`);
-      await handleButtonClick(fromWaId, fromE164, button);
+    // Handle button clicks for both interactive and button types
+    const hasInteractiveBtn = type === 'interactive' && interactive?.button_reply;
+    const hasLegacyBtn = type === 'button' && button;
+
+    if (hasInteractiveBtn || hasLegacyBtn) {
+      const btn = hasInteractiveBtn
+        ? { id: interactive.button_reply.id, title: interactive.button_reply.title }
+        : { id: button.id, title: button.title || button.text }; // some payloads use .text
+
+      console.log(`🔘 Button click from ${fromE164}: ${btn.id} - ${btn.title}`);
+      await handleButtonClick(fromWaId, fromE164, btn);
     }
     
     console.log(`✅ Processed message from ${fromE164}`);

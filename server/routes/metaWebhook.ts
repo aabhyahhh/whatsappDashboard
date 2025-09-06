@@ -7,6 +7,9 @@ import { sendTemplateMessage, sendTextMessage, sendInteractiveMessage, verifyWeb
 
 const router = Router();
 
+// Phone number normalizer to ensure E.164 format
+const toE164 = (waId: string) => (waId.startsWith('+') ? waId : `+${waId}`);
+
 // Webhook verification endpoint
 router.get('/', (req, res) => {
   const mode = req.query['hub.mode'] as string;
@@ -84,11 +87,14 @@ async function processIncomingMessage(message: any) {
     await savedMessage.save();
     console.log('✅ Saved inbound message:', savedMessage._id);
 
+    // Normalize phone number to E.164 format
+    const phoneE164 = toE164(from);
+
     // Update contact
     await Contact.findOneAndUpdate(
-      { phone: from },
+      { phone: phoneE164 },
       {
-        phone: from,
+        phone: phoneE164,
         lastSeen: new Date(),
         updatedAt: new Date()
       },
@@ -102,10 +108,17 @@ async function processIncomingMessage(message: any) {
     // Handle different message types
     if (type === 'text' && text) {
       await handleTextMessage(from, text);
-    } else if (type === 'interactive' && button) {
-      await handleButtonResponse(from, button);
     } else if (type === 'location') {
       await handleLocationMessage(from, message);
+    }
+
+    // Handle button clicks for both interactive and button types
+    if ((type === 'interactive' && (button || interactive?.button_reply)) || type === 'button') {
+      const btn = type === 'interactive' && interactive?.button_reply
+        ? { id: interactive.button_reply.id, title: interactive.button_reply.title }
+        : { id: button.id, title: button.title || button.text };
+
+      await handleButtonResponse(from, btn);
     }
 
   } catch (error) {
@@ -174,10 +187,11 @@ async function handleTextMessage(from: string, text: string) {
     
     // Log the loan reply
     try {
-      const userNumbers = [from];
-      if (from.startsWith('+91')) userNumbers.push(from.replace('+91', '91'));
-      if (from.startsWith('+')) userNumbers.push(from.substring(1));
-      userNumbers.push(from.slice(-10));
+      const phoneE164 = toE164(from);
+      const userNumbers = [phoneE164];
+      if (phoneE164.startsWith('+91')) userNumbers.push(phoneE164.replace('+91', '91'));
+      if (phoneE164.startsWith('+')) userNumbers.push(phoneE164.substring(1));
+      userNumbers.push(phoneE164.slice(-10));
       
       // Find user/vendor name
       let vendorName = '';
@@ -190,18 +204,18 @@ async function handleTextMessage(from: string, text: string) {
       const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
       const LoanReplyLogModel = (await import('../models/LoanReplyLog.js')).default;
       const existingLog = await LoanReplyLogModel.findOne({
-        contactNumber: from,
+        contactNumber: phoneE164,
         timestamp: { $gte: oneMinuteAgo }
       });
       
       if (!existingLog) {
         await LoanReplyLogModel.create({
           vendorName: vendorName || 'Unknown',
-          contactNumber: from,
+          contactNumber: phoneE164,
           timestamp: new Date(),
           aadharVerified: (user as any)?.aadharVerified ? true : false
         });
-        console.log(`✅ Logged loan reply from ${vendorName || 'Unknown'} (${from})`);
+        console.log(`✅ Logged loan reply from ${vendorName || 'Unknown'} (${phoneE164})`);
       }
     } catch (err) {
       console.error('❌ Failed to log loan reply:', err);
@@ -261,13 +275,14 @@ async function handleTextMessage(from: string, text: string) {
         
         // Update LoanReplyLog entry to show Aadhaar verification
         try {
+          const phoneE164 = toE164(from);
           const LoanReplyLogModel = (await import('../models/LoanReplyLog.js')).default;
           await LoanReplyLogModel.findOneAndUpdate(
-            { contactNumber: from },
+            { contactNumber: phoneE164 },
             { aadharVerified: true },
             { new: true }
           );
-          console.log(`✅ Updated LoanReplyLog Aadhaar verification status for ${from}`);
+          console.log(`✅ Updated LoanReplyLog Aadhaar verification status for ${phoneE164}`);
         } catch (logErr) {
           console.error('❌ Failed to update LoanReplyLog Aadhaar verification status:', logErr);
         }
@@ -402,13 +417,14 @@ async function handleButtonResponse(from: string, button: any) {
         
         // Update LoanReplyLog entry to show Aadhaar verification
         try {
+          const phoneE164 = toE164(from);
           const LoanReplyLogModel = (await import('../models/LoanReplyLog.js')).default;
           await LoanReplyLogModel.findOneAndUpdate(
-            { contactNumber: from },
+            { contactNumber: phoneE164 },
             { aadharVerified: true },
             { new: true }
           );
-          console.log(`✅ Updated LoanReplyLog Aadhaar verification status for ${from}`);
+          console.log(`✅ Updated LoanReplyLog Aadhaar verification status for ${phoneE164}`);
         } catch (logErr) {
           console.error('❌ Failed to update LoanReplyLog Aadhaar verification status:', logErr);
         }
