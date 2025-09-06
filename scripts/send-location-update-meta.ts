@@ -10,7 +10,7 @@ async function sendLocationUpdateToAllVendors() {
     
     // Get all users with valid contact numbers
     const allUsers = await User.find({ 
-      contactNumber: { $exists: true, $ne: null, $ne: '' }
+      contactNumber: { $exists: true, $nin: [null, ''] }
     }).select('name contactNumber _id').lean();
     
     // Filter out users with invalid phone numbers
@@ -31,13 +31,13 @@ async function sendLocationUpdateToAllVendors() {
     // Send location update messages to all vendors
     let successCount = 0;
     let errorCount = 0;
-    const errors = [];
+    const errors: string[] = [];
     
     for (const vendor of validVendors) {
       try {
         console.log(`📤 Sending location update to ${vendor.name} (${vendor.contactNumber})...`);
         
-        const result = await sendTemplateMessage(vendor.contactNumber, 'update_location_cron');
+        const result = await sendTemplateMessage(vendor.contactNumber, 'update_location_cron_util');
         
         if (result) {
           console.log(`✅ Sent location update to ${vendor.name} (${vendor.contactNumber})`);

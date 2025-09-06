@@ -2,6 +2,7 @@ import schedule from 'node-schedule';
 import mongoose from 'mongoose';
 import { Contact } from '../models/Contact.js';
 import { User } from '../models/User.js';
+import { Message } from '../models/Message.js';
 import { sendTemplateMessage } from '../meta.js';
 import SupportCallReminderLog from '../models/SupportCallReminderLog.js';
 
@@ -85,6 +86,20 @@ schedule.scheduleJob('0 10 * * *', async () => {
         const sent = await sendInactiveVendorSupportPrompt(contact.phone, vendorName);
         
         if (sent) {
+          // Save the message to database
+          await Message.create({
+            from: process.env.META_PHONE_NUMBER_ID,
+            to: contact.phone,
+            body: 'Template: inactive_vendors_support_prompt_util',
+            direction: 'outbound',
+            timestamp: new Date(),
+            meta: {
+              reminderType: 'support_prompt',
+              vendorName: vendorName,
+              template: 'inactive_vendors_support_prompt_util'
+            }
+          });
+          
           await SupportCallReminderLog.create({ 
             contactNumber: contact.phone,
             sentAt: new Date()

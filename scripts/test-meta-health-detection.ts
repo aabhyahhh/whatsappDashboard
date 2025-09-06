@@ -1,22 +1,30 @@
-import { Router } from 'express';
-import { Message } from '../models/Message.js';
-import { User } from '../models/User.js';
-import SupportCallLog from '../models/SupportCallLog.js';
-import LoanReplyLog from '../models/LoanReplyLog.js';
-import SupportCallReminderLog from '../models/SupportCallReminderLog.js';
+import mongoose from 'mongoose';
+import { Message } from '../server/models/Message.js';
+import { User } from '../server/models/User.js';
+import SupportCallReminderLog from '../server/models/SupportCallReminderLog.js';
+import 'dotenv/config';
 
-const router = Router();
+const MONGO_URI = process.env.MONGODB_URI;
 
-// Meta WhatsApp message health endpoint
-router.get('/meta-health', async (req, res) => {
+async function testMetaHealthDetection() {
   try {
+    await mongoose.connect(MONGO_URI);
+    console.log('✅ Connected to MongoDB');
+    
+    console.log('\n🧪 TESTING META HEALTH DETECTION LOGIC');
+    console.log('=====================================');
+    
     const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+    console.log(`📅 48 hours ago: ${fortyEightHoursAgo.toLocaleString()}`);
     
     // Get all outbound messages in the last 48 hours
     const outboundMessages = await Message.find({
       direction: 'outbound',
       timestamp: { $gte: fortyEightHoursAgo }
     }).sort({ timestamp: -1 });
+    
+    console.log(`📊 Total outbound messages (48h): ${outboundMessages.length}`);
+    console.log(`📱 META_PHONE_NUMBER_ID: ${process.env.META_PHONE_NUMBER_ID}`);
     
     // Define Meta message types with multiple detection patterns
     const metaMessageTypes = {
@@ -44,17 +52,12 @@ router.get('/meta-health', async (req, res) => {
         bodyPatterns: ['Loan support response sent', 'reply_to_default_hi_loan_ready_to_verify_aadhar_or_not_util'],
         metaPatterns: ['loan_response', 'reply_to_default_hi_loan_ready_to_verify_aadhar_or_not'],
         templateNames: ['reply_to_default_hi_loan_ready_to_verify_aadhar_or_not_util']
-      },
-      'Meta Welcome Message': {
-        bodyPatterns: ['welcome_message_for_onboarding_util'],
-        metaPatterns: ['welcome_message_for_onboarding'],
-        templateNames: ['welcome_message_for_onboarding_util']
       }
     };
     
     // Categorize Meta messages
-    const metaCategorizedMessages = {};
-    const metaUnknownMessages = [];
+    const metaCategorizedMessages: any = {};
+    const metaUnknownMessages: any[] = [];
     
     for (const message of outboundMessages) {
       let categorized = false;
@@ -112,15 +115,6 @@ router.get('/meta-health', async (req, res) => {
       }
     }
     
-    // Get Meta-specific logs
-    const metaSupportCallLogs = await SupportCallLog.find({
-      timestamp: { $gte: fortyEightHoursAgo }
-    }).sort({ timestamp: -1 });
-    
-    const metaLoanReplyLogs = await LoanReplyLog.find({
-      timestamp: { $gte: fortyEightHoursAgo }
-    }).sort({ timestamp: -1 });
-    
     // Get support call reminder logs
     const metaSupportReminderLogs = await SupportCallReminderLog.find({
       sentAt: { $gte: fortyEightHoursAgo }
@@ -142,85 +136,56 @@ router.get('/meta-health', async (req, res) => {
       }
     }
     
-    // Calculate Meta statistics
-    const metaStats = {
-      totalMetaMessages: Object.values(metaCategorizedMessages).reduce((sum, messages: any) => sum + messages.length, 0),
-      totalSupportCalls: metaSupportCallLogs.length,
-      totalLoanReplies: metaLoanReplyLogs.length,
-      totalSupportReminders: metaSupportReminderLogs.length,
-      messageTypes: Object.keys(metaCategorizedMessages).map(type => ({
-        type,
-        count: metaCategorizedMessages[type]?.length || 0
-      })),
-      unknownMessagesCount: metaUnknownMessages.length
-    };
+    // Display results
+    console.log('\n📊 CATEGORIZED MESSAGES:');
+    console.log('========================');
     
-    res.json({
-      stats: metaStats,
-      categorizedMessages: metaCategorizedMessages,
-      unknownMessages: metaUnknownMessages.slice(0, 10),
-      supportCallLogs: metaSupportCallLogs.slice(0, 10),
-      loanReplyLogs: metaLoanReplyLogs.slice(0, 10),
-      supportReminderLogs: metaSupportReminderLogs.slice(0, 10),
-      timeRange: {
-        from: fortyEightHoursAgo,
-        to: new Date()
-      }
-    });
-    
-  } catch (error) {
-    console.error('Error fetching Meta message health data:', error);
-    res.status(500).json({ error: 'Failed to fetch Meta message health data' });
-  }
-});
-
-// Meta support calls endpoint
-router.get('/meta-support-calls', async (req, res) => {
-  try {
-    const supportCalls = await SupportCallLog.find({}).sort({ timestamp: -1 });
-    res.json(supportCalls);
-  } catch (error) {
-    console.error('Error fetching Meta support calls:', error);
-    res.status(500).json({ error: 'Failed to fetch Meta support calls' });
-  }
-});
-
-// Meta loan replies endpoint
-router.get('/meta-loan-replies', async (req, res) => {
-  try {
-    const loanReplies = await LoanReplyLog.find({}).sort({ timestamp: -1 });
-    res.json(loanReplies);
-  } catch (error) {
-    console.error('Error fetching Meta loan replies:', error);
-    res.status(500).json({ error: 'Failed to fetch Meta loan replies' });
-  }
-});
-
-// Complete Meta support call
-router.patch('/meta-support-calls/:id/complete', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { completedBy } = req.body;
-    
-    const supportCall = await SupportCallLog.findByIdAndUpdate(
-      id,
-      {
-        completed: true,
-        completedBy: completedBy || 'Unknown',
-        completedAt: new Date()
-      },
-      { new: true }
-    );
-    
-    if (!supportCall) {
-      return res.status(404).json({ error: 'Support call not found' });
+    for (const [type, messages] of Object.entries(metaCategorizedMessages)) {
+      console.log(`\n${type}: ${(messages as any[]).length} messages`);
+      (messages as any[]).slice(0, 5).forEach((msg, i) => {
+        console.log(`  ${i + 1}. To: ${msg.to} (${msg.vendorName})`);
+        console.log(`     Time: ${msg.timestamp.toLocaleString()}`);
+        console.log(`     Body: "${msg.body}"`);
+        if (msg.meta?.reminderType) {
+          console.log(`     Reminder Type: ${msg.meta.reminderType}`);
+        }
+        console.log('');
+      });
     }
     
-    res.json(supportCall);
+    console.log(`\n📞 SUPPORT REMINDER LOGS (48h): ${metaSupportReminderLogs.length}`);
+    console.log('==========================================');
+    metaSupportReminderLogs.slice(0, 10).forEach((log, i) => {
+      console.log(`${i + 1}. ${log.contactNumber} - ${log.sentAt.toLocaleString()}`);
+    });
+    
+    console.log(`\n❓ UNKNOWN MESSAGES: ${metaUnknownMessages.length}`);
+    console.log('=============================');
+    metaUnknownMessages.slice(0, 5).forEach((msg, i) => {
+      console.log(`${i + 1}. To: ${msg.to}`);
+      console.log(`   Body: "${msg.body}"`);
+      console.log(`   Meta: ${JSON.stringify(msg.meta)}`);
+      console.log('');
+    });
+    
+    // Summary
+    const totalCategorized = Object.values(metaCategorizedMessages).reduce((sum: number, messages: any) => sum + messages.length, 0);
+    console.log('\n📊 SUMMARY:');
+    console.log('===========');
+    console.log(`- Total outbound messages: ${outboundMessages.length}`);
+    console.log(`- Categorized messages: ${totalCategorized}`);
+    console.log(`- Unknown messages: ${metaUnknownMessages.length}`);
+    console.log(`- Support reminder logs: ${metaSupportReminderLogs.length}`);
+    
+    console.log('\n✅ Test completed successfully!');
+    
   } catch (error) {
-    console.error('Error completing Meta support call:', error);
-    res.status(500).json({ error: 'Failed to complete Meta support call' });
+    console.error('❌ Test failed:', error);
+  } finally {
+    await mongoose.disconnect();
+    console.log('📡 Disconnected from MongoDB');
   }
-});
+}
 
-export default router;
+// Run the test
+testMetaHealthDetection().catch(console.error);

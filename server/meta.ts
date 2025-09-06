@@ -38,7 +38,7 @@ export function areMetaCredentialsAvailable(): boolean {
 export const MESSAGE_TEMPLATES = {
   // Location update message (sent 15 mins before openTime and at openTime)
   update_location_cron: {
-    name: 'update_location_cron',
+    name: 'update_location_cron_util',
     language: 'hi',
     components: [
       {

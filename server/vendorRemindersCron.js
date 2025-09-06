@@ -5,7 +5,7 @@ import { Message } from './models/Message.js';
 import { User } from './models/User.js';
 import { sendTemplateMessage, areMetaCredentialsAvailable } from './meta.js';
 
-const TEMPLATE_NAME = 'update_location_cron';
+const TEMPLATE_NAME = 'update_location_cron_util';
 
 // Validate required environment variables
 if (!process.env.META_ACCESS_TOKEN || !process.env.META_PHONE_NUMBER_ID) {

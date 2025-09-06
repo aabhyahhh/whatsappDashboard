@@ -149,7 +149,7 @@ async function testCompleteMetaFlow() {
     console.log('Sending location update message...');
     
     // Send location update message
-    const locationResult = await sendTemplateMessage(testPhoneNumber, 'update_location_cron');
+    const locationResult = await sendTemplateMessage(testPhoneNumber, 'update_location_cron_util');
     if (locationResult) {
       console.log('✅ Location update message sent successfully');
     }

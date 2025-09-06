@@ -782,7 +782,7 @@ router.get('/message-health', async (req: Request, res: Response) => {
     
     // Define Meta message types with multiple possible patterns
     const metaMessageTypes = {
-      'Meta Location Update': ['update_location_cron', 'Template: update_location_cron'],
+      'Meta Location Update': ['update_location_cron_util', 'Template: update_location_cron_util'],
       'Meta Support Prompt': ['inactive_vendors_support_prompt_util', 'Template: inactive_vendors_support_prompt_util'],
       'Meta Support Confirmation': ['inactive_vendors_reply_to_yes_support_call_util', 'Template: inactive_vendors_reply_to_yes_support_call_util'],
       'Meta Greeting Response': ['default_hi_and_loan_prompt', 'Template: default_hi_and_loan_prompt'],
@@ -805,7 +805,7 @@ router.get('/message-health', async (req: Request, res: Response) => {
           (message.meta && message.meta.type && message.meta.type.includes('meta'))) {
         
         // Special case for location update messages
-        if (message.body?.includes('update_location_cron') || 
+        if (message.body?.includes('update_location_cron_util') || 
             (message.meta && message.meta.reminderType && message.meta.reminderType.includes('location'))) {
           if (!metaCategorizedMessages['Meta Location Update']) {
             metaCategorizedMessages['Meta Location Update'] = [];
