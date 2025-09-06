@@ -682,41 +682,28 @@ router.get('/inactive-vendors', async (req: Request, res: Response) => {
     // Calculate date 5 days ago (updated threshold)
     const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
     
-    // Find inactive contacts (not seen in 5+ days)
-    const inactiveContacts = await Contact.find({
+    // First, get all inactive contacts
+    const allInactiveContacts = await Contact.find({
       $or: [
         { lastSeen: { $lte: fiveDaysAgo } },
         { lastSeen: { $exists: false } }
       ]
-    })
-    .select('phone lastSeen createdAt')
-    .sort({ lastSeen: -1 })
-    .skip(skip)
-    .limit(limit);
+    }).select('phone lastSeen createdAt').lean();
     
-    const total = await Contact.countDocuments({
-      $or: [
-        { lastSeen: { $lte: fiveDaysAgo } },
-        { lastSeen: { $exists: false } }
-      ]
-    });
-    
-    console.log(`✅ Found ${inactiveContacts.length} inactive contacts (${total} total) - not seen in last 5 days`);
-    
-    // Get vendor names for these contacts
-    const phoneNumbers = inactiveContacts.map(contact => contact.phone);
-    const phoneVariations = phoneNumbers.flatMap(phone => {
+    // Get vendor names for ALL inactive contacts
+    const allPhoneNumbers = allInactiveContacts.map(contact => contact.phone);
+    const allPhoneVariations = allPhoneNumbers.flatMap(phone => {
       const normalized = phone.replace(/^\+91/, '').replace(/^91/, '').replace(/\D/g, '');
       return [phone, '+91' + normalized, '91' + normalized, normalized];
     });
     
-    const vendors = await User.find({
-      contactNumber: { $in: phoneVariations }
+    const allVendors = await User.find({
+      contactNumber: { $in: allPhoneVariations }
     }).select('name contactNumber').lean();
     
     // Create vendor lookup map
     const vendorMap = new Map();
-    vendors.forEach(vendor => {
+    allVendors.forEach(vendor => {
       const normalized = vendor.contactNumber.replace(/^\+91/, '').replace(/^91/, '').replace(/\D/g, '');
       vendorMap.set(vendor.contactNumber, vendor);
       vendorMap.set('+91' + normalized, vendor);
@@ -724,8 +711,19 @@ router.get('/inactive-vendors', async (req: Request, res: Response) => {
       vendorMap.set(normalized, vendor);
     });
     
+    // Filter to only include contacts that are registered vendors
+    const inactiveVendorContacts = allInactiveContacts.filter(contact => {
+      return vendorMap.has(contact.phone);
+    });
+    
+    // Apply pagination to the filtered results
+    const total = inactiveVendorContacts.length;
+    const paginatedContacts = inactiveVendorContacts.slice(skip, skip + limit);
+    
+    console.log(`✅ Found ${paginatedContacts.length} inactive vendor contacts (${total} total registered vendors) - not seen in last 5 days`);
+    
     // Map contacts with vendor information
-    const inactiveVendors = inactiveContacts.map(contact => {
+    const inactiveVendors = paginatedContacts.map(contact => {
       const vendor = vendorMap.get(contact.phone);
       const daysInactive = contact.lastSeen 
         ? Math.floor((Date.now() - new Date(contact.lastSeen).getTime()) / (1000 * 60 * 60 * 24))
