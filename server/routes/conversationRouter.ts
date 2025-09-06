@@ -484,6 +484,7 @@ async function handleButtonClick(fromWaId: string, fromE164: string, button: any
     if (id === 'yes_verify_aadhar' || 
         title === 'Yes, I will verify Aadhar' || 
         title === "Yes, I'll verify Aadhar" ||
+        title === "Yes, I'll very Aadhar" ||
         title === 'Yes, I will verify Aadhaar' ||
         title === "Yes, I'll verify Aadhaar" ||
         (title && /yes.*verify.*aadha?r/i.test(title))) {

@@ -28,6 +28,7 @@
     "test:coordinate-validation": "tsx scripts/test-coordinate-validation.ts",
     "test:webhook-response": "tsx scripts/test-webhook-response.ts",
     "test:aadhaar-verification": "tsx scripts/test-aadhaar-verification.ts",
+    "test:aadhaar-button-fix": "tsx scripts/test-aadhaar-button-fix.ts",
     "test:cors": "tsx scripts/test-cors.ts",
     "test:aadhaar-tick-mark": "tsx scripts/test-aadhaar-tick-mark.ts",
     "update-loan-reply-aadhaar": "tsx scripts/update-loan-reply-aadhaar-status.ts",

@@ -257,7 +257,13 @@ async function handleButtonConversation(from: string, button: any) {
   
   console.log(`🔘 Button conversation: ${id} - ${title}`);
   
-  if (id === 'yes_verify_aadhar' || title === 'Yes, I will verify Aadhar') {
+  if (id === 'yes_verify_aadhar' || 
+      title === 'Yes, I will verify Aadhar' || 
+      title === "Yes, I'll verify Aadhar" ||
+      title === "Yes, I'll very Aadhar" ||
+      title === 'Yes, I will verify Aadhaar' ||
+      title === "Yes, I'll verify Aadhaar" ||
+      (title && /yes.*verify.*aadha?r/i.test(title))) {
     await handleAadhaarVerificationButton(from);
   } else if (id === 'yes_support') {
     await handleSupportRequestButton(from);
