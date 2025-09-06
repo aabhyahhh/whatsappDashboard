@@ -48,7 +48,7 @@ export const MESSAGE_TEMPLATES = {
     ]
   },
   
-  // Inactive vendors support prompt (sent to vendors inactive for 3+ days)
+  // Inactive vendors support prompt (sent to vendors inactive for 5+ days)
   inactive_vendors_support_prompt_util: {
     name: 'inactive_vendors_support_prompt_util',
     language: 'hi',

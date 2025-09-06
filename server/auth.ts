@@ -48,12 +48,14 @@ app.use(cors({
       'https://www.admin.laarikhojo.in'
     ];
     
-    // In development, allow all localhost origins
-    if (process.env.NODE_ENV === 'development' && origin.includes('localhost')) {
+    // Always allow localhost origins (both development and production)
+    if (origin.includes('localhost')) {
+      console.log('✅ CORS allowing localhost origin:', origin);
       return callback(null, true);
     }
     
     if (allowedOrigins.indexOf(origin) !== -1) {
+      console.log('✅ CORS allowing origin:', origin);
       callback(null, true);
     } else {
       console.log('🚫 CORS blocked origin:', origin);
@@ -88,10 +90,12 @@ app.use((req, res, next) => {
       'https://www.admin.laarikhojo.in'
     ];
     
-    // In development, allow all localhost origins
-    if (process.env.NODE_ENV === 'development' && origin.includes('localhost')) {
+    // Always allow localhost origins (both development and production)
+    if (origin.includes('localhost')) {
+      console.log('✅ CORS middleware allowing localhost origin:', origin);
       res.header('Access-Control-Allow-Origin', origin);
     } else if (allowedOrigins.includes(origin)) {
+      console.log('✅ CORS middleware allowing origin:', origin);
       res.header('Access-Control-Allow-Origin', origin);
     } else {
       console.log('🚫 CORS blocked origin in middleware:', origin);

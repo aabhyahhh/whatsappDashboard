@@ -43,12 +43,12 @@ schedule.scheduleJob('0 10 * * *', async () => {
     return;
   }
   
-  const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
-  console.log(`📅 Three days ago: ${threeDaysAgo.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`);
+  const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
+  console.log(`📅 Five days ago: ${fiveDaysAgo.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`);
   
   try {
-    // Find contacts not seen in 3+ days
-    const inactiveContacts = await Contact.find({ lastSeen: { $lte: threeDaysAgo } });
+    // Find contacts not seen in 5+ days
+    const inactiveContacts = await Contact.find({ lastSeen: { $lte: fiveDaysAgo } });
     console.log(`📊 Found ${inactiveContacts.length} inactive contacts`);
     
     if (inactiveContacts.length === 0) {
@@ -113,5 +113,5 @@ schedule.scheduleJob('0 10 * * *', async () => {
 });
 
 console.log('✅ Support call reminder scheduler started (runs daily at 10:00 AM IST)');
-console.log('📋 Scheduler will send reminders to vendors inactive for 3+ days');
+console.log('📋 Scheduler will send reminders to vendors inactive for 5+ days');
 console.log('🔧 Template ID:', SUPPORT_TEMPLATE_ID); 

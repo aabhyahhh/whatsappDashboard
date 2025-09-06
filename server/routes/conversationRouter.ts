@@ -780,14 +780,17 @@ router.get('/message-health', async (req: Request, res: Response) => {
       timestamp: { $gte: fortyEightHoursAgo }
     }).sort({ timestamp: -1 });
     
-    // Define Meta message types
+    // Define Meta message types with multiple possible patterns
     const metaMessageTypes = {
-      'Meta Location Update': 'update_location_cron',
-      'Meta Support Prompt': 'inactive_vendors_support_prompt_util',
-      'Meta Support Confirmation': 'inactive_vendors_reply_to_yes_support_call_util',
-      'Meta Greeting Response': 'default_hi_and_loan_prompt',
-      'Meta Loan Prompt': 'reply_to_default_hi_loan_ready_to_verify_aadhar_or_not_util',
-      'Meta Welcome Message': 'welcome_message_for_onboarding_util'
+      'Meta Location Update': ['update_location_cron', 'Template: update_location_cron'],
+      'Meta Support Prompt': ['inactive_vendors_support_prompt_util', 'Template: inactive_vendors_support_prompt_util'],
+      'Meta Support Confirmation': ['inactive_vendors_reply_to_yes_support_call_util', 'Template: inactive_vendors_reply_to_yes_support_call_util'],
+      'Meta Greeting Response': ['default_hi_and_loan_prompt', 'Template: default_hi_and_loan_prompt'],
+      'Meta Loan Prompt': ['reply_to_default_hi_loan_ready_to_verify_aadhar_or_not_util', 'Template: reply_to_default_hi_loan_ready_to_verify_aadhar_or_not_util'],
+      'Meta Welcome Message': ['welcome_message_for_onboarding_util', 'Template: welcome_message_for_onboarding_util'],
+      'Meta Support Call': ['Support call message sent to'],
+      'Meta Loan Support': ['Loan support response sent'],
+      'Meta Aadhaar Verification': ['Aadhaar verification confirmation sent']
     };
     
     // Categorize Meta messages
@@ -801,21 +804,41 @@ router.get('/message-health', async (req: Request, res: Response) => {
       if (message.from === process.env.META_PHONE_NUMBER_ID || 
           (message.meta && message.meta.type && message.meta.type.includes('meta'))) {
         
-        // Check message body for template names
-        for (const [type, templateName] of Object.entries(metaMessageTypes)) {
-          if (message.body === templateName || 
-              (message.meta && message.meta.template === templateName)) {
-            if (!metaCategorizedMessages[type]) {
-              metaCategorizedMessages[type] = [];
+        // Special case for location update messages
+        if (message.body?.includes('update_location_cron') || 
+            (message.meta && message.meta.reminderType && message.meta.reminderType.includes('location'))) {
+          if (!metaCategorizedMessages['Meta Location Update']) {
+            metaCategorizedMessages['Meta Location Update'] = [];
+          }
+          metaCategorizedMessages['Meta Location Update'].push({
+            to: message.to,
+            timestamp: message.timestamp,
+            body: message.body,
+            meta: message.meta
+          });
+          categorized = true;
+        } else {
+          // Check message body for other template names
+          for (const [type, templateNames] of Object.entries(metaMessageTypes)) {
+            const isMatch = templateNames.some(templateName => 
+              message.body === templateName || 
+              message.body?.includes(templateName) ||
+              (message.meta && message.meta.template === templateName)
+            );
+            
+            if (isMatch) {
+              if (!metaCategorizedMessages[type]) {
+                metaCategorizedMessages[type] = [];
+              }
+              metaCategorizedMessages[type].push({
+                to: message.to,
+                timestamp: message.timestamp,
+                body: message.body,
+                meta: message.meta
+              });
+              categorized = true;
+              break;
             }
-            metaCategorizedMessages[type].push({
-              to: message.to,
-              timestamp: message.timestamp,
-              body: message.body,
-              meta: message.meta
-            });
-            categorized = true;
-            break;
           }
         }
         
@@ -853,12 +876,30 @@ router.get('/message-health', async (req: Request, res: Response) => {
     
     console.log(`✅ Found ${metaStats.totalMetaMessages} Meta messages, ${metaStats.totalSupportCalls} support calls, ${metaStats.totalLoanReplies} loan replies`);
     
+    // Format support call logs for display
+    const formattedSupportCallLogs = metaSupportCallLogs.map(log => ({
+      vendorName: log.vendorName,
+      contactNumber: log.contactNumber,
+      timestamp: log.timestamp,
+      completed: log.completed,
+      completedBy: log.completedBy,
+      completedAt: log.completedAt
+    }));
+    
+    // Format loan reply logs for display
+    const formattedLoanReplyLogs = metaLoanReplyLogs.map(log => ({
+      vendorName: log.vendorName,
+      contactNumber: log.contactNumber,
+      timestamp: log.timestamp,
+      aadharVerified: log.aadharVerified
+    }));
+    
     res.json({
       stats: metaStats,
       categorizedMessages: metaCategorizedMessages,
       unknownMessages: metaUnknownMessages.slice(0, 10),
-      supportCallLogs: metaSupportCallLogs.slice(0, 10),
-      loanReplyLogs: metaLoanReplyLogs.slice(0, 10),
+      supportCallLogs: formattedSupportCallLogs.slice(0, 10),
+      loanReplyLogs: formattedLoanReplyLogs.slice(0, 10),
       timeRange: {
         from: fortyEightHoursAgo,
         to: new Date()
