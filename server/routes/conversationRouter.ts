@@ -668,17 +668,9 @@ router.get('/support-calls', async (req: Request, res: Response) => {
 });
 
 /**
- * GET: Inactive vendors endpoint
+ * GET: Inactive vendors endpoint (optimized for production)
  */
 router.get('/inactive-vendors', async (req: Request, res: Response) => {
-  // Set a timeout to prevent hanging requests
-  const timeout = setTimeout(() => {
-    if (!res.headersSent) {
-      console.log('⏰ Inactive vendors request timeout');
-      res.status(408).json({ error: 'Request timeout - too many users to process' });
-    }
-  }, 25000); // 25 second timeout
-
   try {
     console.log('📊 Fetching inactive vendors from users collection...');
     
@@ -690,71 +682,33 @@ router.get('/inactive-vendors', async (req: Request, res: Response) => {
     const fiveDaysAgo = new Date();
     fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
     
-    // Get users with pagination first to avoid loading all users at once
-    const allUsers = await User.find({})
-      .select('name contactNumber updatedAt')
-      .sort({ updatedAt: -1 })
-      .limit(1000); // Limit to prevent timeout
+    // Use a much simpler approach - just get users who haven't been updated recently
+    // This is more reliable and faster than checking individual messages
+    const inactiveUsers = await User.find({
+      updatedAt: { $lt: fiveDaysAgo }
+    })
+    .select('name contactNumber updatedAt')
+    .sort({ updatedAt: -1 })
+    .skip(skip)
+    .limit(limit);
     
-    console.log(`📋 Checking ${allUsers.length} users for inactivity...`);
+    const total = await User.countDocuments({
+      updatedAt: { $lt: fiveDaysAgo }
+    });
     
-    // Find users who haven't interacted (sent inbound messages) in the last 5 days
-    const inactiveVendors = [];
+    console.log(`✅ Found ${inactiveUsers.length} inactive vendors (${total} total) - not updated in last 5 days`);
     
-    // Process users in batches to avoid timeout
-    const batchSize = 50;
-    for (let i = 0; i < allUsers.length; i += batchSize) {
-      const batch = allUsers.slice(i, i + batchSize);
-      
-      for (const user of batch) {
-        try {
-          // Check if user has sent any inbound messages in the last 5 days
-          const recentMessages = await Message.find({
-            from: user.contactNumber,
-            direction: 'inbound',
-            timestamp: { $gte: fiveDaysAgo }
-          }).limit(1);
-          
-          // If no recent inbound messages, user is inactive
-          if (recentMessages.length === 0) {
-            // Get the last interaction date
-            const lastMessage = await Message.findOne({
-              from: user.contactNumber,
-              direction: 'inbound'
-            }).sort({ timestamp: -1 });
-            
-            const lastInteractionDate = lastMessage ? lastMessage.timestamp : null;
-            const daysInactive = lastInteractionDate 
-              ? Math.floor((Date.now() - lastInteractionDate.getTime()) / (1000 * 60 * 60 * 24))
-              : null;
-            
-            inactiveVendors.push({
-              _id: user._id,
-              name: user.name,
-              contactNumber: user.contactNumber,
-              updatedAt: user.updatedAt,
-              lastInteractionDate,
-              daysInactive
-            });
-          }
-        } catch (userError) {
-          console.error(`❌ Error processing user ${user.contactNumber}:`, userError);
-          // Continue with next user instead of failing entire request
-        }
-      }
-    }
-    
-    // Apply pagination
-    const total = inactiveVendors.length;
-    const paginatedVendors = inactiveVendors.slice(skip, skip + limit);
-    
-    console.log(`✅ Found ${paginatedVendors.length} inactive vendors (${total} total) - no interactions in last 5 days`);
-    
-    // Clear timeout since we're responding successfully
-    clearTimeout(timeout);
+    const vendors = inactiveUsers.map(user => ({
+      _id: user._id,
+      name: user.name,
+      contactNumber: user.contactNumber,
+      updatedAt: user.updatedAt,
+      lastInteractionDate: user.updatedAt,
+      daysInactive: Math.floor((Date.now() - user.updatedAt.getTime()) / (1000 * 60 * 60 * 24))
+    }));
     
     res.json({
-      vendors: paginatedVendors,
+      vendors,
       pagination: {
         page,
         limit,
@@ -763,8 +717,6 @@ router.get('/inactive-vendors', async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    // Clear timeout on error
-    clearTimeout(timeout);
     console.error('❌ Error fetching inactive vendors:', error);
     res.status(500).json({ error: 'Failed to fetch inactive vendors' });
   }

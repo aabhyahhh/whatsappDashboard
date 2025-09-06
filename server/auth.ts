@@ -93,12 +93,15 @@ app.use((req, res, next) => {
       res.header('Access-Control-Allow-Origin', origin);
     } else if (allowedOrigins.includes(origin)) {
       res.header('Access-Control-Allow-Origin', origin);
+    } else {
+      console.log('🚫 CORS blocked origin in middleware:', origin);
     }
   }
   
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma');
+  res.header('Access-Control-Max-Age', '86400'); // Cache preflight for 24 hours
   next();
 });
 
