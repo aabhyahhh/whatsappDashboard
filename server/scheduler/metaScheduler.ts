@@ -181,12 +181,12 @@ schedule.scheduleJob('0 10 * * *', async () => {
     return;
   }
   
-  const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
-  console.log(`📅 Three days ago: ${threeDaysAgo.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`);
+  const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
+  console.log(`📅 Five days ago: ${fiveDaysAgo.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`);
   
   try {
-    // Find contacts not seen in 3+ days
-    const inactiveContacts = await Contact.find({ lastSeen: { $lte: threeDaysAgo } });
+    // Find contacts not seen in 5+ days
+    const inactiveContacts = await Contact.find({ lastSeen: { $lte: fiveDaysAgo } });
     console.log(`📊 Found ${inactiveContacts.length} inactive contacts`);
     
     if (inactiveContacts.length === 0) {
@@ -257,6 +257,6 @@ schedule.scheduleJob('0 10 * * *', async () => {
 
 console.log('✅ Meta WhatsApp scheduler started');
 console.log('📍 Location update scheduler: runs every minute to check for vendors opening soon');
-console.log('📞 Support reminder scheduler: runs daily at 10:00 AM IST for inactive vendors (3+ days)');
+console.log('📞 Support reminder scheduler: runs daily at 10:00 AM IST for inactive vendors (5+ days)');
 console.log('🔧 Using Meta WhatsApp API for all messaging');
 

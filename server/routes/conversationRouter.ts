@@ -920,22 +920,31 @@ router.post('/send-reminder-to-all', async (req: Request, res: Response) => {
   try {
     console.log('📤 Sending reminders to all inactive vendors...');
     
+    // Set timeout for the request
+    const timeout = setTimeout(() => {
+      if (!res.headersSent) {
+        res.status(408).json({ error: 'Request timeout - operation took too long' });
+      }
+    }, 30000); // 30 second timeout
+    
     // Check if Meta credentials are available
     if (!process.env.META_ACCESS_TOKEN || !process.env.META_PHONE_NUMBER_ID) {
       console.error('❌ Missing Meta WhatsApp credentials');
+      clearTimeout(timeout);
       return res.status(500).json({ error: 'Meta WhatsApp credentials not configured' });
     }
     
-    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+    const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
     
-    // Find inactive contacts (not seen in 3+ days)
+    // Find inactive contacts (not seen in 5+ days)
     const inactiveContacts = await Contact.find({ 
-      lastSeen: { $lte: threeDaysAgo } 
+      lastSeen: { $lte: fiveDaysAgo } 
     });
     
     console.log(`📊 Found ${inactiveContacts.length} inactive contacts`);
     
     if (inactiveContacts.length === 0) {
+      clearTimeout(timeout);
       return res.json({
         success: true,
         message: 'No inactive vendors found',
@@ -1004,6 +1013,7 @@ router.post('/send-reminder-to-all', async (req: Request, res: Response) => {
     
     console.log(`📊 Bulk reminder summary: ${sentCount} sent, ${skippedCount} skipped, ${errorCount} errors`);
     
+    clearTimeout(timeout);
     res.json({
       success: true,
       message: `Bulk reminder completed: ${sentCount} sent, ${skippedCount} skipped, ${errorCount} errors`,
@@ -1015,10 +1025,12 @@ router.post('/send-reminder-to-all', async (req: Request, res: Response) => {
     
   } catch (error) {
     console.error('❌ Error in bulk reminder send:', error);
-    res.status(500).json({ 
-      error: 'Failed to send bulk reminders',
-      details: error.message 
-    });
+    if (!res.headersSent) {
+      res.status(500).json({ 
+        error: 'Failed to send bulk reminders',
+        details: error.message 
+      });
+    }
   }
 });
 
