@@ -672,28 +672,28 @@ router.get('/support-calls', async (req: Request, res: Response) => {
  */
 router.get('/inactive-vendors', async (req: Request, res: Response) => {
   try {
-    console.log('📊 Fetching inactive vendors from User collection...');
+    console.log('📊 Fetching inactive vendors from users collection...');
     
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 50;
     const skip = (page - 1) * limit;
     
-    // Calculate date 3 days ago
-    const threeDaysAgo = new Date();
-    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+    // Calculate date 5 days ago
+    const fiveDaysAgo = new Date();
+    fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
     
     // Get all users (vendors) from User collection
     const allUsers = await User.find({}).sort({ updatedAt: -1 });
     
-    // Find users who haven't interacted (sent inbound messages) in the last 3 days
+    // Find users who haven't interacted (sent inbound messages) in the last 5 days
     const inactiveVendors = [];
     
     for (const user of allUsers) {
-      // Check if user has sent any inbound messages in the last 3 days
+      // Check if user has sent any inbound messages in the last 5 days
       const recentMessages = await Message.find({
         from: user.contactNumber,
         direction: 'inbound',
-        timestamp: { $gte: threeDaysAgo }
+        timestamp: { $gte: fiveDaysAgo }
       }).limit(1);
       
       // If no recent inbound messages, user is inactive
@@ -721,7 +721,7 @@ router.get('/inactive-vendors', async (req: Request, res: Response) => {
     const total = inactiveVendors.length;
     const paginatedVendors = inactiveVendors.slice(skip, skip + limit);
     
-    console.log(`✅ Found ${paginatedVendors.length} inactive vendors (${total} total) - no interactions in last 3 days`);
+    console.log(`✅ Found ${paginatedVendors.length} inactive vendors (${total} total) - no interactions in last 5 days`);
     
     res.json({
       vendors: paginatedVendors,
