@@ -679,32 +679,53 @@ router.get('/inactive-vendors', async (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 50;
     const skip = (page - 1) * limit;
     
-    // Calculate date 7 days ago
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    // Calculate date 3 days ago
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
     
-    // Find vendors who haven't sent messages in the last 7 days
-    const inactiveVendors = await Vendor.find({
-      $or: [
-        { lastMessageDate: { $lt: sevenDaysAgo } },
-        { lastMessageDate: { $exists: false } }
-      ]
-    })
-    .sort({ lastMessageDate: -1 })
-    .skip(skip)
-    .limit(limit);
+    // Get all vendors
+    const allVendors = await Vendor.find({}).sort({ updatedAt: -1 });
     
-    const total = await Vendor.countDocuments({
-      $or: [
-        { lastMessageDate: { $lt: sevenDaysAgo } },
-        { lastMessageDate: { $exists: false } }
-      ]
-    });
+    // Find vendors who haven't interacted (sent inbound messages) in the last 3 days
+    const inactiveVendors = [];
     
-    console.log(`✅ Found ${inactiveVendors.length} inactive vendors (${total} total)`);
+    for (const vendor of allVendors) {
+      // Check if vendor has sent any inbound messages in the last 3 days
+      const recentMessages = await Message.find({
+        from: vendor.contactNumber,
+        direction: 'inbound',
+        timestamp: { $gte: threeDaysAgo }
+      }).limit(1);
+      
+      // If no recent inbound messages, vendor is inactive
+      if (recentMessages.length === 0) {
+        // Get the last interaction date
+        const lastMessage = await Message.findOne({
+          from: vendor.contactNumber,
+          direction: 'inbound'
+        }).sort({ timestamp: -1 });
+        
+        const lastInteractionDate = lastMessage ? lastMessage.timestamp : null;
+        const daysInactive = lastInteractionDate 
+          ? Math.floor((Date.now() - lastInteractionDate.getTime()) / (1000 * 60 * 60 * 24))
+          : null;
+        
+        inactiveVendors.push({
+          ...vendor.toObject(),
+          lastInteractionDate,
+          daysInactive
+        });
+      }
+    }
+    
+    // Apply pagination
+    const total = inactiveVendors.length;
+    const paginatedVendors = inactiveVendors.slice(skip, skip + limit);
+    
+    console.log(`✅ Found ${paginatedVendors.length} inactive vendors (${total} total) - no interactions in last 3 days`);
     
     res.json({
-      vendors: inactiveVendors,
+      vendors: paginatedVendors,
       pagination: {
         page,
         limit,
