@@ -673,43 +673,77 @@ router.get('/support-calls', async (req: Request, res: Response) => {
  */
 router.get('/inactive-vendors', async (req: Request, res: Response) => {
   try {
-    console.log('📊 Fetching inactive vendors from users collection...');
+    console.log('📊 Fetching inactive vendors from contacts collection...');
     
     const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 50;
+    const limit = parseInt(req.query.limit as string) || 100; // Increased limit
     const skip = (page - 1) * limit;
     
-    // Calculate date 3 days ago
-    const threeDaysAgo = new Date();
-    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+    // Calculate date 5 days ago (updated threshold)
+    const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
     
-    // Use a much simpler approach - just get users who haven't been updated recently
-    // This is more reliable and faster than checking individual messages
-    const inactiveUsers = await User.find({
-      updatedAt: { $lt: threeDaysAgo }
+    // Find inactive contacts (not seen in 5+ days)
+    const inactiveContacts = await Contact.find({
+      $or: [
+        { lastSeen: { $lte: fiveDaysAgo } },
+        { lastSeen: { $exists: false } }
+      ]
     })
-    .select('name contactNumber updatedAt')
-    .sort({ updatedAt: -1 })
+    .select('phone lastSeen createdAt')
+    .sort({ lastSeen: -1 })
     .skip(skip)
     .limit(limit);
     
-    const total = await User.countDocuments({
-      updatedAt: { $lt: threeDaysAgo }
+    const total = await Contact.countDocuments({
+      $or: [
+        { lastSeen: { $lte: fiveDaysAgo } },
+        { lastSeen: { $exists: false } }
+      ]
     });
     
-    console.log(`✅ Found ${inactiveUsers.length} inactive vendors (${total} total) - not updated in last 3 days`);
+    console.log(`✅ Found ${inactiveContacts.length} inactive contacts (${total} total) - not seen in last 5 days`);
     
-    const vendors = inactiveUsers.map(user => ({
-      _id: user._id,
-      name: user.name,
-      contactNumber: user.contactNumber,
-      updatedAt: user.updatedAt,
-      lastInteractionDate: user.updatedAt,
-      daysInactive: Math.floor((Date.now() - user.updatedAt.getTime()) / (1000 * 60 * 60 * 24))
-    }));
+    // Get vendor names for these contacts
+    const phoneNumbers = inactiveContacts.map(contact => contact.phone);
+    const phoneVariations = phoneNumbers.flatMap(phone => {
+      const normalized = phone.replace(/^\+91/, '').replace(/^91/, '').replace(/\D/g, '');
+      return [phone, '+91' + normalized, '91' + normalized, normalized];
+    });
+    
+    const vendors = await User.find({
+      contactNumber: { $in: phoneVariations }
+    }).select('name contactNumber').lean();
+    
+    // Create vendor lookup map
+    const vendorMap = new Map();
+    vendors.forEach(vendor => {
+      const normalized = vendor.contactNumber.replace(/^\+91/, '').replace(/^91/, '').replace(/\D/g, '');
+      vendorMap.set(vendor.contactNumber, vendor);
+      vendorMap.set('+91' + normalized, vendor);
+      vendorMap.set('91' + normalized, vendor);
+      vendorMap.set(normalized, vendor);
+    });
+    
+    // Map contacts with vendor information
+    const inactiveVendors = inactiveContacts.map(contact => {
+      const vendor = vendorMap.get(contact.phone);
+      const daysInactive = contact.lastSeen 
+        ? Math.floor((Date.now() - new Date(contact.lastSeen).getTime()) / (1000 * 60 * 60 * 24))
+        : 999; // Very high number for contacts with no lastSeen
+      
+      return {
+        _id: contact._id,
+        name: vendor?.name || 'Unknown Vendor',
+        contactNumber: contact.phone,
+        lastSeen: contact.lastSeen,
+        lastInteractionDate: contact.lastSeen,
+        daysInactive,
+        reminderStatus: 'Not sent' // Default status
+      };
+    });
     
     res.json({
-      vendors,
+      vendors: inactiveVendors,
       pagination: {
         page,
         limit,

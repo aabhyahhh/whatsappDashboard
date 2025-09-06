@@ -13,7 +13,6 @@ router.get('/', async (_req: Request, res: Response) => {
         const contacts = await Contact.find({})
             .sort({ lastSeen: -1 })
             .select('phone lastSeen createdAt updatedAt')
-            .limit(50)
             .lean(); // Use lean() for better performance
 
         // Batch fetch all vendor names in a single query
