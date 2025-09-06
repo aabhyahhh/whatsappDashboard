@@ -933,24 +933,22 @@ router.get('/test-reminder-endpoint', async (req: Request, res: Response) => {
 /**
  * POST: Send reminder to all inactive vendors
  */
-router.post('/send-reminder-to-all', async (req: Request, res: Response) => {
+router.post('/send-reminder-to-all', (req: Request, res: Response) => {
+  console.log('📤 Send reminder endpoint called');
+  
   try {
-    console.log('📤 Sending reminders to all inactive vendors...');
-    
-    // Simple response for now to test if endpoint works
     res.json({
       success: true,
-      message: 'Endpoint is working - processing reminders',
+      message: 'Send reminder endpoint is working',
       sent: 0,
       skipped: 0,
       errors: 0,
       timestamp: new Date().toISOString()
     });
-    
   } catch (error) {
-    console.error('❌ Error in bulk reminder send:', error);
+    console.error('❌ Error in send reminder:', error);
     res.status(500).json({ 
-      error: 'Failed to send bulk reminders',
+      error: 'Failed to process request',
       details: error.message 
     });
   }
