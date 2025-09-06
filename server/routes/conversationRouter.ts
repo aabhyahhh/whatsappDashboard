@@ -6,6 +6,7 @@ import { Message } from '../models/Message.js';
 import { Contact } from '../models/Contact.js';
 import { User } from '../models/User.js';
 import { sendTemplateMessage, sendTextMessage, areMetaCredentialsAvailable } from '../meta.js';
+import { toE164, variants } from '../utils/phone.js';
 
 // No interface needed - using express.raw() middleware
 
@@ -544,14 +545,15 @@ async function handleAadhaarVerificationButton(fromWaId: string, fromE164: strin
     console.log(`🔍 Updating LoanReplyLog for ${fromE164}`);
     const LoanReplyLog = (await import('../models/LoanReplyLog.js')).default;
     const updateResult = await LoanReplyLog.findOneAndUpdate(
-      { contactNumber: fromE164 },
-      { aadharVerified: true },
-      { new: true }
+      { contactNumber: { $in: variants(fromE164) } },
+      { $set: { contactNumber: fromE164, aadharVerified: true } },
+      { upsert: false, new: true }
     );
     console.log(`✅ Updated LoanReplyLog Aadhaar verification status for ${fromE164}:`, updateResult);
     
     // Send template confirmation message
     try {
+      console.log('[DEBUG] Sent from PNID:', process.env.META_PHONE_NUMBER_ID, 'to:', fromWaId);
       await sendTemplateMessage(fromWaId, 'reply_to_yes_to_aadhar_verification_util');
       console.log('✅ Sent Aadhaar verification template message');
     } catch (templateError) {

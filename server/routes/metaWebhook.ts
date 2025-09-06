@@ -4,11 +4,9 @@ import { Contact } from '../models/Contact.js';
 import { User } from '../models/User.js';
 import VendorLocation from '../models/VendorLocation.js';
 import { sendTemplateMessage, sendTextMessage, sendInteractiveMessage, verifyWebhook, processWebhook } from '../meta.js';
+import { toE164, variants } from '../utils/phone.js';
 
 const router = Router();
-
-// Phone number normalizer to ensure E.164 format
-const toE164 = (waId: string) => (waId.startsWith('+') ? waId : `+${waId}`);
 
 // Webhook verification endpoint
 router.get('/', (req, res) => {
@@ -116,8 +114,9 @@ async function processIncomingMessage(message: any) {
     if ((type === 'interactive' && (button || interactive?.button_reply)) || type === 'button') {
       const btn = type === 'interactive' && interactive?.button_reply
         ? { id: interactive.button_reply.id, title: interactive.button_reply.title }
-        : { id: button.id, title: button.title || button.text };
+        : { id: button?.id, title: button?.title || button?.text };
 
+      console.log(`🔘 Button payload:`, btn);
       await handleButtonResponse(from, btn);
     }
 
@@ -204,7 +203,7 @@ async function handleTextMessage(from: string, text: string) {
       const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
       const LoanReplyLogModel = (await import('../models/LoanReplyLog.js')).default;
       const existingLog = await LoanReplyLogModel.findOne({
-        contactNumber: phoneE164,
+        contactNumber: { $in: variants(phoneE164) },
         timestamp: { $gte: oneMinuteAgo }
       });
       
@@ -277,12 +276,12 @@ async function handleTextMessage(from: string, text: string) {
         try {
           const phoneE164 = toE164(from);
           const LoanReplyLogModel = (await import('../models/LoanReplyLog.js')).default;
-          await LoanReplyLogModel.findOneAndUpdate(
-            { contactNumber: phoneE164 },
-            { aadharVerified: true },
-            { new: true }
+          const updateResult = await LoanReplyLogModel.findOneAndUpdate(
+            { contactNumber: { $in: variants(phoneE164) } },
+            { $set: { contactNumber: phoneE164, aadharVerified: true } },
+            { upsert: false, new: true }
           );
-          console.log(`✅ Updated LoanReplyLog Aadhaar verification status for ${phoneE164}`);
+          console.log(`✅ Updated LoanReplyLog Aadhaar verification status for ${phoneE164}:`, updateResult);
         } catch (logErr) {
           console.error('❌ Failed to update LoanReplyLog Aadhaar verification status:', logErr);
         }
@@ -419,12 +418,12 @@ async function handleButtonResponse(from: string, button: any) {
         try {
           const phoneE164 = toE164(from);
           const LoanReplyLogModel = (await import('../models/LoanReplyLog.js')).default;
-          await LoanReplyLogModel.findOneAndUpdate(
-            { contactNumber: phoneE164 },
-            { aadharVerified: true },
-            { new: true }
+          const updateResult = await LoanReplyLogModel.findOneAndUpdate(
+            { contactNumber: { $in: variants(phoneE164) } },
+            { $set: { contactNumber: phoneE164, aadharVerified: true } },
+            { upsert: false, new: true }
           );
-          console.log(`✅ Updated LoanReplyLog Aadhaar verification status for ${phoneE164}`);
+          console.log(`✅ Updated LoanReplyLog Aadhaar verification status for ${phoneE164}:`, updateResult);
         } catch (logErr) {
           console.error('❌ Failed to update LoanReplyLog Aadhaar verification status:', logErr);
         }
@@ -432,6 +431,7 @@ async function handleButtonResponse(from: string, button: any) {
       
       // Send template confirmation message
       try {
+        console.log('[DEBUG] Sent from PNID:', process.env.META_PHONE_NUMBER_ID, 'to:', from);
         await sendTemplateMessage(from, 'reply_to_yes_to_aadhar_verification_util');
         console.log('✅ Sent Aadhaar verification template message');
       } catch (templateError) {
