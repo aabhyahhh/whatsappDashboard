@@ -293,6 +293,157 @@ router.get('/active-vendors-stats', async (_req, res) => {
   }
 });
 
+// GET /api/messages/active-vendors-pdf-report - Comprehensive data for PDF report
+router.get('/active-vendors-pdf-report', async (_req, res) => {
+  try {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    
+    // Get start of current month
+    const startOfMonth = new Date(currentYear, currentMonth, 1);
+    
+    // Get all inbound messages from start of month
+    const messages = await Message.find({
+      direction: 'inbound',
+      timestamp: { $gte: startOfMonth }
+    }).select('from timestamp').sort({ timestamp: -1 });
+
+    // Helper to normalize phone
+    const normalize = (n: string) => (n || '').replace(/^whatsapp:/, '');
+
+    // Get all unique vendors with their details and activity data
+    const vendorMap = new Map();
+    const vendorActivityCount = new Map();
+
+    for (const msg of messages) {
+      const contactNumber = normalize(msg.from);
+      if (!contactNumber) continue;
+
+      // Count activity
+      vendorActivityCount.set(contactNumber, (vendorActivityCount.get(contactNumber) || 0) + 1);
+
+      if (!vendorMap.has(contactNumber)) {
+        // Try to get name from User or Vendor
+        let name = '';
+        try {
+          const UserModel = (await import('../models/User.js')).User;
+          const user = await UserModel.findOne({ contactNumber });
+          if (user && user.name) {
+            name = user.name;
+          } else {
+            const VendorModel = (await import('../models/Vendor.js')).default;
+            const vendor = await VendorModel.findOne({ contactNumber });
+            if (vendor && vendor.name) name = vendor.name;
+          }
+        } catch (err) {
+          console.error('Error fetching vendor name:', err);
+        }
+
+        vendorMap.set(contactNumber, {
+          name: name || 'Unknown',
+          contactNumber,
+          firstActivity: msg.timestamp,
+          lastActivity: msg.timestamp
+        });
+      } else {
+        const vendor = vendorMap.get(contactNumber);
+        vendor.firstActivity = msg.timestamp; // Since messages are sorted desc, this will be the latest
+        vendorMap.set(contactNumber, vendor);
+      }
+    }
+
+    // Convert to array and add activity count
+    const allVendors = Array.from(vendorMap.values()).map(vendor => ({
+      ...vendor,
+      activityCount: vendorActivityCount.get(vendor.contactNumber) || 0
+    }));
+
+    // Sort by activity count to get top 10
+    const top10Vendors = allVendors
+      .sort((a, b) => b.activityCount - a.activityCount)
+      .slice(0, 10);
+
+    // Calculate weekly stats (Sunday to Sunday)
+    const weeklyStats = [];
+    const startOfMonthDate = new Date(currentYear, currentMonth, 1);
+    const endOfMonthDate = new Date(currentYear, currentMonth + 1, 0);
+    
+    // Find first Sunday of the month
+    let currentWeekStart = new Date(startOfMonthDate);
+    const firstSunday = startOfMonthDate.getDay();
+    if (firstSunday !== 0) {
+      currentWeekStart.setDate(startOfMonthDate.getDate() + (7 - firstSunday));
+    }
+
+    while (currentWeekStart <= endOfMonthDate) {
+      const weekEnd = new Date(currentWeekStart);
+      weekEnd.setDate(currentWeekStart.getDate() + 6);
+      
+      // Ensure week end doesn't exceed month end
+      if (weekEnd > endOfMonthDate) {
+        weekEnd.setTime(endOfMonthDate.getTime());
+      }
+
+      const weekVendors = new Set();
+      for (const msg of messages) {
+        if (msg.timestamp >= currentWeekStart && msg.timestamp <= weekEnd) {
+          weekVendors.add(normalize(msg.from));
+        }
+      }
+
+      weeklyStats.push({
+        weekStart: currentWeekStart.toISOString().slice(0, 10),
+        weekEnd: weekEnd.toISOString().slice(0, 10),
+        count: weekVendors.size
+      });
+
+      // Move to next week
+      currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+    }
+
+    // Calculate daily stats for the month
+    const dailyStats = [];
+    for (let day = 1; day <= endOfMonthDate.getDate(); day++) {
+      const dayStart = new Date(currentYear, currentMonth, day);
+      const dayEnd = new Date(currentYear, currentMonth, day + 1);
+      
+      const dayVendors = new Set();
+      for (const msg of messages) {
+        if (msg.timestamp >= dayStart && msg.timestamp < dayEnd) {
+          dayVendors.add(normalize(msg.from));
+        }
+      }
+
+      dailyStats.push({
+        date: dayStart.toISOString().slice(0, 10),
+        dayName: dayStart.toLocaleDateString('en-US', { weekday: 'long' }),
+        count: dayVendors.size
+      });
+    }
+
+    // Total unique vendors for the month
+    const totalMonthlyVendors = new Set(messages.map(msg => normalize(msg.from))).size;
+
+    res.json({
+      month: {
+        name: startOfMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+        year: currentYear,
+        month: currentMonth + 1
+      },
+      dailyStats,
+      weeklyStats,
+      totalMonthlyVendors,
+      top10Vendors,
+      allVendors: allVendors.length
+    });
+
+  } catch (err) {
+    console.error('Error fetching PDF report data:', err);
+    res.status(500).json({ error: 'Failed to fetch PDF report data' });
+  }
+});
+
 // GET /api/messages/:phone - Fetch messages for a specific phone number
 router.get('/:phone', async (req: Request, res: Response) => {
     try {
