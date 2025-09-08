@@ -18,6 +18,7 @@ import contactsRoutes from './routes/contacts.js';
 import messagesRoutes from './routes/messages.js';
 import verifyRoutes from './routes/verify.js';
 import vendorRoutes from './routes/vendor.js';
+import messageHealthRoutes from './routes/messageHealth.js';
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -156,6 +157,9 @@ app.use('/api/messages', messagesRoutes);
 
 // Use vendor routes
 app.use('/api/vendor', vendorRoutes);
+
+// Use message health routes
+app.use('/api/message-health', messageHealthRoutes);
 
 // Environment variables debug endpoint
 app.get('/api/debug/env', (req, res) => {
@@ -339,17 +343,13 @@ async function initializeBackgroundJobs() {
     try {
         console.log('🔄 Initializing background jobs...');
         
-        // Import and start the Meta WhatsApp scheduler
+        // Import and start the Meta WhatsApp scheduler (handles open-time location updates)
         await import('./scheduler/metaScheduler.js');
-        console.log('✅ Meta WhatsApp scheduler initialized');
+        console.log('✅ Open-time location update scheduler initialized');
         
-        // Import and start the support call reminder scheduler (legacy Twilio)
+        // Import and start the support call reminder scheduler (handles inactive vendor reminders)
         await import('./scheduler/supportCallReminder.js');
-        console.log('✅ Support call reminder scheduler initialized');
-        
-        // Import and start the vendor reminders cron job (legacy Twilio)
-        await import('./vendorRemindersCron.js');
-        console.log('✅ Vendor reminders cron job initialized');
+        console.log('✅ Inactive vendor support reminder scheduler initialized');
         
 
         

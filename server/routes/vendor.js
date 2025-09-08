@@ -1,21 +1,18 @@
 import express from 'express';
 // @ts-ignore
 import Vendor from '../models/Vendor.js';
-// @ts-ignore
-import { checkAndSendReminders } from '../vendorRemindersCron.js';
+// Note: checkAndSendReminders function removed as part of cron consolidation
 import { Message } from '../models/Message.js';
 import { User } from '../models/User.js';
 import { sendTextMessage } from '../meta.js';
 const router = express.Router();
 // GET /api/vendor/check-vendor-reminders
+// Note: This endpoint has been removed as part of cron consolidation
+// The open-time location updates are now handled automatically by metaScheduler.ts
 router.get('/check-vendor-reminders', async (_req, res) => {
-    try {
-        await checkAndSendReminders();
-        res.send('Reminder check complete');
-    }
-    catch (err) {
-        res.status(500).json({ error: err.message });
-    }
+    res.status(410).json({ 
+        error: 'This endpoint has been removed. Open-time location updates are now handled automatically by the consolidated scheduler.' 
+    });
 });
 
 // POST /api/vendor/send-profile-photo-announcement

@@ -1,11 +1,13 @@
 import schedule from 'node-schedule';
 import mongoose from 'mongoose';
+import moment from 'moment-timezone';
 import { Contact } from '../models/Contact.js';
 import { User } from '../models/User.js';
 import { Message } from '../models/Message.js';
 import { sendTemplateMessage } from '../meta.js';
 import SupportCallReminderLog from '../models/SupportCallReminderLog.js';
-import operatingHoursModel from '../models/operatingHoursModel.js';
+// @ts-ignore
+import DispatchLog from '../models/DispatchLog.js';
 
 // Connect to MongoDB if not already connected
 if (mongoose.connection.readyState === 0) {
@@ -19,21 +21,39 @@ async function sendMetaTemplateMessage(phone: string, templateName: string, vend
     const result = await sendTemplateMessage(phone, templateName);
     if (result) {
       console.log(`✅ Sent ${templateName} to ${vendorName || phone} (${phone})`);
-      return true;
+      return { success: true, messageId: result.messageId };
     } else {
       console.error(`❌ Failed to send ${templateName} to ${phone}`);
-      return false;
+      return { success: false, error: 'Template send failed' };
     }
   } catch (err) {
     console.error(`❌ Error sending ${templateName} to ${phone}:`, err?.message || err);
-    return false;
+    return { success: false, error: err?.message || 'Unknown error' };
   }
 }
 
-// Location Update Scheduler - runs every minute to check for vendors opening soon
+// Helper to check if vendor has shared location today
+async function hasLocationToday(contactNumber: string): Promise<boolean> {
+  const todayStart = moment().tz('Asia/Kolkata').startOf('day').toDate();
+  const todayEnd = moment().tz('Asia/Kolkata').endOf('day').toDate();
+  
+  const locationMessage = await Message.findOne({
+    from: { $in: [contactNumber, `whatsapp:${contactNumber}`] },
+    direction: 'inbound',
+    timestamp: { $gte: todayStart, $lt: todayEnd },
+    $or: [
+      { 'location.latitude': { $exists: true } },
+      { body: { $regex: /location|shared|updated|sent/i } }
+    ]
+  });
+  
+  return !!locationMessage;
+}
+
+// Open-time Location Update Scheduler - runs every minute in Asia/Kolkata timezone
 schedule.scheduleJob('* * * * *', async () => {
-  console.log('[MetaLocationScheduler] Running location update check...');
-  console.log(`📅 Current time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`);
+  const now = moment().tz('Asia/Kolkata');
+  console.log(`[OpenTimeScheduler] Running at ${now.format('YYYY-MM-DD HH:mm:ss')} IST`);
   
   // Check if Meta credentials are available
   if (!process.env.META_ACCESS_TOKEN || !process.env.META_PHONE_NUMBER_ID) {
@@ -42,17 +62,18 @@ schedule.scheduleJob('* * * * *', async () => {
   }
   
   try {
-    const now = new Date();
-    const currentTime = now.getHours() * 60 + now.getMinutes(); // Current time in minutes
-    const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const currentTime = now.hour() * 60 + now.minute(); // Current time in minutes
+    const currentDay = now.day(); // 0 = Sunday, 1 = Monday, etc.
+    const todayDate = now.format('YYYY-MM-DD');
     
-    // Get all vendors with operating hours
+    // Get all vendors with operating hours and WhatsApp consent
     const vendors = await User.find({ 
+      whatsappConsent: true,
       contactNumber: { $exists: true, $nin: [null, ''] },
       operatingHours: { $exists: true, $ne: null }
-    }).select('name contactNumber operatingHours').lean();
+    }).select('_id name contactNumber operatingHours').lean();
     
-    console.log(`📊 Found ${vendors.length} vendors with operating hours`);
+    console.log(`📊 Found ${vendors.length} vendors with operating hours and WhatsApp consent`);
     
     let sentCount = 0;
     let skippedCount = 0;
@@ -70,91 +91,156 @@ schedule.scheduleJob('* * * * *', async () => {
           continue;
         }
         
-        // Parse open time (format: "HH:MM" or "H:MM AM/PM")
-        const openTimeStr = operatingHours.openTime;
-        let openTimeMinutes: number;
-        
-        if (openTimeStr.includes('AM') || openTimeStr.includes('PM')) {
-          // Handle 12-hour format
-          const [time, period] = openTimeStr.split(' ');
-          const [hours, minutes] = time.split(':').map(Number);
-          let hour24 = hours;
-          if (period === 'PM' && hours !== 12) hour24 += 12;
-          if (period === 'AM' && hours === 12) hour24 = 0;
-          openTimeMinutes = hour24 * 60 + minutes;
-        } else {
-          // Handle 24-hour format
-          const [hours, minutes] = openTimeStr.split(':').map(Number);
-          openTimeMinutes = hours * 60 + minutes;
+        // Parse open time with multiple format support
+        let openTime;
+        try {
+          openTime = moment.tz(operatingHours.openTime, ['h:mm A', 'HH:mm', 'H:mm'], 'Asia/Kolkata');
+          
+          if (!openTime.isValid()) {
+            console.log(`⚠️ Invalid open time for ${vendor.contactNumber}: ${operatingHours.openTime}`);
+            errorCount++;
+            continue;
+          }
+        } catch (timeError) {
+          console.error(`❌ Error parsing time for ${vendor.contactNumber}:`, timeError.message);
+          errorCount++;
+          continue;
         }
         
-        // Check if vendor is opening in 15 minutes or at open time
-        const timeDiff = openTimeMinutes - currentTime;
+        openTime.set({
+          year: now.year(),
+          month: now.month(),
+          date: now.date(),
+        });
         
-        if (timeDiff === 15 || timeDiff === 0) {
-          const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+        const diff = openTime.diff(now, 'minutes');
+        
+        // Check if vendor has already shared location today
+        const hasLocation = await hasLocationToday(vendor.contactNumber);
+        if (hasLocation) {
+          console.log(`⏩ Skipping ${vendor.name} (${vendor.contactNumber}) - location already shared today`);
+          skippedCount++;
+          continue;
+        }
+        
+        // Send reminder exactly 15 minutes before opening time
+        if (diff === 15) {
+          const dispatchType = 'preOpen';
           
-          // Check if vendor has already sent their location today
-          const vendorLocationMessage = await Message.findOne({
-            from: vendor.contactNumber,
-            direction: 'inbound',
-            location: { $exists: true },
-            timestamp: { $gte: todayStart, $lt: todayEnd }
-          });
-          
-          if (vendorLocationMessage) {
-            console.log(`⏩ Skipping ${vendor.name} (${vendor.contactNumber}) - already sent location today`);
-            skippedCount++;
-            continue;
-          }
-          
-          // Check if we've already sent this specific type of message today
-          const existingMessage = await Message.findOne({
-            to: vendor.contactNumber,
-            direction: 'outbound',
-            'meta.type': 'location_update',
-            'meta.vendorId': vendor._id,
-            'meta.timeType': timeDiff === 15 ? '15_minutes_before' : 'at_open_time',
-            timestamp: { $gte: todayStart, $lt: todayEnd }
-          });
-          
-          if (existingMessage) {
-            console.log(`⏩ Skipping ${vendor.name} (${vendor.contactNumber}) - ${timeDiff === 15 ? '15-min' : 'open-time'} message already sent today`);
-            skippedCount++;
-            continue;
-          }
-          
-          console.log(`📍 Sending location update to ${vendor.name} (${vendor.contactNumber}) - ${timeDiff === 15 ? '15 mins before' : 'at'} open time`);
-          
-          const sent = await sendMetaTemplateMessage(vendor.contactNumber, 'update_location_cron_util', vendor.name);
-          
-          if (sent) {
-            // Save the message to database
-            await Message.create({
-              from: process.env.META_PHONE_NUMBER_ID,
-              to: vendor.contactNumber,
-              body: 'Template: update_location_cron_util',
-              direction: 'outbound',
-              timestamp: new Date(),
-              meta: {
-                type: 'location_update',
-                template: 'update_location_cron_util',
-                vendorName: vendor.name,
-                vendorId: vendor._id,
-                timeType: timeDiff === 15 ? '15_minutes_before' : 'at_open_time',
-                reminderType: 'vendor_location_15min'
-              }
+          try {
+            // Check if already dispatched today using dispatch log
+            const existingDispatch = await DispatchLog.findOne({
+              vendorId: vendor._id,
+              date: todayDate,
+              type: dispatchType
             });
             
-            sentCount++;
-          } else {
+            if (existingDispatch) {
+              console.log(`⏩ Skipping preOpen reminder for ${vendor.name} (${vendor.contactNumber}) - already sent today`);
+              skippedCount++;
+              continue;
+            }
+            
+            console.log(`📍 Sending preOpen reminder to ${vendor.name} (${vendor.contactNumber}) - 15 mins before open time`);
+            
+            const result = await sendMetaTemplateMessage(vendor.contactNumber, 'update_location_cron_util', vendor.name);
+            
+            // Log to dispatch log
+            await DispatchLog.create({
+              vendorId: vendor._id,
+              date: todayDate,
+              type: dispatchType,
+              messageId: result.messageId,
+              success: result.success,
+              error: result.error
+            });
+            
+            if (result.success) {
+              // Also save to Message collection for tracking
+              await Message.create({
+                from: process.env.META_PHONE_NUMBER_ID,
+                to: vendor.contactNumber,
+                body: 'Template: update_location_cron_util',
+                direction: 'outbound',
+                timestamp: new Date(),
+                meta: {
+                  reminderType: 'vendor_location_15min',
+                  vendorName: vendor.name,
+                  openTime: operatingHours.openTime,
+                  dispatchType: dispatchType
+                },
+                messageId: result.messageId
+              });
+              
+              sentCount++;
+            } else {
+              errorCount++;
+            }
+          } catch (dispatchError) {
+            console.error(`❌ Error processing preOpen dispatch for ${vendor.contactNumber}:`, dispatchError);
             errorCount++;
           }
-          
-          // Small delay to avoid rate limits
-          await new Promise(resolve => setTimeout(resolve, 1000));
         }
+        
+        // Send reminder exactly at opening time
+        if (diff === 0) {
+          const dispatchType = 'open';
+          
+          try {
+            // Check if already dispatched today using dispatch log
+            const existingDispatch = await DispatchLog.findOne({
+              vendorId: vendor._id,
+              date: todayDate,
+              type: dispatchType
+            });
+            
+            if (existingDispatch) {
+              console.log(`⏩ Skipping open reminder for ${vendor.name} (${vendor.contactNumber}) - already sent today`);
+              skippedCount++;
+              continue;
+            }
+            
+            console.log(`📍 Sending open reminder to ${vendor.name} (${vendor.contactNumber}) - at open time`);
+            
+            const result = await sendMetaTemplateMessage(vendor.contactNumber, 'update_location_cron_util', vendor.name);
+            
+            // Log to dispatch log
+            await DispatchLog.create({
+              vendorId: vendor._id,
+              date: todayDate,
+              type: dispatchType,
+              messageId: result.messageId,
+              success: result.success,
+              error: result.error
+            });
+            
+            if (result.success) {
+              // Also save to Message collection for tracking
+              await Message.create({
+                from: process.env.META_PHONE_NUMBER_ID,
+                to: vendor.contactNumber,
+                body: 'Template: update_location_cron_util',
+                direction: 'outbound',
+                timestamp: new Date(),
+                meta: {
+                  reminderType: 'vendor_location_open',
+                  vendorName: vendor.name,
+                  openTime: operatingHours.openTime,
+                  dispatchType: dispatchType
+                },
+                messageId: result.messageId
+              });
+              
+              sentCount++;
+            } else {
+              errorCount++;
+            }
+          } catch (dispatchError) {
+            console.error(`❌ Error processing open dispatch for ${vendor.contactNumber}:`, dispatchError);
+            errorCount++;
+          }
+        }
+        
       } catch (vendorError) {
         console.error(`❌ Error processing vendor ${vendor.contactNumber}:`, vendorError);
         errorCount++;
@@ -162,101 +248,17 @@ schedule.scheduleJob('* * * * *', async () => {
     }
     
     if (sentCount > 0 || errorCount > 0) {
-      console.log(`📊 Location update summary: ${sentCount} sent, ${skippedCount} skipped, ${errorCount} errors`);
+      console.log(`📊 Open-time reminder summary: ${sentCount} sent, ${skippedCount} skipped, ${errorCount} errors`);
     }
     
   } catch (err) {
-    console.error('[MetaLocationScheduler] Error:', err?.message || err);
+    console.error('[OpenTimeScheduler] Error:', err?.message || err);
   }
 });
 
-// Inactive Vendors Support Reminder Scheduler - runs daily at 10:00 AM IST
-schedule.scheduleJob('0 10 * * *', async () => {
-  console.log('[MetaSupportReminder] Running inactive vendor check...');
-  console.log(`📅 Current time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`);
-  
-  // Check if Meta credentials are available
-  if (!process.env.META_ACCESS_TOKEN || !process.env.META_PHONE_NUMBER_ID) {
-    console.error('❌ Missing Meta WhatsApp credentials - cannot send reminders');
-    return;
-  }
-  
-  const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
-  console.log(`📅 Five days ago: ${fiveDaysAgo.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`);
-  
-  try {
-    // Find contacts not seen in 5+ days
-    const inactiveContacts = await Contact.find({ lastSeen: { $lte: fiveDaysAgo } });
-    console.log(`📊 Found ${inactiveContacts.length} inactive contacts`);
-    
-    if (inactiveContacts.length === 0) {
-      console.log('ℹ️ No inactive contacts found - all vendors are active!');
-      return;
-    }
-    
-    let sentCount = 0;
-    let skippedCount = 0;
-    let errorCount = 0;
-    
-    for (const contact of inactiveContacts) {
-      try {
-        // Check if this contact is a registered vendor
-        const vendor = await User.findOne({ contactNumber: contact.phone });
-        const vendorName = vendor ? vendor.name : null;
-        
-        // Only send to registered vendors
-        if (!vendor) {
-          console.log(`⏩ Skipping ${contact.phone} - not a registered vendor`);
-          skippedCount++;
-          continue;
-        }
-        
-        // Check if reminder was sent in last 24 hours
-        const lastSent = await SupportCallReminderLog.findOne({ 
-          contactNumber: contact.phone 
-        }).sort({ sentAt: -1 });
-        
-        const shouldSendToday = !lastSent || 
-          (new Date().getTime() - lastSent.sentAt.getTime()) >= 24 * 60 * 60 * 1000; // 24 hours
-        
-        if (shouldSendToday) {
-          console.log(`📱 Sending support reminder to ${vendorName} (${contact.phone})...`);
-          const sent = await sendMetaTemplateMessage(contact.phone, 'inactive_vendors_support_prompt_util', vendorName);
-          
-          if (sent) {
-            await SupportCallReminderLog.create({ 
-              contactNumber: contact.phone,
-              sentAt: new Date()
-            });
-            sentCount++;
-            console.log(`✅ Successfully sent and logged reminder for ${vendorName} (${contact.phone})`);
-          } else {
-            errorCount++;
-            console.log(`❌ Failed to send reminder for ${vendorName} (${contact.phone})`);
-          }
-          
-          // Small delay to avoid rate limits
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        } else {
-          const hoursSinceLastSent = Math.floor((new Date().getTime() - lastSent.sentAt.getTime()) / (60 * 60 * 1000));
-          console.log(`⏩ Skipping ${vendorName} (${contact.phone}), sent ${hoursSinceLastSent}h ago.`);
-          skippedCount++;
-        }
-      } catch (contactError) {
-        console.error(`❌ Error processing contact ${contact.phone}:`, contactError);
-        errorCount++;
-      }
-    }
-    
-    console.log(`📊 Support reminder summary: ${sentCount} sent, ${skippedCount} skipped, ${errorCount} errors`);
-    
-  } catch (err) {
-    console.error('[MetaSupportReminder] Error:', err?.message || err);
-  }
-});
-
-console.log('✅ Meta WhatsApp scheduler started');
-console.log('📍 Location update scheduler: runs every minute to check for vendors opening soon');
-console.log('📞 Support reminder scheduler: runs daily at 10:00 AM IST for inactive vendors (5+ days)');
+console.log('✅ Open-time location update scheduler started');
+console.log('📍 Runs every minute in Asia/Kolkata timezone');
+console.log('📅 Sends update_location_cron_util exactly twice: T-15min and T');
+console.log('🔒 Uses dispatch log with unique index to prevent duplicates');
 console.log('🔧 Using Meta WhatsApp API for all messaging');
 

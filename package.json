@@ -53,7 +53,9 @@
     "test:meta-webhook": "tsx scripts/test-meta-webhook.ts",
     "test:env": "tsx scripts/test-environment-variables.ts",
     "test:webhook-signature": "tsx scripts/test-webhook-signature.ts",
-    "test:webhook-ping": "tsx scripts/test-webhook-ping.ts"
+    "test:webhook-ping": "tsx scripts/test-webhook-ping.ts",
+    "test:refactored-crons": "tsx scripts/test-refactored-crons.ts",
+    "test:message-health-api": "tsx scripts/test-message-health-api.ts"
   },
   "dependencies": {
     "@mui/material": "^7.3.2",
