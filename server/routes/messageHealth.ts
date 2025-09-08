@@ -52,7 +52,7 @@ router.get('/recent-activity', async (req: Request, res: Response) => {
       contactNumber: msg.to,
       vendorName: vendorMap.get(msg.to) || 'Unknown Vendor',
       timestamp: msg.timestamp,
-      messageId: msg.messageId,
+      messageId: (msg as any).messageId || msg._id?.toString(),
       meta: msg.meta
     }));
     
@@ -61,7 +61,7 @@ router.get('/recent-activity', async (req: Request, res: Response) => {
       contactNumber: msg.to,
       vendorName: vendorMap.get(msg.to) || 'Unknown Vendor',
       timestamp: msg.timestamp,
-      messageId: msg.messageId,
+      messageId: (msg as any).messageId || msg._id?.toString(),
       reminderType: msg.meta?.reminderType || 'unknown',
       dispatchType: msg.meta?.dispatchType || 'unknown',
       openTime: msg.meta?.openTime || 'Unknown',
