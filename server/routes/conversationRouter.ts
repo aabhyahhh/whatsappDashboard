@@ -756,6 +756,85 @@ router.get('/inactive-vendors', async (req: Request, res: Response) => {
 });
 
 /**
+ * GET: Inactive vendors statistics endpoint
+ */
+router.get('/inactive-vendors-stats', async (req: Request, res: Response) => {
+  try {
+    console.log('📊 Fetching inactive vendors statistics...');
+    
+    // Calculate date 5 days ago (same threshold as main endpoint)
+    const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    
+    // Get all inactive contacts
+    const allInactiveContacts = await Contact.find({
+      $or: [
+        { lastSeen: { $lte: fiveDaysAgo } },
+        { lastSeen: { $exists: false } }
+      ]
+    }).select('phone lastSeen').lean();
+    
+    // Get vendor names for ALL inactive contacts
+    const allPhoneNumbers = allInactiveContacts.map(contact => contact.phone);
+    const allPhoneVariations = allPhoneNumbers.flatMap(phone => {
+      const normalized = phone.replace(/^\+91/, '').replace(/^91/, '').replace(/\D/g, '');
+      return [phone, '+91' + normalized, '91' + normalized, normalized];
+    });
+    
+    const allVendors = await User.find({
+      contactNumber: { $in: allPhoneVariations }
+    }).select('name contactNumber').lean();
+    
+    // Create vendor lookup map
+    const vendorMap = new Map();
+    allVendors.forEach(vendor => {
+      const normalized = vendor.contactNumber.replace(/^\+91/, '').replace(/^91/, '').replace(/\D/g, '');
+      vendorMap.set(vendor.contactNumber, vendor);
+      vendorMap.set('+91' + normalized, vendor);
+      vendorMap.set('91' + normalized, vendor);
+      vendorMap.set(normalized, vendor);
+    });
+    
+    // Filter to only include contacts that are registered vendors
+    const inactiveVendorContacts = allInactiveContacts.filter(contact => {
+      return vendorMap.has(contact.phone);
+    });
+    
+    // Get phone numbers of inactive vendors
+    const inactiveVendorPhones = inactiveVendorContacts.map(contact => contact.phone);
+    
+    // Count vendors that received support reminders in last 24 hours
+    const reminderLogs = await SupportCallReminderLog.find({
+      contactNumber: { $in: inactiveVendorPhones },
+      sentAt: { $gte: twentyFourHoursAgo }
+    }).select('contactNumber').lean();
+    
+    const reminderSentCount = reminderLogs.length;
+    
+    // Count vendors that became inactive in last 24 hours
+    const newlyInactiveContacts = inactiveVendorContacts.filter(contact => {
+      if (!contact.lastSeen) return false;
+      return new Date(contact.lastSeen) >= twentyFourHoursAgo;
+    });
+    
+    const newlyInactiveCount = newlyInactiveContacts.length;
+    
+    const stats = {
+      totalInactive: inactiveVendorContacts.length,
+      reminderSent: reminderSentCount,
+      newlyInactive: newlyInactiveCount
+    };
+    
+    console.log(`✅ Inactive vendors stats: ${stats.totalInactive} total, ${stats.reminderSent} reminders sent, ${stats.newlyInactive} newly inactive`);
+    
+    res.json(stats);
+  } catch (error) {
+    console.error('❌ Error fetching inactive vendors statistics:', error);
+    res.status(500).json({ error: 'Failed to fetch inactive vendors statistics' });
+  }
+});
+
+/**
  * GET: Simple inactive vendors endpoint (fallback)
  */
 router.get('/inactive-vendors-simple', async (req: Request, res: Response) => {

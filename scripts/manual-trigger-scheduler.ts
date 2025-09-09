@@ -1,43 +1,27 @@
+import 'dotenv/config';
 import mongoose from 'mongoose';
 import { Contact } from '../server/models/Contact.js';
 import { User } from '../server/models/User.js';
-import { createFreshClient } from '../server/twilio.js';
+import { sendTemplateMessage } from '../server/meta.js';
 import SupportCallReminderLog from '../server/models/SupportCallReminderLog.js';
-import path from 'path';
-import dotenv from 'dotenv';
-
-// Load .env file explicitly
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 const MESSAGE_TEMPLATE_ID = 'HX4c78928e13eda15597c00ea0915f1f77';
 const TWILIO_NUMBER = process.env.TWILIO_PHONE_NUMBER;
 const MONGO_URI = process.env.MONGODB_URI;
 
-// Helper to send WhatsApp template message (same as scheduler)
+// Helper to send WhatsApp template message via Meta (same as scheduler)
 async function sendSupportReminder(phone: string, vendorName: string | null = null) {
-  const twilioClient = createFreshClient();
-  
-  if (!twilioClient) {
-    console.error('❌ No Twilio client available - missing credentials');
-    return false;
-  }
-  
   try {
-    const messagePayload = {
-      from: `whatsapp:${TWILIO_NUMBER}`,
-      to: `whatsapp:${phone}`,
-      contentSid: MESSAGE_TEMPLATE_ID
-    };
-    
-    if (process.env.TWILIO_MESSAGING_SERVICE_SID) {
-      (messagePayload as any).messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+    const result = await sendTemplateMessage(phone, 'inactive_vendors_support_prompt_util');
+    if (result) {
+      console.log(`✅ Sent support reminder to ${vendorName || phone} (${phone})`);
+      return true;
+    } else {
+      console.error(`❌ Failed to send support reminder to ${phone}`);
+      return false;
     }
-    
-    const result = await twilioClient.messages.create(messagePayload);
-    console.log(`✅ Sent support reminder to ${vendorName || phone} (${phone}) - SID: ${result.sid}`);
-    return true;
   } catch (err) {
-    console.error(`❌ Failed to send to ${phone}:`, (err as any)?.message || err);
+    console.error(`❌ Error sending support reminder to ${phone}:`, err?.message || err);
     return false;
   }
 }

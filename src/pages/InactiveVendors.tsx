@@ -18,11 +18,10 @@ interface InactiveVendor {
 }
 
 interface PaginationInfo {
-  currentPage: number;
-  totalPages: number;
-  totalCount: number;
-  hasNextPage: boolean;
-  hasPrevPage: boolean;
+  page: number;
+  limit: number;
+  total: number;
+  pages: number;
 }
 
 interface ApiResponse {
@@ -32,6 +31,12 @@ interface ApiResponse {
     duration: string;
     optimized: boolean;
   };
+}
+
+interface InactiveVendorStats {
+  totalInactive: number;
+  reminderSent: number;
+  newlyInactive: number;
 }
 
 export default function InactiveVendors() {
@@ -44,11 +49,37 @@ export default function InactiveVendors() {
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [performance, setPerformance] = useState<string>('');
+  const [stats, setStats] = useState<InactiveVendorStats>({
+    totalInactive: 0,
+    reminderSent: 0,
+    newlyInactive: 0
+  });
+  const [statsLoading, setStatsLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchInactiveVendors(currentPage);
+    fetchStats();
   }, [currentPage]);
+
+  const fetchStats = async () => {
+    try {
+      setStatsLoading(true);
+      const response = await fetch(`${apiBaseUrl}/api/webhook/inactive-vendors-stats`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch stats: ${response.status}`);
+      }
+      
+      const data: InactiveVendorStats = await response.json();
+      setStats(data);
+    } catch (err) {
+      console.error('Error fetching stats:', err);
+      // Keep default values on error
+    } finally {
+      setStatsLoading(false);
+    }
+  };
 
   const fetchInactiveVendors = async (page: number = 1) => {
     try {
@@ -469,7 +500,10 @@ export default function InactiveVendors() {
                 View Support Calls
               </button>
               <button
-                onClick={() => fetchInactiveVendors(currentPage)}
+                onClick={() => {
+                  fetchInactiveVendors(currentPage);
+                  fetchStats();
+                }}
                 className="px-3 py-2 lg:px-4 lg:py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm lg:text-base"
               >
                 Refresh
@@ -490,7 +524,11 @@ export default function InactiveVendors() {
               <div className="ml-3 lg:ml-4">
                 <p className="text-xs lg:text-sm font-medium text-gray-600">Total Inactive</p>
                 <p className="text-xl lg:text-2xl font-bold text-gray-900">
-                  {pagination ? pagination.totalCount : vendors.length}
+                  {statsLoading ? (
+                    <div className="animate-pulse bg-gray-200 h-6 w-12 rounded"></div>
+                  ) : (
+                    stats.totalInactive
+                  )}
                 </p>
               </div>
             </div>
@@ -504,9 +542,13 @@ export default function InactiveVendors() {
                 </svg>
               </div>
               <div className="ml-3 lg:ml-4">
-                <p className="text-xs lg:text-sm font-medium text-gray-600">Reminder Sent</p>
+                <p className="text-xs lg:text-sm font-medium text-gray-600">Reminder Sent (24h)</p>
                 <p className="text-xl lg:text-2xl font-bold text-gray-900">
-                  {vendors.filter(v => v.reminderStatus === 'Sent').length}
+                  {statsLoading ? (
+                    <div className="animate-pulse bg-gray-200 h-6 w-12 rounded"></div>
+                  ) : (
+                    stats.reminderSent
+                  )}
                 </p>
               </div>
             </div>
@@ -520,9 +562,13 @@ export default function InactiveVendors() {
                 </svg>
               </div>
               <div className="ml-3 lg:ml-4">
-                <p className="text-xs lg:text-sm font-medium text-gray-600">No Reminder</p>
+                <p className="text-xs lg:text-sm font-medium text-gray-600">Newly Inactive (24h)</p>
                 <p className="text-xl lg:text-2xl font-bold text-gray-900">
-                  {vendors.filter(v => v.reminderStatus !== 'Sent').length}
+                  {statsLoading ? (
+                    <div className="animate-pulse bg-gray-200 h-6 w-12 rounded"></div>
+                  ) : (
+                    stats.newlyInactive
+                  )}
                 </p>
               </div>
             </div>
@@ -535,8 +581,8 @@ export default function InactiveVendors() {
             <h2 className="text-base lg:text-lg font-medium text-gray-900">Inactive Vendor List</h2>
             {pagination && (
               <p className="text-xs lg:text-sm text-gray-500 mt-1">
-                {pagination.totalCount > 0 ? (
-                  `Showing ${((pagination.currentPage - 1) * 50) + 1} - ${Math.min(pagination.currentPage * 50, pagination.totalCount)} of ${pagination.totalCount} vendors`
+                {pagination.total > 0 ? (
+                  `Showing ${((pagination.page - 1) * pagination.limit) + 1} - ${Math.min(pagination.page * pagination.limit, pagination.total)} of ${pagination.total} vendors`
                 ) : (
                   'No vendors found'
                 )}
@@ -665,18 +711,18 @@ export default function InactiveVendors() {
               </div>
               
               {/* Pagination */}
-              {pagination && pagination.totalPages > 1 && (
+              {pagination && pagination.pages > 1 && (
                 <div className="px-4 lg:px-6 py-3 lg:py-4 border-t border-gray-200">
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
                     <div className="text-xs lg:text-sm text-gray-700">
-                      Page {pagination.currentPage} of {pagination.totalPages}
+                      Page {pagination.page} of {pagination.pages}
                     </div>
                     <div className="flex space-x-2">
                       <button
-                        onClick={() => handlePageChange(pagination.currentPage - 1)}
-                        disabled={!pagination.hasPrevPage}
+                        onClick={() => handlePageChange(pagination.page - 1)}
+                        disabled={pagination.page <= 1}
                         className={`px-2 py-1 lg:px-3 lg:py-1 rounded-md text-xs lg:text-sm font-medium ${
-                          pagination.hasPrevPage
+                          pagination.page > 1
                             ? 'text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100'
                             : 'text-gray-400 bg-gray-100 cursor-not-allowed'
                         }`}
@@ -684,10 +730,10 @@ export default function InactiveVendors() {
                         Previous
                       </button>
                       <button
-                        onClick={() => handlePageChange(pagination.currentPage + 1)}
-                        disabled={!pagination.hasNextPage}
+                        onClick={() => handlePageChange(pagination.page + 1)}
+                        disabled={pagination.page >= pagination.pages}
                         className={`px-2 py-1 lg:px-3 lg:py-1 rounded-md text-xs lg:text-sm font-medium ${
-                          pagination.hasNextPage
+                          pagination.page < pagination.pages
                             ? 'text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100'
                             : 'text-gray-400 bg-gray-100 cursor-not-allowed'
                         }`}

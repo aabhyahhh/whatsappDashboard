@@ -343,19 +343,9 @@ async function initializeBackgroundJobs() {
     try {
         console.log('🔄 Initializing background jobs...');
         
-        // Import and start the Meta WhatsApp scheduler (handles open-time location updates)
-        await import('./scheduler/metaScheduler.js');
-        console.log('✅ Open-time location update scheduler initialized');
-        
-        // Import and start the support call reminder scheduler (handles inactive vendor reminders)
-        await import('./scheduler/supportCallReminder.js');
-        console.log('✅ Inactive vendor support reminder scheduler initialized');
-        
-
-        
-        // Import and start the profile photo announcement scheduler
-        await import('./scheduler/profilePhotoAnnouncement.js');
-        console.log('✅ Profile photo announcement scheduler initialized');
+        // Import and start the consolidated Meta WhatsApp scheduler (handles both location updates and support reminders)
+        await import('./scheduler/metaSchedulerFixed.js');
+        console.log('✅ Consolidated scheduler initialized (location updates + support reminders)');
         
         console.log('🎉 All background jobs initialized successfully');
     } catch (error) {

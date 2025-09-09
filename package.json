@@ -42,6 +42,7 @@
     "add-indexes": "tsx scripts/add-performance-indexes.js",
     "monitor:cron": "tsx scripts/monitor-cron-status.ts",
     "test:meta-integration": "tsx scripts/test-meta-integration.ts",
+    "test:debug-location-cron": "tsx scripts/debug-location-cron.ts",
     "test:complete-meta-flow": "tsx scripts/test-complete-meta-flow.ts",
     "send:location-update-meta": "tsx scripts/send-location-update-meta.ts",
     "send:inactive-reminders-meta": "tsx scripts/send-inactive-vendor-reminders-meta.ts",

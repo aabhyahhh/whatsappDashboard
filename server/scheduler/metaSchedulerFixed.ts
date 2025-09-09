@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import schedule from 'node-schedule';
 import mongoose from 'mongoose';
 import moment from 'moment-timezone';
@@ -50,14 +51,45 @@ async function hasLocationToday(contactNumber: string): Promise<boolean> {
   return !!locationMessage;
 }
 
-// Open-time Location Update Scheduler - runs every minute in Asia/Kolkata timezone
+// Helper to check if vendor has replied to support prompt
+async function hasRepliedToSupportPrompt(contactNumber: string): Promise<boolean> {
+  const fiveDaysAgo = moment().tz('Asia/Kolkata').subtract(5, 'days').startOf('day').toDate();
+  
+  // Check if there's a recent support prompt sent
+  const supportPrompt = await Message.findOne({
+    to: contactNumber,
+    direction: 'outbound',
+    'meta.reminderType': 'support_prompt',
+    timestamp: { $gte: fiveDaysAgo }
+  }).sort({ timestamp: -1 });
+  
+  if (!supportPrompt) return false;
+  
+  // Check if vendor replied after the support prompt
+  const reply = await Message.findOne({
+    from: { $in: [contactNumber, `whatsapp:${contactNumber}`] },
+    direction: 'inbound',
+    timestamp: { $gte: supportPrompt.timestamp }
+  });
+  
+  return !!reply;
+}
+
+// ===== FIXED LOCATION UPDATE SCHEDULER =====
+// Runs every minute and handles ALL time slots properly
 schedule.scheduleJob('* * * * *', async () => {
   const now = moment().tz('Asia/Kolkata');
-  console.log(`[OpenTimeScheduler] Running at ${now.format('YYYY-MM-DD HH:mm:ss')} IST`);
+  
+  // Only log every 10 minutes to reduce noise
+  if (now.minute() % 10 === 0) {
+    console.log(`[LocationScheduler] Running at ${now.format('YYYY-MM-DD HH:mm:ss')} IST`);
+  }
   
   // Check if Meta credentials are available
   if (!process.env.META_ACCESS_TOKEN || !process.env.META_PHONE_NUMBER_ID) {
-    console.error('❌ Missing Meta WhatsApp credentials - cannot send location updates');
+    if (now.minute() % 10 === 0) {
+      console.error('❌ Missing Meta WhatsApp credentials - cannot send location updates');
+    }
     return;
   }
   
@@ -72,8 +104,6 @@ schedule.scheduleJob('* * * * *', async () => {
       contactNumber: { $exists: true, $nin: [null, ''] },
       operatingHours: { $exists: true, $ne: null }
     }).select('_id name contactNumber operatingHours').lean();
-    
-    console.log(`📊 Found ${vendors.length} vendors with operating hours and WhatsApp consent`);
     
     let sentCount = 0;
     let skippedCount = 0;
@@ -97,12 +127,10 @@ schedule.scheduleJob('* * * * *', async () => {
           openTime = moment.tz(operatingHours.openTime, ['h:mm A', 'HH:mm', 'H:mm'], 'Asia/Kolkata');
           
           if (!openTime.isValid()) {
-            console.log(`⚠️ Invalid open time for ${vendor.contactNumber}: ${operatingHours.openTime}`);
             errorCount++;
             continue;
           }
         } catch (timeError) {
-          console.error(`❌ Error parsing time for ${vendor.contactNumber}:`, timeError.message);
           errorCount++;
           continue;
         }
@@ -118,7 +146,6 @@ schedule.scheduleJob('* * * * *', async () => {
         // Check if vendor has already shared location today
         const hasLocation = await hasLocationToday(vendor.contactNumber);
         if (hasLocation) {
-          console.log(`⏩ Skipping ${vendor.name} (${vendor.contactNumber}) - location already shared today`);
           skippedCount++;
           continue;
         }
@@ -136,7 +163,6 @@ schedule.scheduleJob('* * * * *', async () => {
             });
             
             if (existingDispatch) {
-              console.log(`⏩ Skipping preOpen reminder for ${vendor.name} (${vendor.contactNumber}) - already sent today`);
               skippedCount++;
               continue;
             }
@@ -167,7 +193,8 @@ schedule.scheduleJob('* * * * *', async () => {
                   reminderType: 'vendor_location_15min',
                   vendorName: vendor.name,
                   openTime: operatingHours.openTime,
-                  dispatchType: dispatchType
+                  dispatchType: dispatchType,
+                  success: true
                 },
                 messageId: result.messageId
               });
@@ -195,7 +222,6 @@ schedule.scheduleJob('* * * * *', async () => {
             });
             
             if (existingDispatch) {
-              console.log(`⏩ Skipping open reminder for ${vendor.name} (${vendor.contactNumber}) - already sent today`);
               skippedCount++;
               continue;
             }
@@ -226,7 +252,8 @@ schedule.scheduleJob('* * * * *', async () => {
                   reminderType: 'vendor_location_open',
                   vendorName: vendor.name,
                   openTime: operatingHours.openTime,
-                  dispatchType: dispatchType
+                  dispatchType: dispatchType,
+                  success: true
                 },
                 messageId: result.messageId
               });
@@ -248,17 +275,130 @@ schedule.scheduleJob('* * * * *', async () => {
     }
     
     if (sentCount > 0 || errorCount > 0) {
-      console.log(`📊 Open-time reminder summary: ${sentCount} sent, ${skippedCount} skipped, ${errorCount} errors`);
+      console.log(`📊 Location reminder summary: ${sentCount} sent, ${skippedCount} skipped, ${errorCount} errors`);
     }
     
   } catch (err) {
-    console.error('[OpenTimeScheduler] Error:', err?.message || err);
+    console.error('[LocationScheduler] Error:', err?.message || err);
   }
 });
 
-console.log('✅ Open-time location update scheduler started');
+// ===== FIXED INACTIVE VENDOR SUPPORT SCHEDULER =====
+// Runs every hour to catch all inactive vendors
+schedule.scheduleJob('0 * * * *', async () => {
+  const now = moment().tz('Asia/Kolkata');
+  console.log('[SupportScheduler] Running inactive vendor check...');
+  console.log(`📅 Current time: ${now.format('YYYY-MM-DD HH:mm:ss')} IST`);
+  
+  // Check if Meta WhatsApp API credentials are available
+  if (!process.env.META_ACCESS_TOKEN || !process.env.META_PHONE_NUMBER_ID) {
+    console.error('❌ Missing Meta WhatsApp credentials - cannot send reminders');
+    return;
+  }
+  
+  const fiveDaysAgo = moment().tz('Asia/Kolkata').subtract(5, 'days').startOf('day').toDate();
+  console.log(`📅 Five days ago: ${fiveDaysAgo.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`);
+  
+  try {
+    // Find contacts not seen in 5+ days
+    const inactiveContacts = await Contact.find({ lastSeen: { $lte: fiveDaysAgo } });
+    console.log(`📊 Found ${inactiveContacts.length} inactive contacts`);
+    
+    if (inactiveContacts.length === 0) {
+      console.log('ℹ️ No inactive contacts found - all vendors are active!');
+      return;
+    }
+    
+    let sentCount = 0;
+    let skippedCount = 0;
+    let errorCount = 0;
+    
+    for (const contact of inactiveContacts) {
+      try {
+        // Check if this contact is a registered vendor
+        const vendor = await User.findOne({ contactNumber: contact.phone });
+        const vendorName = vendor ? vendor.name : null;
+        
+        // Only send to registered vendors
+        if (!vendor) {
+          skippedCount++;
+          continue;
+        }
+        
+        // Check if vendor has already replied to a support prompt
+        const hasReplied = await hasRepliedToSupportPrompt(contact.phone);
+        if (hasReplied) {
+          console.log(`⏩ Skipping ${vendorName} (${contact.phone}) - already replied to support prompt`);
+          skippedCount++;
+          continue;
+        }
+        
+        // Check if reminder was sent in last 24 hours
+        const lastSent = await SupportCallReminderLog.findOne({ 
+          contactNumber: contact.phone 
+        }).sort({ sentAt: -1 });
+        
+        const shouldSendToday = !lastSent || 
+          (now.valueOf() - lastSent.sentAt.getTime()) >= 24 * 60 * 60 * 1000; // 24 hours
+        
+        if (shouldSendToday) {
+          console.log(`📱 Sending inactive vendor support prompt to ${vendorName} (${contact.phone})...`);
+          const result = await sendMetaTemplateMessage(contact.phone, 'inactive_vendors_support_prompt_util', vendorName);
+          
+          if (result.success) {
+            // Save the message to database
+            await Message.create({
+              from: process.env.META_PHONE_NUMBER_ID,
+              to: contact.phone,
+              body: 'Template: inactive_vendors_support_prompt_util',
+              direction: 'outbound',
+              timestamp: new Date(),
+              meta: {
+                reminderType: 'support_prompt',
+                vendorName: vendorName,
+                template: 'inactive_vendors_support_prompt_util',
+                success: true
+              },
+              messageId: result.messageId
+            });
+            
+            await SupportCallReminderLog.create({ 
+              contactNumber: contact.phone,
+              sentAt: new Date()
+            });
+            sentCount++;
+            console.log(`✅ Successfully sent and logged reminder for ${vendorName} (${contact.phone})`);
+          } else {
+            errorCount++;
+            console.log(`❌ Failed to send reminder for ${vendorName} (${contact.phone}): ${result.error}`);
+          }
+          
+          // Small delay to avoid rate limits
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } else {
+          const hoursSinceLastSent = Math.floor((now.valueOf() - lastSent.sentAt.getTime()) / (60 * 60 * 1000));
+          console.log(`⏩ Skipping ${vendorName} (${contact.phone}), sent ${hoursSinceLastSent}h ago.`);
+          skippedCount++;
+        }
+      } catch (contactError) {
+        console.error(`❌ Error processing contact ${contact.phone}:`, contactError);
+        errorCount++;
+      }
+    }
+    
+    console.log(`📊 Support reminder summary: ${sentCount} sent, ${skippedCount} skipped, ${errorCount} errors`);
+    
+  } catch (err) {
+    console.error('[SupportScheduler] Error:', err?.message || err);
+  }
+});
+
+console.log('✅ FIXED Open-time location update scheduler started');
 console.log('📍 Runs every minute in Asia/Kolkata timezone');
 console.log('📅 Sends update_location_cron_util exactly twice: T-15min and T');
 console.log('🔒 Uses dispatch log with unique index to prevent duplicates');
 console.log('🔧 Using Meta WhatsApp API for all messaging');
-
+console.log('✅ FIXED Inactive vendor support scheduler started');
+console.log('📋 Runs every hour to catch all inactive vendors');
+console.log('🔄 Sends inactive_vendors_support_prompt_util to vendors inactive for 5+ days');
+console.log('🔧 Using Meta WhatsApp API for all messaging');
