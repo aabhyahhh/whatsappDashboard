@@ -1187,4 +1187,203 @@ router.post('/send-reminder-to-all', async (req: Request, res: Response) => {
   }
 });
 
+// Send reminder to individual vendor
+router.post('/send-reminder/:vendorId', async (req: Request, res: Response) => {
+  try {
+    const { vendorId } = req.params;
+    console.log(`📤 Sending reminder to vendor: ${vendorId}`);
+    
+    // Check Meta credentials
+    if (!areMetaCredentialsAvailable()) {
+      console.log('❌ Meta credentials not configured');
+      return res.status(500).json({ 
+        error: 'Meta WhatsApp API credentials not configured',
+        success: false 
+      });
+    }
+    
+    // Find the vendor by ID
+    const vendor = await User.findById(vendorId);
+    if (!vendor) {
+      return res.status(404).json({ 
+        error: 'Vendor not found',
+        success: false 
+      });
+    }
+    
+    if (!vendor.contactNumber) {
+      return res.status(400).json({ 
+        error: 'Vendor has no contact number',
+        success: false 
+      });
+    }
+    
+    // Send the reminder template
+    const result = await sendTemplateMessage(vendor.contactNumber, 'inactive_vendor_support_prompt_util');
+    
+    if (result && result.success) {
+      // Log the reminder
+      await SupportCallReminderLog.create({
+        contactNumber: vendor.contactNumber,
+        sentAt: new Date()
+      });
+      
+      console.log(`✅ Sent reminder to ${vendor.name} (${vendor.contactNumber})`);
+      
+      res.json({
+        success: true,
+        message: 'Reminder sent successfully',
+        vendorName: vendor.name,
+        contactNumber: vendor.contactNumber,
+        messageId: result.messageId
+      });
+    } else {
+      const errorMsg = result?.error || 'Unknown error';
+      console.error(`❌ Failed to send reminder to ${vendor.name}: ${errorMsg}`);
+      
+      res.status(500).json({
+        success: false,
+        error: `Failed to send reminder: ${errorMsg}`,
+        vendorName: vendor.name,
+        contactNumber: vendor.contactNumber
+      });
+    }
+    
+  } catch (error) {
+    console.error('❌ Error sending reminder to vendor:', error);
+    res.status(500).json({ 
+      error: 'Failed to send reminder',
+      details: error.message,
+      success: false 
+    });
+  }
+});
+
+// Bulk messaging endpoint to send location update to all users
+router.post('/send-location-update-to-all', async (req: Request, res: Response) => {
+  try {
+    console.log('🚀 Starting bulk location update message sending...');
+    
+    // Check Meta credentials
+    if (!areMetaCredentialsAvailable()) {
+      console.log('❌ Meta credentials not configured');
+      return res.status(500).json({ 
+        error: 'Meta WhatsApp API credentials not configured',
+        success: false 
+      });
+    }
+    
+    // Get all users with WhatsApp consent and contact numbers
+    const users = await User.find({ 
+      whatsappConsent: true,
+      contactNumber: { $exists: true, $nin: [null, ''] }
+    }).select('_id name contactNumber').lean();
+    
+    console.log(`📊 Found ${users.length} users with WhatsApp consent and contact numbers`);
+    
+    if (users.length === 0) {
+      return res.json({ 
+        message: 'No users found to send messages to',
+        success: true, 
+        sentCount: 0,
+        errorCount: 0,
+        totalUsers: 0
+      });
+    }
+    
+    let sentCount = 0;
+    let errorCount = 0;
+    const errors = [];
+    const results = [];
+    
+    // Send messages to all users
+    for (let i = 0; i < users.length; i++) {
+      const user = users[i];
+      console.log(`[${i + 1}/${users.length}] Processing ${user.name}...`);
+      
+      try {
+        const result = await sendTemplateMessage(user.contactNumber, 'update_location_cron_util');
+        
+        if (result && result.success) {
+          // Save the message to database
+          await Message.create({
+            from: process.env.META_PHONE_NUMBER_ID,
+            to: user.contactNumber,
+            body: 'Template: update_location_cron_util',
+            direction: 'outbound',
+            timestamp: new Date(),
+            meta: {
+              reminderType: 'manual_location_update',
+              vendorName: user.name,
+              template: 'update_location_cron_util',
+              success: true
+            },
+            messageId: result.messageId
+          });
+          
+          sentCount++;
+          results.push({
+            user: user.name,
+            phone: user.contactNumber,
+            status: 'success',
+            messageId: result.messageId
+          });
+          
+          console.log(`✅ Sent successfully to ${user.name} - ID: ${result.messageId}`);
+        } else {
+          errorCount++;
+          const errorMsg = result?.error || 'Unknown error';
+          errors.push(`${user.name} (${user.contactNumber}): ${errorMsg}`);
+          results.push({
+            user: user.name,
+            phone: user.contactNumber,
+            status: 'error',
+            error: errorMsg
+          });
+          
+          console.error(`❌ Failed to send to ${user.name}: ${errorMsg}`);
+        }
+      } catch (error) {
+        errorCount++;
+        const errorMsg = error.message || 'Unknown error';
+        errors.push(`${user.name} (${user.contactNumber}): ${errorMsg}`);
+        results.push({
+          user: user.name,
+          phone: user.contactNumber,
+          status: 'error',
+          error: errorMsg
+        });
+        
+        console.error(`❌ Error sending to ${user.name}:`, errorMsg);
+      }
+      
+      // Add a small delay to avoid rate limiting
+      if (i < users.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+      }
+    }
+    
+    // Summary
+    console.log(`📈 SUMMARY: ✅ ${sentCount} sent, ❌ ${errorCount} failed, 📊 ${users.length} total`);
+        
+    res.json({
+      message: 'Bulk location update sending completed',
+      success: true,
+      sentCount,
+      errorCount,
+      totalUsers: users.length,
+      errors: errors.slice(0, 10), // Limit errors in response
+      results: results.slice(0, 20) // Limit results in response
+    });
+        
+  } catch (error) {
+    console.error('❌ Error during bulk sending:', error);
+    res.status(500).json({ 
+      error: 'Failed to send bulk messages',
+      details: error.message,
+      success: false 
+    });
+  }
+});
+
 export default router;

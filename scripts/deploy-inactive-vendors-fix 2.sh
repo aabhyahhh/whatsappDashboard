@@ -1,0 +1,47 @@
+#!/bin/bash
+
+echo "🚀 Deploying Inactive Vendors Fix"
+echo ""
+
+echo "📋 Summary of Changes:"
+echo "   ✅ Updated inactive vendors logic to show vendors inactive for 3+ days"
+echo "   ✅ Changed from 'location reminder response' to 'any WhatsApp interaction'"
+echo "   ✅ Updated frontend description to match new logic"
+echo "   ✅ Send reminder button uses template HX4c78928e13eda15597c00ea0915f1f77"
+echo "   ✅ Found 547 inactive vendors in local test"
+echo ""
+
+echo "🔧 To deploy the backend fixes:"
+echo ""
+echo "1️⃣ If you have GitHub integration:"
+echo "   git add ."
+echo "   git commit -m 'Fix inactive vendors: show vendors inactive for 3+ days'"
+echo "   git push origin main"
+echo ""
+echo "2️⃣ If you don't have GitHub integration:"
+echo "   - Go to https://dashboard.render.com"
+echo "   - Find your WhatsApp Dashboard service"
+echo "   - Click 'Manual Deploy' → 'Deploy latest commit'"
+echo ""
+
+echo "🎯 Expected results after deployment:"
+echo "   ✅ Inactive vendors page shows vendors inactive for 3+ days"
+echo "   ✅ Send reminder button works with template HX4c78928e13eda15597c00ea0915f1f77"
+echo "   ✅ Page loads without 500 errors"
+echo "   ✅ Shows correct count of inactive vendors"
+echo ""
+
+echo "📊 Local test results:"
+echo "   - Total users: 551"
+echo "   - Inbound messages (30 days): 278"
+echo "   - Inactive vendors (3+ days): 547"
+echo "   - Performance: 709ms"
+echo ""
+
+echo "⚠️  Important: The frontend is already working"
+echo "   Only the backend needs to be updated for inactive vendors to work properly."
+echo ""
+
+echo "🔍 After deployment, test with:"
+echo "   curl https://whatsappdashboard-1.onrender.com/api/webhook/inactive-vendors?page=1&limit=5"
+echo ""

@@ -79,7 +79,7 @@ router.post('/send-location-update-to-all', async (req, res) => {
     if (users.length === 0) {
       return res.json({ 
         message: 'No users found to send messages to',
-        success: true,
+                    success: true, 
         sentCount: 0,
         errorCount: 0,
         totalUsers: 0
@@ -160,8 +160,8 @@ router.post('/send-location-update-to-all', async (req, res) => {
     
     // Summary
     console.log(`📈 SUMMARY: ✅ ${sentCount} sent, ❌ ${errorCount} failed, 📊 ${users.length} total`);
-    
-    res.json({
+        
+        res.json({
       message: 'Bulk location update sending completed',
       success: true,
       sentCount,
@@ -169,16 +169,16 @@ router.post('/send-location-update-to-all', async (req, res) => {
       totalUsers: users.length,
       errors: errors.slice(0, 10), // Limit errors in response
       results: results.slice(0, 20) // Limit results in response
-    });
-    
-  } catch (error) {
+        });
+        
+    } catch (error) {
     console.error('❌ Error during bulk sending:', error);
     res.status(500).json({ 
       error: 'Failed to send bulk messages',
       details: error.message,
       success: false 
     });
-  }
+    }
 });
 
 export default router;
