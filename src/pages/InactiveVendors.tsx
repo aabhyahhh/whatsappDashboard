@@ -193,16 +193,8 @@ export default function InactiveVendors() {
   };
 
   const handleSendReminderToAll = async () => {
-    // Get all vendors that haven't received a reminder yet
-    const vendorsToRemind = vendors.filter(vendor => vendor.reminderStatus !== 'Sent');
-    
-    if (vendorsToRemind.length === 0) {
-      alert('All vendors have already received reminders!');
-      return;
-    }
-
     const confirmed = window.confirm(
-      `Are you sure you want to send reminders to all ${vendorsToRemind.length} inactive vendors?\n\nThis action cannot be undone.`
+      `Are you sure you want to send reminders to ALL inactive vendors?\n\nThis will send reminders to all vendors who haven't been active in the last 5 days and haven't received a reminder in the last 24 hours.\n\nThis action cannot be undone.`
     );
 
     if (!confirmed) {
@@ -212,74 +204,40 @@ export default function InactiveVendors() {
     try {
       setSendingToAll(true);
       
-      let sentCount = 0;
-      let errorCount = 0;
-      const errors = [];
+      console.log('📤 Sending reminders to all inactive vendors...');
+      
+      // Use the new backend endpoint that handles all inactive vendors
+      const response = await fetch(`${apiBaseUrl}/api/webhook/send-reminder-to-all`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-      // Send reminders to each vendor individually using the working messages/send endpoint
-      for (const vendor of vendorsToRemind) {
-        try {
-          console.log(`📤 Sending reminder to ${vendor.name} (${vendor.contactNumber})...`);
-          
-          // Use the existing messages/send endpoint
-          const response = await fetch(`${apiBaseUrl}/api/messages/send`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              to: vendor.contactNumber,
-              body: 'Hello! We noticed you haven\'t been active on WhatsApp recently. Please update your location and let us know if you need any support. Reply with "support" if you need help.'
-            }),
-          });
-
-          if (response.ok) {
-            sentCount++;
-            console.log(`✅ Sent reminder to ${vendor.name}`);
-            
-            // Update local state
-            setVendors(prev => prev.map(v => 
-              v._id === vendor._id 
-                ? { 
-                    ...v, 
-                    reminderStatus: 'Sent', 
-                    reminderSentAt: new Date().toISOString() 
-                  }
-                : v
-            ));
-          } else {
-            errorCount++;
-            const errorData = await response.json().catch(() => ({}));
-            const errorMsg = `Failed to send to ${vendor.name}: ${errorData.error || 'Unknown error'}`;
-            console.error(`❌ ${errorMsg}`);
-            errors.push(errorMsg);
-          }
-          
-          // Small delay to avoid rate limits
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-        } catch (vendorError) {
-          errorCount++;
-          const errorMsg = `Error sending to ${vendor.name}: ${vendorError.message}`;
-          console.error(`❌ ${errorMsg}`);
-          errors.push(errorMsg);
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Reminder sending completed:', result);
+        
+        // Show results
+        if (result.errors === 0) {
+          alert(`✅ Successfully sent reminders to ${result.sent} vendors!\n\n📊 Summary:\n- Sent: ${result.sent}\n- Skipped: ${result.skipped} (already received reminders)\n- Total inactive: ${result.totalInactive}`);
+        } else {
+          alert(`⚠️ Reminder sending completed with some issues:\n\n📊 Summary:\n- Sent: ${result.sent}\n- Skipped: ${result.skipped}\n- Errors: ${result.errors}\n- Total inactive: ${result.totalInactive}\n\nError details:\n${result.errorDetails?.join('\n') || 'No details available'}`);
         }
-      }
-      
-      // Show results
-      if (errorCount === 0) {
-        alert(`✅ Successfully sent reminders to all ${sentCount} vendors!`);
+
+        // Refresh the data to get updated reminder statuses and stats
+        await fetchInactiveVendors(currentPage);
+        await fetchStats();
+        
       } else {
-        alert(`⚠️ Sent reminders to ${sentCount} vendors, but ${errorCount} failed. Check console for details.`);
-        console.log('Errors:', errors);
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Failed to send reminders:', errorData);
+        alert(`Failed to send reminders: ${errorData.error || 'Unknown error'}`);
       }
-      
-      // Refresh the data to get updated counts
-      await fetchInactiveVendors(currentPage);
 
     } catch (err) {
-      console.error('Error sending reminders to all vendors:', err);
-      alert('Error sending reminders to all vendors. Please try again.');
+      console.error('❌ Error sending reminders to all:', err);
+      alert('Error sending reminders. Please try again.');
     } finally {
       setSendingToAll(false);
     }

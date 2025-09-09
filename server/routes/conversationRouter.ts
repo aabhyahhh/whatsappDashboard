@@ -722,12 +722,32 @@ router.get('/inactive-vendors', async (req: Request, res: Response) => {
     
     console.log(`✅ Found ${paginatedContacts.length} inactive vendor contacts (${total} total registered vendors) - not seen in last 5 days`);
     
+    // Get reminder status for all inactive vendor phones
+    const inactiveVendorPhones = paginatedContacts.map(contact => contact.phone);
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    
+    const reminderLogs = await SupportCallReminderLog.find({
+      contactNumber: { $in: inactiveVendorPhones },
+      sentAt: { $gte: twentyFourHoursAgo }
+    }).select('contactNumber sentAt').lean();
+    
+    // Create reminder status map
+    const reminderStatusMap = new Map();
+    reminderLogs.forEach(log => {
+      reminderStatusMap.set(log.contactNumber, {
+        status: 'Sent',
+        sentAt: log.sentAt
+      });
+    });
+    
     // Map contacts with vendor information
     const inactiveVendors = paginatedContacts.map(contact => {
       const vendor = vendorMap.get(contact.phone);
       const daysInactive = contact.lastSeen 
         ? Math.floor((Date.now() - new Date(contact.lastSeen).getTime()) / (1000 * 60 * 60 * 24))
         : 999; // Very high number for contacts with no lastSeen
+      
+      const reminderInfo = reminderStatusMap.get(contact.phone);
       
       return {
         _id: contact._id,
@@ -736,7 +756,8 @@ router.get('/inactive-vendors', async (req: Request, res: Response) => {
         lastSeen: contact.lastSeen,
         lastInteractionDate: contact.lastSeen,
         daysInactive,
-        reminderStatus: 'Not sent' // Default status
+        reminderStatus: reminderInfo ? reminderInfo.status : 'Not sent',
+        reminderSentAt: reminderInfo ? reminderInfo.sentAt : undefined
       };
     });
     
@@ -1044,20 +1065,121 @@ router.get('/test-reminder-endpoint', async (req: Request, res: Response) => {
 /**
  * POST: Send reminder to all inactive vendors
  */
-router.post('/send-reminder-to-all', (req: Request, res: Response) => {
-  console.log('📤 Send reminder endpoint called');
+router.post('/send-reminder-to-all', async (req: Request, res: Response) => {
+  console.log('📤 Send reminder to all inactive vendors endpoint called');
   
   try {
+    // Calculate date 5 days ago (same threshold as main endpoint)
+    const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    
+    // Get all inactive contacts
+    const allInactiveContacts = await Contact.find({
+      $or: [
+        { lastSeen: { $lte: fiveDaysAgo } },
+        { lastSeen: { $exists: false } }
+      ]
+    }).select('phone lastSeen').lean();
+    
+    // Get vendor names for ALL inactive contacts
+    const allPhoneNumbers = allInactiveContacts.map(contact => contact.phone);
+    const allPhoneVariations = allPhoneNumbers.flatMap(phone => {
+      const normalized = phone.replace(/^\+91/, '').replace(/^91/, '').replace(/\D/g, '');
+      return [phone, '+91' + normalized, '91' + normalized, normalized];
+    });
+    
+    const allVendors = await User.find({
+      contactNumber: { $in: allPhoneVariations }
+    }).select('name contactNumber').lean();
+    
+    // Create vendor lookup map
+    const vendorMap = new Map();
+    allVendors.forEach(vendor => {
+      const normalized = vendor.contactNumber.replace(/^\+91/, '').replace(/^91/, '').replace(/\D/g, '');
+      vendorMap.set(vendor.contactNumber, vendor);
+      vendorMap.set('+91' + normalized, vendor);
+      vendorMap.set('91' + normalized, vendor);
+      vendorMap.set(normalized, vendor);
+    });
+    
+    // Filter to only include contacts that are registered vendors
+    const inactiveVendorContacts = allInactiveContacts.filter(contact => {
+      return vendorMap.has(contact.phone);
+    });
+    
+    // Get phone numbers of inactive vendors
+    const inactiveVendorPhones = inactiveVendorContacts.map(contact => contact.phone);
+    
+    // Check which vendors already received reminders in last 24 hours
+    const recentReminderLogs = await SupportCallReminderLog.find({
+      contactNumber: { $in: inactiveVendorPhones },
+      sentAt: { $gte: twentyFourHoursAgo }
+    }).select('contactNumber').lean();
+    
+    const recentlyRemindedPhones = new Set(recentReminderLogs.map(log => log.contactNumber));
+    
+    // Filter vendors who need reminders
+    const vendorsNeedingReminders = inactiveVendorContacts.filter(contact => {
+      return !recentlyRemindedPhones.has(contact.phone);
+    });
+    
+    console.log(`📊 Found ${inactiveVendorContacts.length} total inactive vendors`);
+    console.log(`📊 ${recentlyRemindedPhones.size} already received reminders in last 24h`);
+    console.log(`📊 ${vendorsNeedingReminders.length} need reminders`);
+    
+    let sentCount = 0;
+    let skippedCount = recentlyRemindedPhones.size;
+    let errorCount = 0;
+    const errors = [];
+    
+    // Send reminders to vendors who need them
+    for (const contact of vendorsNeedingReminders) {
+      try {
+        const vendor = vendorMap.get(contact.phone);
+        const vendorName = vendor?.name || 'Unknown Vendor';
+        
+        console.log(`📤 Sending support reminder to ${vendorName} (${contact.phone})...`);
+        
+        // Use the inactive_vendor_support_prompt_util template
+        const waId = contact.phone.replace(/^\+/, ''); // Remove + for Meta API
+        
+        await sendTemplateMessage(waId, 'inactive_vendor_support_prompt_util');
+        
+        // Log the reminder
+        await SupportCallReminderLog.create({
+          contactNumber: contact.phone,
+          sentAt: new Date()
+        });
+        
+        sentCount++;
+        console.log(`✅ Sent reminder to ${vendorName} (${contact.phone})`);
+        
+        // Small delay to avoid rate limits
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+      } catch (error) {
+        errorCount++;
+        const errorMsg = `Failed to send to ${contact.phone}: ${error.message}`;
+        errors.push(errorMsg);
+        console.error(`❌ ${errorMsg}`);
+      }
+    }
+    
+    console.log(`📊 Reminder sending completed: ${sentCount} sent, ${skippedCount} skipped, ${errorCount} errors`);
+    
     res.json({
       success: true,
-      message: 'Send reminder endpoint is working',
-      sent: 0,
-      skipped: 0,
-      errors: 0,
+      message: 'Reminder sending completed',
+      sent: sentCount,
+      skipped: skippedCount,
+      errors: errorCount,
+      errorDetails: errors,
+      totalInactive: inactiveVendorContacts.length,
       timestamp: new Date().toISOString()
     });
+    
   } catch (error) {
-    console.error('❌ Error in send reminder:', error);
+    console.error('❌ Error in send reminder to all:', error);
     res.status(500).json({ 
       error: 'Failed to process request',
       details: error.message 
