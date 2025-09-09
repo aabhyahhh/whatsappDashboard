@@ -16,16 +16,39 @@ if (mongoose.connection.readyState === 0) {
   mongoose.connect(MONGO_URI);
 }
 
+// Helper to validate Meta credentials
+function validateMetaCredentials(): boolean {
+  const hasAccessToken = !!process.env.META_ACCESS_TOKEN;
+  const hasPhoneNumberId = !!process.env.META_PHONE_NUMBER_ID;
+  
+  if (!hasAccessToken) {
+    console.error('❌ META_ACCESS_TOKEN is not set');
+    return false;
+  }
+  
+  if (!hasPhoneNumberId) {
+    console.error('❌ META_PHONE_NUMBER_ID is not set');
+    return false;
+  }
+  
+  return true;
+}
+
 // Helper to send WhatsApp template message via Meta
 async function sendMetaTemplateMessage(phone: string, templateName: string, vendorName: string = null) {
   try {
+    // Validate credentials first
+    if (!validateMetaCredentials()) {
+      return { success: false, error: 'Meta credentials not configured' };
+    }
+    
     const result = await sendTemplateMessage(phone, templateName);
-    if (result) {
-      console.log(`✅ Sent ${templateName} to ${vendorName || phone} (${phone})`);
+    if (result && result.success) {
+      console.log(`✅ Sent ${templateName} to ${vendorName || phone} (${phone}) - ID: ${result.messageId}`);
       return { success: true, messageId: result.messageId };
     } else {
-      console.error(`❌ Failed to send ${templateName} to ${phone}`);
-      return { success: false, error: 'Template send failed' };
+      console.error(`❌ Failed to send ${templateName} to ${phone}: ${result?.error || 'Unknown error'}`);
+      return { success: false, error: result?.error || 'Template send failed' };
     }
   } catch (err) {
     console.error(`❌ Error sending ${templateName} to ${phone}:`, err?.message || err);
@@ -86,7 +109,7 @@ schedule.scheduleJob('* * * * *', async () => {
   }
   
   // Check if Meta credentials are available
-  if (!process.env.META_ACCESS_TOKEN || !process.env.META_PHONE_NUMBER_ID) {
+  if (!validateMetaCredentials()) {
     if (now.minute() % 10 === 0) {
       console.error('❌ Missing Meta WhatsApp credentials - cannot send location updates');
     }
@@ -284,14 +307,14 @@ schedule.scheduleJob('* * * * *', async () => {
 });
 
 // ===== FIXED INACTIVE VENDOR SUPPORT SCHEDULER =====
-// Runs every hour to catch all inactive vendors
-schedule.scheduleJob('0 * * * *', async () => {
+// Runs daily at 10 AM IST to send support prompts to inactive vendors
+schedule.scheduleJob('0 10 * * *', async () => {
   const now = moment().tz('Asia/Kolkata');
   console.log('[SupportScheduler] Running inactive vendor check...');
   console.log(`📅 Current time: ${now.format('YYYY-MM-DD HH:mm:ss')} IST`);
   
   // Check if Meta WhatsApp API credentials are available
-  if (!process.env.META_ACCESS_TOKEN || !process.env.META_PHONE_NUMBER_ID) {
+  if (!validateMetaCredentials()) {
     console.error('❌ Missing Meta WhatsApp credentials - cannot send reminders');
     return;
   }
@@ -399,6 +422,6 @@ console.log('📅 Sends update_location_cron_util exactly twice: T-15min and T')
 console.log('🔒 Uses dispatch log with unique index to prevent duplicates');
 console.log('🔧 Using Meta WhatsApp API for all messaging');
 console.log('✅ FIXED Inactive vendor support scheduler started');
-console.log('📋 Runs every hour to catch all inactive vendors');
-console.log('🔄 Sends inactive_vendors_support_prompt_util to vendors inactive for 5+ days');
+console.log('📋 Runs daily at 10 AM IST to send support prompts to inactive vendors');
+console.log('🔄 Sends inactive_vendor_support_prompt_util to vendors inactive for 5+ days');
 console.log('🔧 Using Meta WhatsApp API for all messaging');
