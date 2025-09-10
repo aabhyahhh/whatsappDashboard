@@ -1,3 +1,6 @@
+// Set timezone before any imports that rely on Date
+process.env.TZ = process.env.TZ || 'Asia/Kolkata';
+
 import 'dotenv/config';
 import schedule from 'node-schedule';
 import mongoose from 'mongoose';
@@ -10,27 +13,40 @@ import SupportCallReminderLog from '../models/SupportCallReminderLog.js';
 // @ts-ignore
 import DispatchLog from '../models/DispatchLog.js';
 
-// Connect to MongoDB if not already connected
-if (mongoose.connection.readyState === 0) {
-  const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/whatsapp';
-  mongoose.connect(MONGO_URI);
+// Ensure MongoDB connection before scheduling
+async function ensureMongoConnection() {
+  if (mongoose.connection.readyState === 0) {
+    const MONGO_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/whatsapp';
+    await mongoose.connect(MONGO_URI, { 
+      dbName: process.env.MONGODB_DB || undefined 
+    });
+    console.log('✅ Mongo connected for scheduler');
+  }
 }
 
-// Helper to validate Meta credentials
+// Helper to validate Meta credentials with improved error handling
+let warnedMeta = false;
 function validateMetaCredentials(): boolean {
-  const hasAccessToken = !!process.env.META_ACCESS_TOKEN;
-  const hasPhoneNumberId = !!process.env.META_PHONE_NUMBER_ID;
+  // Standardize environment variable names
+  const accessToken = process.env.META_ACCESS_TOKEN || process.env.WHATSAPP_TOKEN;
+  const phoneNumberId = process.env.META_PHONE_NUMBER_ID || process.env.WHATSAPP_PHONE_NUMBER_ID;
   
-  if (!hasAccessToken) {
-    console.error('❌ META_ACCESS_TOKEN is not set');
+  const hasAccessToken = !!accessToken;
+  const hasPhoneNumberId = !!phoneNumberId;
+  
+  if (!hasAccessToken || !hasPhoneNumberId) {
+    if (!warnedMeta) {
+      console.error('❌ META creds missing. Set META_ACCESS_TOKEN and META_PHONE_NUMBER_ID.');
+      console.error('   Current status:', {
+        META_ACCESS_TOKEN: hasAccessToken ? 'SET' : 'NOT_SET',
+        META_PHONE_NUMBER_ID: hasPhoneNumberId ? 'SET' : 'NOT_SET'
+      });
+      warnedMeta = true;
+    }
     return false;
   }
   
-  if (!hasPhoneNumberId) {
-    console.error('❌ META_PHONE_NUMBER_ID is not set');
-    return false;
-  }
-  
+  warnedMeta = false;
   return true;
 }
 
@@ -56,20 +72,21 @@ async function sendMetaTemplateMessage(phone: string, templateName: string, vend
   }
 }
 
-// Helper to check if vendor has shared location today
+// Helper to check if vendor has shared location today (improved detection)
 async function hasLocationToday(contactNumber: string): Promise<boolean> {
-  const todayStart = moment().tz('Asia/Kolkata').startOf('day').toDate();
-  const todayEnd = moment().tz('Asia/Kolkata').endOf('day').toDate();
+  const start = moment().tz('Asia/Kolkata').startOf('day').toDate();
+  const end = moment().tz('Asia/Kolkata').endOf('day').toDate();
   
   const locationMessage = await Message.findOne({
     from: { $in: [contactNumber, `whatsapp:${contactNumber}`] },
     direction: 'inbound',
-    timestamp: { $gte: todayStart, $lt: todayEnd },
+    timestamp: { $gte: start, $lt: end },
     $or: [
       { 'location.latitude': { $exists: true } },
+      { type: 'location' }, // if you store a type field
       { body: { $regex: /location|shared|updated|sent/i } }
     ]
-  });
+  }).lean();
   
   return !!locationMessage;
 }
@@ -100,7 +117,7 @@ async function hasRepliedToSupportPrompt(contactNumber: string): Promise<boolean
 
 // ===== FIXED LOCATION UPDATE SCHEDULER =====
 // Runs every minute and handles ALL time slots properly
-schedule.scheduleJob('* * * * *', async () => {
+const locationJob = schedule.scheduleJob('* * * * *', async () => {
   const now = moment().tz('Asia/Kolkata');
   
   // Only log every 10 minutes to reduce noise
@@ -150,10 +167,12 @@ schedule.scheduleJob('* * * * *', async () => {
           openTime = moment.tz(operatingHours.openTime, ['h:mm A', 'HH:mm', 'H:mm'], 'Asia/Kolkata');
           
           if (!openTime.isValid()) {
+            console.warn(`⛔ Invalid openTime for ${vendor.name} ${vendor.contactNumber}:`, operatingHours.openTime);
             errorCount++;
             continue;
           }
         } catch (timeError) {
+          console.warn(`⛔ Error parsing openTime for ${vendor.name} ${vendor.contactNumber}:`, operatingHours.openTime, timeError);
           errorCount++;
           continue;
         }
@@ -308,7 +327,7 @@ schedule.scheduleJob('* * * * *', async () => {
 
 // ===== FIXED INACTIVE VENDOR SUPPORT SCHEDULER =====
 // Runs daily at 10 AM IST to send support prompts to inactive vendors
-schedule.scheduleJob('0 10 * * *', async () => {
+const inactiveJob = schedule.scheduleJob('0 10 * * *', async () => {
   const now = moment().tz('Asia/Kolkata');
   console.log('[SupportScheduler] Running inactive vendor check...');
   console.log(`📅 Current time: ${now.format('YYYY-MM-DD HH:mm:ss')} IST`);
@@ -416,6 +435,27 @@ schedule.scheduleJob('0 10 * * *', async () => {
   }
 });
 
+// Export job references for inspection
+export const jobs = { 
+  locationJob: locationJob as any, 
+  inactiveJob: inactiveJob as any 
+};
+
+// Lightweight heartbeat log every 5 minutes
+schedule.scheduleJob('*/5 * * * *', () => {
+  const now = moment().tz('Asia/Kolkata').format('YYYY-MM-DD HH:mm:ss');
+  console.log(`[SchedulerHeartbeat] ${now} IST | Next inactive: ${inactiveJob?.nextInvocation()} | Next location: ${locationJob?.nextInvocation()}`);
+});
+
+// Startup self-test for Meta credentials
+(async () => {
+  await ensureMongoConnection();
+  
+  if (validateMetaCredentials()) {
+    console.log('🔐 Meta creds present. Scheduler will attempt sends when due.');
+  }
+})();
+
 console.log('✅ FIXED Open-time location update scheduler started');
 console.log('📍 Runs every minute in Asia/Kolkata timezone');
 console.log('📅 Sends update_location_cron_util exactly twice: T-15min and T');
@@ -423,5 +463,5 @@ console.log('🔒 Uses dispatch log with unique index to prevent duplicates');
 console.log('🔧 Using Meta WhatsApp API for all messaging');
 console.log('✅ FIXED Inactive vendor support scheduler started');
 console.log('📋 Runs daily at 10 AM IST to send support prompts to inactive vendors');
-console.log('🔄 Sends inactive_vendor_support_prompt_util to vendors inactive for 5+ days');
+console.log('🔄 Sends inactive_vendors_support_prompt_util to vendors inactive for 5+ days');
 console.log('🔧 Using Meta WhatsApp API for all messaging');

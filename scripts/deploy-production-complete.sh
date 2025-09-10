@@ -22,7 +22,7 @@ if [ $? -eq 0 ]; then
     echo "3. ✅ Vite build completed"
     echo "4. ✅ Production files ready in dist/"
     echo ""
-    echo "🔗 Production API: https://whatsappdashboard.onrender.com"
+    echo "🔗 Production API: https://whatsappdashboard-1.onrender.com"
     echo "📊 Expected support calls: 6 vendors"
     echo "📊 Expected inactive vendors: Available via /api/webhook/inactive-vendors"
     echo ""

@@ -11,7 +11,7 @@ import fetch from 'node-fetch';
 cron.schedule('*/5 * * * *', async () => {
   try {
     console.log(`[${new Date().toISOString()}] 🔄 Running backup vendor reminder check...`);
-    const response = await fetch('https://whatsappdashboard.onrender.com/api/vendor/check-vendor-reminders');
+    const response = await fetch('https://whatsappdashboard-1.onrender.com/api/vendor/check-vendor-reminders');
     const text = await response.text();
     console.log(`[${new Date().toISOString()}] ✅ Request completed. Status: ${response.status}. Response: ${text}`);
   } catch (err) {
@@ -23,7 +23,7 @@ cron.schedule('*/5 * * * *', async () => {
 cron.schedule('30 8 * * *', async () => {
   try {
     console.log(`[${new Date().toISOString()}] 🏥 Running daily health check for vendor reminders...`);
-    const response = await fetch('https://whatsappdashboard.onrender.com/api/vendor/check-vendor-reminders');
+    const response = await fetch('https://whatsappdashboard-1.onrender.com/api/vendor/check-vendor-reminders');
     const text = await response.text();
     console.log(`[${new Date().toISOString()}] ✅ Daily health check completed. Status: ${response.status}. Response: ${text}`);
   } catch (err) {

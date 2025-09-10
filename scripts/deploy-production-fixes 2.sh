@@ -1,0 +1,53 @@
+#!/bin/bash
+
+echo "🔧 DEPLOYING PRODUCTION FIXES"
+echo ""
+
+echo "📋 ISSUES FIXED:"
+echo "   ✅ Mongoose Warning: Duplicate schema index on phone field"
+echo "   ✅ MongoDB Connection: Server selection timeout in production"
+echo "   ✅ Increased timeouts for production environment"
+echo "   ✅ Added retry reads and better connection options"
+echo ""
+
+echo "🔧 CHANGES MADE:"
+echo "   ✅ scripts/create-performance-indexes.js: Removed duplicate phone index"
+echo "   ✅ server/db.ts: Increased timeouts for production"
+echo "   ✅ Added retryReads and maxStalenessSeconds for better reliability"
+echo ""
+
+echo "🚀 TO DEPLOY THE FIXES:"
+echo ""
+echo "1️⃣ GitHub Integration:"
+echo "   git add ."
+echo "   git commit -m 'Fix production MongoDB connection and duplicate index issues'"
+echo "   git push origin main"
+echo ""
+echo "2️⃣ Manual Deployment:"
+echo "   - Go to https://dashboard.render.com"
+echo "   - Find your WhatsApp Dashboard service"
+echo "   - Click 'Manual Deploy' → 'Deploy latest commit'"
+echo ""
+
+echo "🎯 EXPECTED RESULTS AFTER DEPLOYMENT:"
+echo "   ✅ No more duplicate index warnings"
+echo "   ✅ MongoDB connection succeeds in production"
+echo "   ✅ Server starts without connection errors"
+echo "   ✅ All background jobs initialize properly"
+echo ""
+
+echo "⚠️  IMPORTANT NOTES:"
+echo "   - The MongoDB connection timeout was increased for production"
+echo "   - Duplicate index creation has been removed"
+echo "   - Better retry logic has been added for production"
+echo ""
+
+echo "🔍 AFTER DEPLOYMENT:"
+echo "   - Check server logs for successful MongoDB connection"
+echo "   - Verify no duplicate index warnings"
+echo "   - Confirm all background jobs start properly"
+echo "   - Test API endpoints functionality"
+echo ""
+
+echo "🚀 READY FOR DEPLOYMENT!"
+echo ""

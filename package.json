@@ -56,7 +56,11 @@
     "test:webhook-signature": "tsx scripts/test-webhook-signature.ts",
     "test:webhook-ping": "tsx scripts/test-webhook-ping.ts",
     "test:refactored-crons": "tsx scripts/test-refactored-crons.ts",
-    "test:message-health-api": "tsx scripts/test-message-health-api.ts"
+    "test:message-health-api": "tsx scripts/test-message-health-api.ts",
+    "start:scheduler": "tsx scripts/start-scheduler-worker.ts",
+    "test:scheduler": "tsx scripts/test-scheduler-fixes.ts",
+    "deploy:scheduler": "./scripts/deploy-scheduler-worker.sh",
+    "check:templates": "tsx scripts/check-meta-templates.ts"
   },
   "dependencies": {
     "@mui/material": "^7.3.2",

@@ -37,9 +37,9 @@ export function areMetaCredentialsAvailable(): boolean {
 // Message templates configuration
 export const MESSAGE_TEMPLATES = {
   // Location update message (sent 15 mins before openTime and at openTime)
-  update_location_cron: {
+  update_location_cron_util: {
     name: 'update_location_cron_util',
-    language: 'hi',
+    language: 'en',
     components: [
       {
         type: 'body',
@@ -51,7 +51,7 @@ export const MESSAGE_TEMPLATES = {
   // Inactive vendors support prompt (sent to vendors inactive for 5+ days)
   inactive_vendors_support_prompt_util: {
     name: 'inactive_vendors_support_prompt_util',
-    language: 'hi',
+    language: 'en',
     components: [
       {
         type: 'body',
@@ -63,7 +63,7 @@ export const MESSAGE_TEMPLATES = {
   // Reply to yes for support call
   inactive_vendors_reply_to_yes_support_call_util: {
     name: 'inactive_vendors_reply_to_yes_support_call_util',
-    language: 'hi',
+    language: 'en',
     components: [
       {
         type: 'body',
