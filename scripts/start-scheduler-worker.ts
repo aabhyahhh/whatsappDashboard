@@ -23,7 +23,7 @@ console.log(`📅 Timezone: ${process.env.TZ}`);
 console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 
 // Import the scheduler (this will start the cron jobs)
-import '../server/scheduler/metaSchedulerFixed.js';
+import '../server/scheduler/metaSchedulerFixed.ts';
 
 // Keep the process alive
 process.on('SIGINT', () => {

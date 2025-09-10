@@ -1,7 +1,8 @@
 import 'dotenv/config';
 import { User } from '../server/models/User.js';
-import { sendTemplateMessage } from '../server/meta.js';
-import { connectDB } from '../server/db.js';
+import { Message } from '../server/models/Message.js';
+import { sendTemplateMessage } from '../server/meta.ts';
+import { connectDB } from '../server/db.ts';
 
 async function sendLocationUpdateToAllVendors() {
   try {
@@ -39,7 +40,24 @@ async function sendLocationUpdateToAllVendors() {
         
         const result = await sendTemplateMessage(vendor.contactNumber, 'update_location_cron_util');
         
-        if (result) {
+        if (result && result.success) {
+          // Log the message to database for tracking
+          await Message.create({
+            from: process.env.META_PHONE_NUMBER_ID,
+            to: vendor.contactNumber,
+            body: 'Template: update_location_cron_util',
+            direction: 'outbound',
+            timestamp: new Date(),
+            meta: {
+              reminderType: 'vendor_location_manual_test',
+              vendorName: vendor.name,
+              template: 'update_location_cron_util',
+              success: true,
+              messageId: result.messageId
+            },
+            messageId: result.messageId
+          });
+          
           console.log(`✅ Sent location update to ${vendor.name} (${vendor.contactNumber})`);
           successCount++;
         } else {

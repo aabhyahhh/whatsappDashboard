@@ -5,6 +5,12 @@ services:
     plan: free
     buildCommand: npm install && npm run build
     startCommand: npm start
+  - type: worker
+    name: whatsapp-scheduler
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:scheduler
     envVars:
       - key: NODE_ENV
         value: production

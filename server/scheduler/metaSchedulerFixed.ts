@@ -8,7 +8,7 @@ import moment from 'moment-timezone';
 import { Contact } from '../models/Contact.js';
 import { User } from '../models/User.js';
 import { Message } from '../models/Message.js';
-import { sendTemplateMessage } from '../meta.js';
+import { sendTemplateMessage } from '../meta.ts';
 import SupportCallReminderLog from '../models/SupportCallReminderLog.js';
 // @ts-ignore
 import DispatchLog from '../models/DispatchLog.js';
@@ -440,6 +440,23 @@ export const jobs = {
   locationJob: locationJob as any, 
   inactiveJob: inactiveJob as any 
 };
+
+// Health check endpoint for monitoring
+export function getSchedulerHealth() {
+  return {
+    status: 'running',
+    locationJob: {
+      nextInvocation: locationJob?.nextInvocation()?.toISOString() || 'not scheduled',
+      running: !!locationJob
+    },
+    inactiveJob: {
+      nextInvocation: inactiveJob?.nextInvocation()?.toISOString() || 'not scheduled', 
+      running: !!inactiveJob
+    },
+    metaCredentials: validateMetaCredentials(),
+    timestamp: new Date().toISOString()
+  };
+}
 
 // Lightweight heartbeat log every 5 minutes
 schedule.scheduleJob('*/5 * * * *', () => {

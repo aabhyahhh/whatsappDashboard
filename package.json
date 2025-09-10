@@ -20,6 +20,7 @@
     "preview": "vite preview",
     "auth-server": "tsx server/auth.ts",
     "start": "tsx server/auth.ts",
+    "start:scheduler": "tsx server/scheduler/metaSchedulerFixed.ts",
     "test:location-update": "tsx scripts/test-location-update.ts",
     "test:location-webhook": "tsx scripts/test-whatsapp-location-webhook.ts",
     "test:location-api": "tsx scripts/test-location-api.ts",

@@ -204,6 +204,21 @@ app.get('/api/health', async (req, res) => {
     }
 });
 
+// Scheduler health check endpoint
+app.get('/api/scheduler/health', async (req, res) => {
+    try {
+        const { getSchedulerHealth } = await import('./scheduler/metaSchedulerFixed.ts');
+        const health = getSchedulerHealth();
+        res.json(health);
+    } catch (error) {
+        res.status(500).json({
+            status: 'error',
+            error: error.message,
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
 // Optimized dashboard stats endpoint - single request for all stats
 app.get('/api/dashboard-stats', async (req, res) => {
     try {
@@ -338,20 +353,8 @@ async function createInitialAdmin() {
     }
 }
 
-// Deferred initialization of cron jobs and schedulers
-async function initializeBackgroundJobs() {
-    try {
-        console.log('🔄 Initializing background jobs...');
-        
-        // Import and start the consolidated Meta WhatsApp scheduler (handles both location updates and support reminders)
-        await import('./scheduler/metaSchedulerFixed.js');
-        console.log('✅ Consolidated scheduler initialized (location updates + support reminders)');
-        
-        console.log('🎉 All background jobs initialized successfully');
-    } catch (error) {
-        console.error('❌ Error initializing background jobs:', error);
-    }
-}
+// Background jobs are now handled by a separate worker service
+// The scheduler runs independently via npm run start:scheduler
 
 // Start server
 app.listen(PORT, () => {
@@ -362,9 +365,4 @@ app.listen(PORT, () => {
     
     // Create initial admin user
     createInitialAdmin().catch(console.error);
-    
-    // Initialize background jobs after server starts (non-blocking)
-    setTimeout(() => {
-        initializeBackgroundJobs();
-    }, 2000); // Wait 2 seconds after server starts
 }); 

@@ -9,9 +9,9 @@
 
     /* Bundler mode */
     "moduleResolution": "NodeNext",
-    "allowImportingTsExtensions": false,
+    "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
-    "noEmit": false,
+    "noEmit": true,
     "outDir": "./dist",
 
     /* Linting */
