@@ -481,13 +481,13 @@ export default function InactiveVendors() {
               </div>
               <div className="ml-3 lg:ml-4">
                 <p className="text-xs lg:text-sm font-medium text-gray-600">Total Inactive</p>
-                <p className="text-xl lg:text-2xl font-bold text-gray-900">
+                <div className="text-xl lg:text-2xl font-bold text-gray-900">
                   {statsLoading ? (
                     <div className="animate-pulse bg-gray-200 h-6 w-12 rounded"></div>
                   ) : (
                     stats.totalInactive
                   )}
-                </p>
+                </div>
               </div>
             </div>
           </div>
@@ -499,16 +499,16 @@ export default function InactiveVendors() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <div className="ml-3 lg:ml-4">
-                <p className="text-xs lg:text-sm font-medium text-gray-600">Reminder Sent (24h)</p>
-                <p className="text-xl lg:text-2xl font-bold text-gray-900">
-                  {statsLoading ? (
-                    <div className="animate-pulse bg-gray-200 h-6 w-12 rounded"></div>
-                  ) : (
-                    stats.reminderSent
-                  )}
-                </p>
-              </div>
+                <div className="ml-3 lg:ml-4">
+                  <p className="text-xs lg:text-sm font-medium text-gray-600">Reminder Sent (24h)</p>
+                  <div className="text-xl lg:text-2xl font-bold text-gray-900">
+                    {statsLoading ? (
+                      <div className="animate-pulse bg-gray-200 h-6 w-12 rounded"></div>
+                    ) : (
+                      stats.reminderSent
+                    )}
+                  </div>
+                </div>
             </div>
           </div>
           

@@ -915,7 +915,7 @@ router.get('/message-health', async (req: Request, res: Response) => {
     
     // Define Meta message types with multiple possible patterns
     const metaMessageTypes = {
-      'Meta Location Update': ['update_location_cron_util', 'Template: update_location_cron_util'],
+      'Meta Location Update': ['update_location_cron', 'Template: update_location_cron'],
       'Meta Support Prompt': ['inactive_vendors_support_prompt_util', 'Template: inactive_vendors_support_prompt_util'],
       'Meta Support Confirmation': ['inactive_vendors_reply_to_yes_support_call_util', 'Template: inactive_vendors_reply_to_yes_support_call_util'],
       'Meta Greeting Response': ['default_hi_and_loan_prompt', 'Template: default_hi_and_loan_prompt'],
@@ -938,7 +938,7 @@ router.get('/message-health', async (req: Request, res: Response) => {
           (message.meta && message.meta.type && message.meta.type.includes('meta'))) {
         
         // Special case for location update messages
-        if (message.body?.includes('update_location_cron_util') || 
+        if (message.body?.includes('update_location_cron') || 
             (message.meta && message.meta.reminderType && message.meta.reminderType.includes('location'))) {
           if (!metaCategorizedMessages['Meta Location Update']) {
             metaCategorizedMessages['Meta Location Update'] = [];
@@ -1302,20 +1302,20 @@ router.post('/send-location-update-to-all', async (req: Request, res: Response) 
       console.log(`[${i + 1}/${users.length}] Processing ${user.name}...`);
       
       try {
-        const result = await sendTemplateMessage(user.contactNumber, 'update_location_cron_util');
+        const result = await sendTemplateMessage(user.contactNumber, 'update_location_cron');
         
         if (result && result.success) {
           // Save the message to database
           await Message.create({
             from: process.env.META_PHONE_NUMBER_ID,
             to: user.contactNumber,
-            body: 'Template: update_location_cron_util',
+            body: 'Template: update_location_cron',
             direction: 'outbound',
             timestamp: new Date(),
             meta: {
               reminderType: 'manual_location_update',
               vendorName: user.name,
-              template: 'update_location_cron_util',
+              template: 'update_location_cron',
               success: true
             },
             messageId: result.messageId
