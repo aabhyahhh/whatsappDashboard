@@ -59,9 +59,10 @@ async function sendMetaTemplateMessage(phone: string, templateName: string, vend
     }
     
     const result = await sendTemplateMessage(phone, templateName);
-    if (result && result.success) {
-      console.log(`✅ Sent ${templateName} to ${vendorName || phone} (${phone}) - ID: ${result.messageId}`);
-      return { success: true, messageId: result.messageId };
+    if (result && result.messages && result.messages.length > 0) {
+      const messageId = result.messages[0].id;
+      console.log(`✅ Sent ${templateName} to ${vendorName || phone} (${phone}) - ID: ${messageId}`);
+      return { success: true, messageId: messageId };
     } else {
       console.error(`❌ Failed to send ${templateName} to ${phone}: ${result?.error || 'Unknown error'}`);
       return { success: false, error: result?.error || 'Template send failed' };
@@ -264,6 +265,14 @@ const locationJob = schedule.scheduleJob('* * * * *', async () => {
             });
             
             if (existingDispatch) {
+              skippedCount++;
+              continue;
+            }
+            
+            // Check if vendor has already shared location today (skip second message if location shared)
+            const hasLocation = await hasLocationToday(vendor.contactNumber);
+            if (hasLocation) {
+              console.log(`⏩ Skipping open-time reminder for ${vendor.name} (${vendor.contactNumber}) - location already shared today`);
               skippedCount++;
               continue;
             }

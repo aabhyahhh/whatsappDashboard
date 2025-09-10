@@ -244,10 +244,14 @@ export async function sendTextMessage(to: string, text: string) {
     return null;
   }
 
+  // Normalize phone number - remove + prefix for Meta API
+  const normalizedTo = to.replace(/^\+/, '').replace(/\D/g, '');
+  console.log(`🔍 Normalized phone number: ${to} -> ${normalizedTo}`);
+
   try {
     const messageData = {
       messaging_product: 'whatsapp',
-      to: to,
+      to: normalizedTo,
       type: 'text',
       text: {
         body: text
@@ -265,10 +269,10 @@ export async function sendTextMessage(to: string, text: string) {
       }
     );
 
-    console.log(`✅ Sent text message to ${to}:`, response.data);
+    console.log(`✅ Sent text message to ${normalizedTo}:`, response.data);
     return response.data;
   } catch (error) {
-    console.error(`❌ Failed to send text message to ${to}:`, error.response?.data || error.message);
+    console.error(`❌ Failed to send text message to ${normalizedTo}:`, error.response?.data || error.message);
     return null;
   }
 }
