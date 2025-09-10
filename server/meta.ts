@@ -167,7 +167,14 @@ export async function sendTemplateMessage(to: string, templateName: string, para
       return null;
     }
 
-    console.log(`🔍 Using template:`, template);
+    // Ensure template language is correct - force English for location update template
+    const correctedTemplate = { ...template };
+    if (templateName === 'update_location_cron_util' && template.language === 'hi') {
+      console.log('⚠️ Correcting template language from hi to en for update_location_cron_util');
+      correctedTemplate.language = 'en';
+    }
+
+    console.log(`🔍 Using template:`, correctedTemplate);
 
     // Normalize phone number - remove + and ensure it's just digits
     const normalizedTo = to.replace(/^\+/, '').replace(/\D/g, '');
@@ -178,11 +185,11 @@ export async function sendTemplateMessage(to: string, templateName: string, para
       to: normalizedTo,
       type: 'template',
       template: {
-        name: template.name,
+        name: correctedTemplate.name,
         language: {
-          code: template.language
+          code: correctedTemplate.language
         },
-        components: template.components.map(component => {
+        components: correctedTemplate.components.map(component => {
           if (component.type === 'body' && parameters.length > 0) {
             return {
               ...component,

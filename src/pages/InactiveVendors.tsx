@@ -254,6 +254,19 @@ export default function InactiveVendors() {
 
     try {
       setSendingLocationToAll(true);
+      
+      // First, check if the server is responding
+      console.log('🔍 Checking server health before sending location updates...');
+      const healthCheck = await fetch(`${apiBaseUrl}/api/health`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      }).catch(() => null);
+      
+      if (!healthCheck || !healthCheck.ok) {
+        console.warn('⚠️ Server health check failed, but proceeding with request...');
+      } else {
+        console.log('✅ Server health check passed');
+      }
 
       // Use the bulk location update endpoint
       const response = await fetch(`${apiBaseUrl}/api/webhook/send-location-update-to-all`, {
@@ -274,9 +287,18 @@ export default function InactiveVendors() {
           alert(`⚠️ Sent location update messages to ${result.sentCount} vendors, failed for ${result.errorCount} vendors.`);
         }
       } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Failed to send bulk location updates:', errorData);
-        alert(`Failed to send bulk location updates: ${errorData.error || 'Unknown error'}`);
+        // Handle different error types
+        if (response.status === 502) {
+          console.error('❌ Server returned 502 Bad Gateway - backend server may be down');
+          alert('❌ Server Error: The backend server is currently unavailable (502 Bad Gateway). Please try again later or contact support.');
+        } else if (response.status === 0) {
+          console.error('❌ Network error - CORS or connection issue');
+          alert('❌ Network Error: Unable to connect to the server. Please check your internet connection and try again.');
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          console.error('Failed to send bulk location updates:', errorData);
+          alert(`Failed to send bulk location updates: ${errorData.error || `Server error (${response.status})`}`);
+        }
       }
 
     } catch (err) {
@@ -481,13 +503,13 @@ export default function InactiveVendors() {
               </div>
               <div className="ml-3 lg:ml-4">
                 <p className="text-xs lg:text-sm font-medium text-gray-600">Total Inactive</p>
-                <div className="text-xl lg:text-2xl font-bold text-gray-900">
+                <p className="text-xl lg:text-2xl font-bold text-gray-900">
                   {statsLoading ? (
-                    <div className="animate-pulse bg-gray-200 h-6 w-12 rounded"></div>
+                    <span className="animate-pulse bg-gray-200 h-6 w-12 rounded inline-block"></span>
                   ) : (
                     stats.totalInactive
                   )}
-                </div>
+                </p>
               </div>
             </div>
           </div>
@@ -501,13 +523,13 @@ export default function InactiveVendors() {
               </div>
                 <div className="ml-3 lg:ml-4">
                   <p className="text-xs lg:text-sm font-medium text-gray-600">Reminder Sent (24h)</p>
-                  <div className="text-xl lg:text-2xl font-bold text-gray-900">
+                  <p className="text-xl lg:text-2xl font-bold text-gray-900">
                     {statsLoading ? (
-                      <div className="animate-pulse bg-gray-200 h-6 w-12 rounded"></div>
+                      <span className="animate-pulse bg-gray-200 h-6 w-12 rounded inline-block"></span>
                     ) : (
                       stats.reminderSent
                     )}
-                  </div>
+                  </p>
                 </div>
             </div>
           </div>
@@ -523,7 +545,7 @@ export default function InactiveVendors() {
                 <p className="text-xs lg:text-sm font-medium text-gray-600">Newly Inactive (24h)</p>
                 <p className="text-xl lg:text-2xl font-bold text-gray-900">
                   {statsLoading ? (
-                    <div className="animate-pulse bg-gray-200 h-6 w-12 rounded"></div>
+                    <span className="animate-pulse bg-gray-200 h-6 w-12 rounded inline-block"></span>
                   ) : (
                     stats.newlyInactive
                   )}
