@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import LoanReplyLog from '../models/LoanReplyLog.js';
 import SupportCallLog from '../models/SupportCallLog.js';
-import User from '../models/User.js';
-import Message from '../models/Message.js';
+import { User } from '../models/User.js';
+import { Message } from '../models/Message.js';
 import { sendTemplateMessage } from '../meta.js';
 
 const router = Router();
