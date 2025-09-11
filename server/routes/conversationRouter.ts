@@ -352,6 +352,11 @@ async function processInboundMessage(message: any) {
         console.log(`📞 Detected support call response from ${fromE164}: "${normalizedText}"`);
         await handleSupportCallResponse(fromWaId, fromE164);
       }
+      // Check for help request
+      else if (normalizedText === 'help' || normalizedText === 'सहायता' || normalizedText === 'मदद') {
+        console.log(`🆘 Detected help request from ${fromE164}: "${normalizedText}"`);
+        await handleHelpRequest(fromWaId, fromE164);
+      }
       // Check for Aadhaar verification confirmation (text message)
       else if (/yes.*verify.*aadha?r/i.test(normalizedText) || /verify.*aadha?r/i.test(normalizedText)) {
         console.log(`✅ Detected Aadhaar verification confirmation from ${fromE164}: "${normalizedText}"`);
@@ -585,6 +590,65 @@ async function handleSupportCallResponse(fromWaId: string, fromE164: string) {
     }
   } catch (err) {
     console.error('❌ Error handling support call text response:', err);
+  }
+}
+
+/**
+ * Handle help request
+ */
+async function handleHelpRequest(fromWaId: string, fromE164: string) {
+  try {
+    console.log('🆘 Handling help request');
+    
+    // Find vendor details
+    const userNumbers = [fromE164];
+    if (fromE164.startsWith('+91')) userNumbers.push(fromE164.replace('+91', '91'));
+    if (fromE164.startsWith('+')) userNumbers.push(fromE164.substring(1));
+    userNumbers.push(fromE164.slice(-10));
+    
+    const vendor = await User.findOne({ contactNumber: { $in: userNumbers } });
+    const vendorName = vendor ? vendor.name : 'Unknown Vendor';
+    
+    // Check if support call already exists for this vendor in the last hour
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const existingSupportCall = await SupportCallLog.findOne({
+      contactNumber: fromE164,
+      timestamp: { $gte: oneHourAgo }
+    });
+    
+    if (!existingSupportCall) {
+      // Create support call log entry
+      await SupportCallLog.create({
+        vendorName: vendorName,
+        contactNumber: fromE164,
+        timestamp: new Date(),
+        completed: false
+      });
+      
+      console.log(`✅ Created support call log for ${vendorName} (${fromE164}) via help request`);
+      
+      // Send confirmation message using the same template as support calls
+      await sendTemplateMessage(fromWaId, 'inactive_vendors_reply_to_yes_support_call_util');
+      
+      // Save the confirmation message to database
+      await Message.create({
+        from: process.env.META_PHONE_NUMBER_ID,
+        to: fromE164,
+        body: "✅ Support request received! Our team will contact you soon.",
+        direction: 'outbound',
+        timestamp: new Date(),
+        meta: {
+          type: 'help_request_confirmation',
+          vendorName: vendorName,
+          contactNumber: fromE164,
+          trigger: 'help_request'
+        }
+      });
+    } else {
+      console.log(`ℹ️ Support call already exists for ${fromE164} within last hour`);
+    }
+  } catch (err) {
+    console.error('❌ Error handling help request:', err);
   }
 }
 
@@ -1497,5 +1561,5 @@ router.post('/send-location-update-to-all', async (req: Request, res: Response) 
   }
 });
 
-export { handleSupportCallResponse };
+export { handleSupportCallResponse, handleHelpRequest };
 export default router;
