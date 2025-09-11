@@ -347,6 +347,11 @@ async function processInboundMessage(message: any) {
         console.log(`✅ Detected loan reply from ${fromE164}: "${normalizedText}"`);
         await handleLoanReply(fromWaId, fromE164, text.body);
       }
+      // Check for support call response (yes)
+      else if (normalizedText === 'yes' || normalizedText === 'हाँ' || normalizedText === 'हां') {
+        console.log(`📞 Detected support call response from ${fromE164}: "${normalizedText}"`);
+        await handleSupportCallResponse(fromWaId, fromE164);
+      }
       // Check for Aadhaar verification confirmation (text message)
       else if (/yes.*verify.*aadha?r/i.test(normalizedText) || /verify.*aadha?r/i.test(normalizedText)) {
         console.log(`✅ Detected Aadhaar verification confirmation from ${fromE164}: "${normalizedText}"`);
@@ -508,6 +513,82 @@ async function handleLoanReply(fromWaId: string, fromE164: string, originalText:
 }
 
 /**
+ * Handle support call response (yes)
+ */
+async function handleSupportCallResponse(fromWaId: string, fromE164: string) {
+  try {
+    console.log('📞 Handling support call response');
+    
+    // Check if this vendor recently received a support call reminder
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const recentSupportReminder = await Message.findOne({
+      to: fromE164,
+      direction: 'outbound',
+      $or: [
+        { body: { $regex: /inactive_vendors_support_prompt_util/ } },
+        { 'meta.template': 'inactive_vendors_support_prompt_util' }
+      ],
+      timestamp: { $gte: oneHourAgo }
+    });
+    
+    if (recentSupportReminder) {
+      console.log('✅ Found recent support call reminder, processing "yes" response');
+      
+      // Find vendor details
+      const userNumbers = [fromE164];
+      if (fromE164.startsWith('+91')) userNumbers.push(fromE164.replace('+91', '91'));
+      if (fromE164.startsWith('+')) userNumbers.push(fromE164.substring(1));
+      userNumbers.push(fromE164.slice(-10));
+      
+      const vendor = await User.findOne({ contactNumber: { $in: userNumbers } });
+      const vendorName = vendor ? vendor.name : 'Unknown Vendor';
+      
+      // Check if support call already exists for this vendor in the last hour
+      const existingSupportCall = await SupportCallLog.findOne({
+        contactNumber: fromE164,
+        timestamp: { $gte: oneHourAgo }
+      });
+      
+      if (!existingSupportCall) {
+        // Create support call log entry
+        await SupportCallLog.create({
+          vendorName: vendorName,
+          contactNumber: fromE164,
+          timestamp: new Date(),
+          completed: false
+        });
+        
+        console.log(`✅ Created support call log for ${vendorName} (${fromE164}) via text response`);
+        
+        // Send confirmation message
+        await sendTemplateMessage(fromWaId, 'inactive_vendors_reply_to_yes_support_call_util');
+        
+        // Save the confirmation message to database
+        await Message.create({
+          from: process.env.META_PHONE_NUMBER_ID,
+          to: fromE164,
+          body: "✅ Support request received! Our team will contact you soon.",
+          direction: 'outbound',
+          timestamp: new Date(),
+          meta: {
+            type: 'support_confirmation',
+            vendorName: vendorName,
+            contactNumber: fromE164,
+            trigger: 'text_response'
+          }
+        });
+      } else {
+        console.log(`ℹ️ Support call already exists for ${fromE164} within last hour`);
+      }
+    } else {
+      console.log('ℹ️ No recent support call reminder found for this "yes" response');
+    }
+  } catch (err) {
+    console.error('❌ Error handling support call text response:', err);
+  }
+}
+
+/**
  * Handle button clicks
  */
 async function handleButtonClick(fromWaId: string, fromE164: string, button: any) {
@@ -526,6 +607,11 @@ async function handleButtonClick(fromWaId: string, fromE164: string, button: any
         (title && /yes.*verify.*aadha?r/i.test(title))) {
       console.log(`✅ Detected Aadhaar verification button click`);
       await handleAadhaarVerificationButton(fromWaId, fromE164);
+    }
+    // Handle support call button
+    else if (id === 'yes_support') {
+      console.log(`📞 Detected support call button click`);
+      await handleSupportCallResponse(fromWaId, fromE164);
     } else {
       console.log(`❓ Unknown button: ${id} - ${title}`);
     }

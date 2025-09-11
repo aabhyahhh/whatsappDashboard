@@ -101,7 +101,7 @@ async function sendTemplateToAllUsers() {
     // Get all users with valid contact numbers and WhatsApp consent
     console.log('\n📊 Fetching users...');
     const users = await User.find({
-      contactNumber: { $exists: true, $ne: null, $ne: '' },
+      contactNumber: { $exists: true, $nin: [null, ''] },
       whatsappConsent: true
     });
     
@@ -151,7 +151,7 @@ async function sendTemplateToAllUsers() {
               template: templateName,
               language: language,
               campaign: 'bulk-template-send',
-              userId: user._id.toString(),
+              userId: (user._id as any).toString(),
               userName: userName
             }
           });
