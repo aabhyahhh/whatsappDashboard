@@ -23,28 +23,6 @@ export default function ChatView() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const fetchMessages = async () => {
-      if (!phone) return;
-
-      try {
-        setLoading(true);
-        const response = await fetch(`${apiBaseUrl}/api/messages/${phone}`);
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Failed to fetch messages');
-        }
-
-        const data: Message[] = await response.json();
-        setMessages(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An unknown error occurred');
-        setMessages([]); // Clear messages on error
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchMessages();
   }, [phone]);
 
@@ -63,6 +41,8 @@ export default function ChatView() {
 
     try {
       setSending(true);
+      setError(null); // Clear any previous errors
+      
       const response = await fetch(`${apiBaseUrl}/api/messages/send`, {
         method: 'POST',
         headers: {
@@ -74,21 +54,52 @@ export default function ChatView() {
         }),
       });
 
+      const responseData = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to send message');
+        throw new Error(responseData.error || responseData.message || 'Failed to send message');
       }
+
+      // Check if the message was actually sent successfully
+      if (!responseData.success) {
+        throw new Error(responseData.error || 'Message sending failed');
+      }
+
+      console.log('✅ Message sent successfully:', responseData);
 
       // Clear the input field after successful send
       setNewMessage('');
       
-      // Note: In Task 23, we'll add auto-refresh functionality
-      // For now, the message will appear after manual refresh
+      // Auto-refresh messages to show the sent message
+      await fetchMessages();
       
     } catch (err) {
+      console.error('❌ Error sending message:', err);
       setError(err instanceof Error ? err.message : 'Failed to send message');
     } finally {
       setSending(false);
+    }
+  };
+
+  const fetchMessages = async () => {
+    if (!phone) return;
+
+    try {
+      setLoading(true);
+      const response = await fetch(`${apiBaseUrl}/api/messages/${phone}`);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to fetch messages');
+      }
+
+      const data: Message[] = await response.json();
+      setMessages(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unknown error occurred');
+      setMessages([]); // Clear messages on error
+    } finally {
+      setLoading(false);
     }
   };
 

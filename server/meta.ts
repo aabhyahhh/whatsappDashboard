@@ -274,7 +274,24 @@ export async function sendTextMessage(to: string, text: string) {
     );
 
     console.log(`✅ Sent free-form text message to ${normalizedTo}:`, response.data);
-    return response.data;
+    
+    // Check if the response indicates success
+    if (response.data && response.data.messages && response.data.messages.length > 0) {
+      const messageId = response.data.messages[0].id;
+      console.log(`📱 Message ID: ${messageId}`);
+      return {
+        ...response.data,
+        messageId: messageId,
+        success: true
+      };
+    } else {
+      console.error(`❌ Meta API returned unexpected response structure:`, response.data);
+      return {
+        success: false,
+        error: 'Unexpected response structure from Meta API',
+        data: response.data
+      };
+    }
   } catch (error) {
     console.error(`❌ Free-form text message failed for ${to}:`, error.response?.data || error.message);
     
@@ -316,10 +333,31 @@ export async function sendTextMessage(to: string, text: string) {
         );
 
         console.log(`✅ Sent template message fallback to ${normalizedTo}:`, templateResponse.data);
-        return templateResponse.data;
+        
+        if (templateResponse.data && templateResponse.data.messages && templateResponse.data.messages.length > 0) {
+          const messageId = templateResponse.data.messages[0].id;
+          console.log(`📱 Template Message ID: ${messageId}`);
+          return {
+            ...templateResponse.data,
+            messageId: messageId,
+            success: true,
+            isTemplate: true
+          };
+        } else {
+          console.error(`❌ Template response has unexpected structure:`, templateResponse.data);
+          return {
+            success: false,
+            error: 'Unexpected template response structure',
+            data: templateResponse.data
+          };
+        }
       } catch (templateError) {
         console.error(`❌ Template message fallback also failed for ${to}:`, templateError.response?.data || templateError.message);
-        return null;
+        return {
+          success: false,
+          error: 'Both free-form and template messages failed',
+          details: templateError.response?.data || templateError.message
+        };
       }
     }
     
@@ -334,7 +372,12 @@ export async function sendTextMessage(to: string, text: string) {
         headers: error.config?.headers
       }
     });
-    return null;
+    return {
+      success: false,
+      error: error.message,
+      status: error.response?.status,
+      data: error.response?.data
+    };
   }
 }
 

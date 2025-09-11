@@ -60,6 +60,21 @@ const messageSchema = new Schema({
         required: false,
         trim: true,
     },
+    messageId: {
+        type: String,
+        required: false,
+        trim: true,
+    },
+    metaResponse: {
+        type: Schema.Types.Mixed,
+        required: false,
+    },
+    deliveryStatus: {
+        type: String,
+        enum: ['sent', 'delivered', 'read', 'failed'],
+        required: false,
+        default: 'sent',
+    },
     createdAt: {
         type: Date,
         default: Date.now,

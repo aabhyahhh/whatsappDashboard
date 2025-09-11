@@ -28,7 +28,19 @@ router.post('/send', async (req, res, next) => {
         console.log(`📤 Sending WhatsApp message to ${to}: "${body}"`);
         // Send message via Meta WhatsApp API
         const result = await sendTextMessage(to, body);
-        console.log(`✅ Message sent successfully via Meta API!`);
+        
+        // Check if the message was actually sent successfully
+        if (!result || !result.success) {
+            console.error('❌ Failed to send message via Meta API:', result);
+            return res.status(500).json({
+                error: 'Failed to send message via Meta WhatsApp API',
+                details: result?.error || 'Unknown error',
+                metaResponse: result
+            });
+        }
+        
+        console.log(`✅ Message sent successfully via Meta API! Message ID: ${result.messageId}`);
+        
         // Save outbound message to MongoDB
         try {
             await Message.create({
@@ -37,18 +49,23 @@ router.post('/send', async (req, res, next) => {
                 body: body,
                 direction: 'outbound',
                 timestamp: new Date(),
+                messageId: result.messageId,
+                metaResponse: result
             });
             console.log('💾 Outbound message saved to MongoDB');
         }
         catch (dbError) {
             console.error('❌ Failed to save outbound message to MongoDB:', dbError);
         }
+        
         res.json({
             success: true,
-            messageId: result.messageId || 'meta-' + Date.now(),
+            messageId: result.messageId,
             status: 'sent',
             to: to,
-            body: body
+            body: body,
+            isTemplate: result.isTemplate || false,
+            metaResponse: result
         });
     }
     catch (error) {
