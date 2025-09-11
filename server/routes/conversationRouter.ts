@@ -1497,4 +1497,5 @@ router.post('/send-location-update-to-all', async (req: Request, res: Response) 
   }
 });
 
+export { handleSupportCallResponse };
 export default router;
