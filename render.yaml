@@ -5,6 +5,9 @@ services:
     plan: free
     buildCommand: npm install && npm run build
     startCommand: npm start
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://whatsappdashboard-1.onrender.com
   - type: worker
     name: whatsapp-scheduler
     env: node
