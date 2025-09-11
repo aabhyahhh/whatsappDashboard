@@ -47,6 +47,9 @@ app.use(cors({
     if (!origin) return callback(null, true);
     
     const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:5173', // Vite dev server
+      'http://localhost:4173', // Vite preview server
       'https://whatsappdashboard-1.onrender.com',
       'https://whatsappdashboard.onrender.com',
       'https://admin.laarikhojo.in',
