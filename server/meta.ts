@@ -237,7 +237,7 @@ export async function sendTemplateMessage(to: string, templateName: string, para
   }
 }
 
-// Helper function to send a text message with fallback to template
+// Helper function to send a text message with smart fallback to template
 export async function sendTextMessage(to: string, text: string) {
   if (!META_ACCESS_TOKEN || !META_PHONE_NUMBER_ID) {
     console.error('❌ Missing Meta WhatsApp credentials');
@@ -282,7 +282,8 @@ export async function sendTextMessage(to: string, text: string) {
       return {
         ...response.data,
         messageId: messageId,
-        success: true
+        success: true,
+        messageType: 'free-form'
       };
     } else {
       console.error(`❌ Meta API returned unexpected response structure:`, response.data);
@@ -295,18 +296,23 @@ export async function sendTextMessage(to: string, text: string) {
   } catch (error) {
     console.error(`❌ Free-form text message failed for ${to}:`, error.response?.data || error.message);
     
-    // Check if it's a 24-hour window restriction
+    // Check if it's a 24-hour window restriction or other blocking issue
     const errorData = error.response?.data;
-    if (errorData && (
+    const isBlocked = errorData && (
       errorData.error?.message?.includes('24 hour') ||
       errorData.error?.message?.includes('outside the allowed') ||
       errorData.error?.message?.includes('template') ||
+      errorData.error?.message?.includes('not a valid phone number') ||
+      errorData.error?.message?.includes('recipient') ||
       error.status === 400
-    )) {
-      console.log(`🔄 Free-form message blocked, trying template message fallback...`);
+    );
+
+    if (isBlocked) {
+      console.log(`🔄 Free-form message blocked (likely 24-hour window), trying template message fallback...`);
       
-      // Fallback to template message
+      // Fallback to template message with custom text
       try {
+        // Use a more appropriate template for admin messages
         const templateData = {
           messaging_product: 'whatsapp',
           to: normalizedTo,
@@ -341,7 +347,10 @@ export async function sendTextMessage(to: string, text: string) {
             ...templateResponse.data,
             messageId: messageId,
             success: true,
-            isTemplate: true
+            isTemplate: true,
+            messageType: 'template',
+            originalText: text, // Store the original text for reference
+            fallbackReason: '24-hour window restriction'
           };
         } else {
           console.error(`❌ Template response has unexpected structure:`, templateResponse.data);

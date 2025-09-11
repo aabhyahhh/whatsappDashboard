@@ -67,6 +67,12 @@ export default function ChatView() {
 
       console.log('✅ Message sent successfully:', responseData);
 
+      // Show user feedback about message type
+      if (responseData.isTemplate && responseData.fallbackReason) {
+        console.log(`📱 Message sent as template due to: ${responseData.fallbackReason}`);
+        // You could show a toast notification here if needed
+      }
+
       // Clear the input field after successful send
       setNewMessage('');
       

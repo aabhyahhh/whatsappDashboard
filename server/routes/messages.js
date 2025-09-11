@@ -64,7 +64,10 @@ router.post('/send', async (req, res, next) => {
             status: 'sent',
             to: to,
             body: body,
+            messageType: result.messageType || 'free-form',
             isTemplate: result.isTemplate || false,
+            fallbackReason: result.fallbackReason || null,
+            originalText: result.originalText || body,
             metaResponse: result
         });
     }

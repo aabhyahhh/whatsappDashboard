@@ -203,7 +203,32 @@ function handleInbound(body: any) {
       const statuses = value.statuses || [];
       statuses.forEach((status: any) => {
         console.log(`📊 Status update: ${status.status} for message ${status.id}`);
-        // TODO: Add status processing logic here
+        console.log('📊 Full status details:', JSON.stringify(status, null, 2));
+        
+        // Update message status in database
+        if (status.id) {
+          try {
+            Message.findOneAndUpdate(
+              { messageId: status.id },
+              { 
+                deliveryStatus: status.status,
+                errorCode: status.errors?.[0]?.code,
+                errorMessage: status.errors?.[0]?.title || status.errors?.[0]?.message
+              },
+              { new: true }
+            ).then(updatedMessage => {
+              if (updatedMessage) {
+                console.log(`✅ Updated message ${status.id} status to ${status.status}`);
+              } else {
+                console.log(`⚠️ Message ${status.id} not found in database`);
+              }
+            }).catch(dbError => {
+              console.error(`❌ Error updating message status:`, dbError);
+            });
+          } catch (error) {
+            console.error(`❌ Error processing status update:`, error);
+          }
+        }
       });
     }
     
