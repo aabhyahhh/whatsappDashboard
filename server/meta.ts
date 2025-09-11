@@ -231,6 +231,28 @@ export async function sendTemplateMessage(to: string, templateName: string, para
     );
 
     console.log(`✅ Sent template message ${templateName} to ${normalizedTo}:`, response.data);
+    
+    // Save the template message to database for tracking
+    try {
+      const Message = (await import('./models/Message.js')).Message;
+      await Message.create({
+        from: META_PHONE_NUMBER_ID,
+        to: to,
+        body: `Template: ${templateName}`,
+        direction: 'outbound',
+        timestamp: new Date(),
+        meta: {
+          template: templateName,
+          messageId: response.data.messages?.[0]?.id,
+          language: correctedTemplate.language,
+          success: true
+        }
+      });
+      console.log(`💾 Template message saved to database`);
+    } catch (dbError) {
+      console.error('❌ Failed to save template message to database:', dbError);
+    }
+    
     return response.data;
   } catch (error) {
     console.error(`❌ Failed to send template message ${templateName} to ${to}:`, error.response?.data || error.message);

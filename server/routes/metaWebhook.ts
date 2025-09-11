@@ -315,14 +315,17 @@ async function handleTextMessage(from: string, text: string) {
     console.log('📞 Vendor responded "yes" to support call reminder');
     
     try {
-      // Check if this vendor recently received a support call reminder
-      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-      const recentSupportReminder = await Message.findOne({
-        to: from,
-        direction: 'outbound',
-        body: { $regex: /inactive_vendors_support_prompt_util/ },
-        timestamp: { $gte: oneHourAgo }
-      });
+    // Check if this vendor recently received a support call reminder
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const recentSupportReminder = await Message.findOne({
+      to: from,
+      direction: 'outbound',
+      $or: [
+        { body: { $regex: /inactive_vendors_support_prompt_util/ } },
+        { 'meta.template': 'inactive_vendors_support_prompt_util' }
+      ],
+      timestamp: { $gte: oneHourAgo }
+    });
       
       if (recentSupportReminder) {
         console.log('✅ Found recent support call reminder, processing "yes" response');

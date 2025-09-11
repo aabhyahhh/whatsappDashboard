@@ -391,7 +391,10 @@ async function handleSupportConversation(from: string, text: string) {
     const recentSupportReminder = await Message.findOne({
       to: from,
       direction: 'outbound',
-      body: { $regex: /inactive_vendors_support_prompt_util/ },
+      $or: [
+        { body: { $regex: /inactive_vendors_support_prompt_util/ } },
+        { 'meta.template': 'inactive_vendors_support_prompt_util' }
+      ],
       timestamp: { $gte: oneHourAgo }
     });
     
@@ -768,4 +771,5 @@ async function sendLocationConfirmation(from: string) {
   }
 }
 
+export { handleSupportConversation };
 export default router;
