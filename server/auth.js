@@ -19,7 +19,6 @@ connectDB().catch(console.error);
 // Middleware
 app.use(cors({
     origin: [
-        'http://localhost:5173',
         'https://whatsappdashboard-1.onrender.com',
         'https://whatsappdashboard.onrender.com',
         'https://admin.laarikhojo.in'
@@ -97,7 +96,7 @@ async function createInitialAdmin() {
 }
 // Start server
 app.listen(PORT, () => {
-    console.log(`Auth server running at http://localhost:${PORT}`);
+    console.log(`Auth server running on port ${PORT}`);
     console.log('Available endpoints:');
     console.log('- POST /api/auth');
     console.log('- GET /api/health');

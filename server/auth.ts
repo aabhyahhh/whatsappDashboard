@@ -27,6 +27,13 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 // Connect to MongoDB
 connectDB().catch(console.error);
 
+// Start the scheduler
+import('./scheduler/metaSchedulerFixed.ts').then(() => {
+    console.log('✅ Scheduler started successfully');
+}).catch((error) => {
+    console.error('❌ Failed to start scheduler:', error);
+});
+
 // RAW body only on webhook route so HMAC works
 app.use('/api/webhook', express.raw({ type: 'application/json' }));
 
@@ -40,28 +47,20 @@ app.use(cors({
     if (!origin) return callback(null, true);
     
     const allowedOrigins = [
-      'http://localhost:5173',
-      'http://localhost:3000',
-      'http://localhost:4173', // Vite preview
       'https://whatsappdashboard-1.onrender.com',
       'https://whatsappdashboard.onrender.com',
       'https://admin.laarikhojo.in',
       'https://www.admin.laarikhojo.in'
     ];
     
-    // Always allow localhost origins (both development and production)
-    if (origin.includes('localhost')) {
-      console.log('✅ CORS allowing localhost origin:', origin);
+    // Check if origin is in allowed list
+    if (allowedOrigins.includes(origin)) {
+      console.log('✅ CORS allowing origin:', origin);
       return callback(null, true);
     }
     
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      console.log('✅ CORS allowing origin:', origin);
-      callback(null, true);
-    } else {
-      console.log('🚫 CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
+    console.log('🚫 CORS blocked origin:', origin);
+    callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -82,20 +81,14 @@ app.use((req, res, next) => {
   // Set CORS headers based on origin
   if (origin) {
     const allowedOrigins = [
-      'http://localhost:5173',
-      'http://localhost:3000',
-      'http://localhost:4173',
       'https://whatsappdashboard-1.onrender.com',
       'https://whatsappdashboard.onrender.com',
       'https://admin.laarikhojo.in',
       'https://www.admin.laarikhojo.in'
     ];
     
-    // Always allow localhost origins (both development and production)
-    if (origin.includes('localhost')) {
-      console.log('✅ CORS middleware allowing localhost origin:', origin);
-      res.header('Access-Control-Allow-Origin', origin);
-    } else if (allowedOrigins.includes(origin)) {
+    // Check if origin is in allowed list
+    if (allowedOrigins.includes(origin)) {
       console.log('✅ CORS middleware allowing origin:', origin);
       res.header('Access-Control-Allow-Origin', origin);
     } else {
@@ -358,7 +351,7 @@ async function createInitialAdmin() {
 
 // Start server
 app.listen(PORT, () => {
-    console.log(`Auth server running at http://localhost:${PORT}`);
+    console.log(`Auth server running on port ${PORT}`);
     console.log('Available endpoints:');
     console.log('- POST /api/auth');
     console.log('- GET /api/health');

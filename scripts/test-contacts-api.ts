@@ -9,7 +9,7 @@ async function testContactsAPI() {
     console.log('🧪 TESTING CONTACTS API ENDPOINT');
     console.log('==================================');
 
-    const apiBaseUrl = process.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    const apiBaseUrl = process.env.VITE_API_BASE_URL || 'https://whatsappdashboard-1.onrender.com';
     console.log(`🌐 Testing contacts API at: ${apiBaseUrl}/api/contacts`);
 
     const response = await fetch(`${apiBaseUrl}/api/contacts`);

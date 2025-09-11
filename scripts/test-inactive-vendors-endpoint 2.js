@@ -36,7 +36,7 @@ async function testInactiveVendorsEndpoint() {
     const corsResponse = await fetch(`${API_BASE_URL}/api/webhook/inactive-vendors`, {
       method: 'OPTIONS',
       headers: {
-        'Origin': 'http://localhost:5173',
+        'Origin': 'https://whatsappdashboard-1.onrender.com',
         'Access-Control-Request-Method': 'GET',
         'Access-Control-Request-Headers': 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma'
       }

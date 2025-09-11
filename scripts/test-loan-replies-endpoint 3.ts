@@ -6,7 +6,7 @@
 
 import fetch from 'node-fetch';
 
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:10000';
+const API_BASE_URL = process.env.API_BASE_URL || 'https://whatsappdashboard-1.onrender.com';
 
 async function testLoanRepliesEndpoint() {
   console.log('🧪 Testing loan-replies endpoint...');

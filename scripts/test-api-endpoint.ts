@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 // Load .env file explicitly
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
-const API_BASE_URL = process.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const API_BASE_URL = process.env.VITE_API_BASE_URL || 'https://whatsappdashboard-1.onrender.com';
 
 async function testAPIEndpoint() {
   try {

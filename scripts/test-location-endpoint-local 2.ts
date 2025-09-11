@@ -6,7 +6,7 @@ dotenv.config();
 
 async function testLocationEndpointLocal() {
   try {
-    const localApiUrl = 'http://localhost:3000';
+    const localApiUrl = 'https://whatsappdashboard-1.onrender.com';
     
     console.log('🧪 Testing Location Update Endpoint (Local)');
     console.log('===========================================');

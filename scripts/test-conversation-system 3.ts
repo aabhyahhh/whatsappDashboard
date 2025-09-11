@@ -9,8 +9,8 @@ import fetch from 'node-fetch';
 import crypto from 'crypto';
 
 // Configuration
-const CONVERSATION_ROUTER_URL = process.env.CONVERSATION_ROUTER_URL || 'http://localhost:5001/api/webhook';
-const CONVERSATION_ENGINE_URL = process.env.CONVERSATION_ENGINE_URL || 'http://localhost:5001/api/conversation';
+const CONVERSATION_ROUTER_URL = process.env.CONVERSATION_ROUTER_URL || 'https://whatsappdashboard-1.onrender.com/api/webhook';
+const CONVERSATION_ENGINE_URL = process.env.CONVERSATION_ENGINE_URL || 'https://whatsappdashboard-1.onrender.com/api/conversation';
 const META_APP_SECRET = process.env.META_APP_SECRET || 'test-app-secret';
 const META_VERIFY_TOKEN = process.env.META_VERIFY_TOKEN || 'test-verify-token';
 const RELAY_SECRET = process.env.RELAY_SECRET || 'test-relay-secret';

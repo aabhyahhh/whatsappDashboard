@@ -16,7 +16,7 @@ async function testVendorNames() {
     await mongoose.connect(process.env.MONGODB_URI!);
     console.log('✅ Connected to MongoDB');
 
-    const apiBaseUrl = process.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    const apiBaseUrl = process.env.VITE_API_BASE_URL || 'https://whatsappdashboard-1.onrender.com';
     console.log(`🌐 Testing message health API at: ${apiBaseUrl}/api/webhook/message-health`);
 
     // Test the message health API

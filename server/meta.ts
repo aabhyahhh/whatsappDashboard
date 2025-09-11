@@ -141,6 +141,18 @@ export const MESSAGE_TEMPLATES = {
         parameters: []
       }
     ]
+  },
+
+  // Vendor review proof template
+  vendor_review_proof: {
+    name: 'vendor_review_proof',
+    language: 'en',
+    components: [
+      {
+        type: 'body',
+        parameters: []
+      }
+    ]
   }
 };
 

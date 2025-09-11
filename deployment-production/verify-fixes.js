@@ -10,7 +10,7 @@ async function verifyFixes() {
         const corsResponse = await fetch(`${API_BASE_URL}/api/contacts`, {
             method: 'OPTIONS',
             headers: {
-                'Origin': 'http://localhost:5173',
+                'Origin': 'https://whatsappdashboard-1.onrender.com',
                 'Access-Control-Request-Method': 'GET',
                 'Access-Control-Request-Headers': 'Content-Type, Pragma, Cache-Control'
             }

@@ -7,8 +7,8 @@ dotenv.config();
 // Test Aadhaar verification tick mark functionality
 async function testAadhaarTickMark() {
   try {
-    const webhookUrl = process.env.WEBHOOK_URL || 'http://localhost:3000/api/webhook';
-    const apiBaseUrl = process.env.API_BASE_URL || 'http://localhost:3000';
+    const webhookUrl = process.env.WEBHOOK_URL || 'https://whatsappdashboard-1.onrender.com/api/webhook';
+    const apiBaseUrl = process.env.API_BASE_URL || 'https://whatsappdashboard-1.onrender.com';
     
     console.log('🧪 Testing Aadhaar Verification Tick Mark');
     console.log('=========================================');

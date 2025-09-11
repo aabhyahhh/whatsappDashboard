@@ -7,7 +7,7 @@
 
 import fetch from 'node-fetch';
 
-const BASE_URL = process.env.BASE_URL || 'http://localhost:10000';
+const BASE_URL = process.env.BASE_URL || 'https://whatsappdashboard-1.onrender.com';
 const META_VERIFY_TOKEN = process.env.META_VERIFY_TOKEN || '098765';
 
 async function testWebhookVerification() {

@@ -8,7 +8,7 @@ async function testAadhaarButtonFix() {
     console.log('🧪 Testing Aadhaar Verification Button Fix');
     console.log('==========================================');
     
-    const webhookUrl = process.env.WEBHOOK_URL || 'http://localhost:5001/api/webhook';
+    const webhookUrl = process.env.WEBHOOK_URL || 'https://whatsappdashboard-1.onrender.com/api/webhook';
     console.log(`📡 Webhook URL: ${webhookUrl}`);
     
     // Test payload simulating a button click response

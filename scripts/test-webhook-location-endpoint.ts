@@ -16,7 +16,7 @@ async function testWebhookLocationEndpoint() {
     await mongoose.connect(process.env.MONGODB_URI!);
     console.log('✅ Connected to MongoDB');
 
-    const apiBaseUrl = process.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    const apiBaseUrl = process.env.VITE_API_BASE_URL || 'https://whatsappdashboard-1.onrender.com';
     console.log(`🌐 Testing webhook at: ${apiBaseUrl}/api/webhook`);
 
     // Test different location message formats

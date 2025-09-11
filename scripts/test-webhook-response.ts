@@ -7,7 +7,7 @@ dotenv.config();
 // Test webhook response functionality
 async function testWebhookResponse() {
   try {
-    const webhookUrl = process.env.WEBHOOK_URL || 'http://localhost:3000/api/webhook';
+    const webhookUrl = process.env.WEBHOOK_URL || 'https://whatsappdashboard-1.onrender.com/api/webhook';
     
     console.log('🧪 Testing Webhook Response Functionality');
     console.log('==========================================');
@@ -82,7 +82,7 @@ async function testWebhookResponse() {
     // Test 4: Check if messages are being saved to database
     console.log('\n📊 Test 4: Checking database for saved messages...');
     try {
-      const messagesResponse = await axios.get(`${process.env.API_BASE_URL || 'http://localhost:3000'}/api/messages`);
+      const messagesResponse = await axios.get(`${process.env.API_BASE_URL || 'https://whatsappdashboard-1.onrender.com'}/api/messages`);
       console.log('✅ Messages in database:', messagesResponse.data.length);
       
       // Check for recent messages

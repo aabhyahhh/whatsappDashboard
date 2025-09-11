@@ -8,7 +8,7 @@
 import fetch from 'node-fetch';
 
 // Configuration
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:5001';
+const API_BASE_URL = process.env.API_BASE_URL || 'https://whatsappdashboard-1.onrender.com';
 const TEST_TOKEN = process.env.TEST_TOKEN || 'your-test-jwt-token';
 
 // Test data

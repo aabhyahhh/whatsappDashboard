@@ -97,7 +97,7 @@ async function testImprovedMessageSystem() {
     console.log('\n📤 Test 2: Testing our API endpoint...');
     try {
       const apiResponse = await axios.post(
-        'http://localhost:5001/api/messages/send',
+        'https://whatsappdashboard-1.onrender.com/api/messages/send',
         {
           to: '+918130026321',
           body: 'Test message via our improved API endpoint'

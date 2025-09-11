@@ -10,7 +10,7 @@ import 'dotenv/config';
 
 const BASE_URL = process.env.NODE_ENV === 'production' 
   ? 'https://whatsappdashboard-1.onrender.com'
-  : 'http://localhost:5000';
+  : 'https://whatsappdashboard-1.onrender.com';
 
 const META_APP_SECRET = process.env.META_APP_SECRET;
 

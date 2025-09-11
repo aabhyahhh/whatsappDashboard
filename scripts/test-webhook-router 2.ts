@@ -2,7 +2,7 @@
 import fetch from 'node-fetch';
 import crypto from 'crypto';
 
-const WEBHOOK_URL = 'http://localhost:5001/api/webhook';
+const WEBHOOK_URL = 'https://whatsappdashboard-1.onrender.com/api/webhook';
 const RELAY_SECRET = process.env.RELAY_SECRET || 'test-secret';
 const META_APP_SECRET = process.env.META_APP_SECRET || 'test-app-secret';
 const META_VERIFY_TOKEN = process.env.META_VERIFY_TOKEN || 'test-verify-token';
