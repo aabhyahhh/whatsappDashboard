@@ -237,17 +237,19 @@ export async function sendTemplateMessage(to: string, templateName: string, para
   }
 }
 
-// Helper function to send a text message
+// Helper function to send a text message with fallback to template
 export async function sendTextMessage(to: string, text: string) {
   if (!META_ACCESS_TOKEN || !META_PHONE_NUMBER_ID) {
     console.error('❌ Missing Meta WhatsApp credentials');
     return null;
   }
 
-  // Normalize phone number - remove + prefix for Meta API
-  const normalizedTo = to.replace(/^\+/, '').replace(/\D/g, '');
+  // Proper phone number normalization for Meta API
+  // Remove + prefix and any spaces, but keep all digits
+  const normalizedTo = to.replace(/^\+/, '').replace(/\s/g, '');
   console.log(`🔍 Normalized phone number: ${to} -> ${normalizedTo}`);
 
+  // First, try to send as free-form text message
   try {
     const messageData = {
       messaging_product: 'whatsapp',
@@ -257,6 +259,8 @@ export async function sendTextMessage(to: string, text: string) {
         body: text
       }
     };
+
+    console.log(`🔍 Attempting to send free-form text message:`, JSON.stringify(messageData, null, 2));
 
     const response = await axios.post(
       `${META_API_BASE_URL}/messages`,
@@ -269,10 +273,67 @@ export async function sendTextMessage(to: string, text: string) {
       }
     );
 
-    console.log(`✅ Sent text message to ${normalizedTo}:`, response.data);
+    console.log(`✅ Sent free-form text message to ${normalizedTo}:`, response.data);
     return response.data;
   } catch (error) {
-    console.error(`❌ Failed to send text message to ${normalizedTo}:`, error.response?.data || error.message);
+    console.error(`❌ Free-form text message failed for ${to}:`, error.response?.data || error.message);
+    
+    // Check if it's a 24-hour window restriction
+    const errorData = error.response?.data;
+    if (errorData && (
+      errorData.error?.message?.includes('24 hour') ||
+      errorData.error?.message?.includes('outside the allowed') ||
+      errorData.error?.message?.includes('template') ||
+      error.status === 400
+    )) {
+      console.log(`🔄 Free-form message blocked, trying template message fallback...`);
+      
+      // Fallback to template message
+      try {
+        const templateData = {
+          messaging_product: 'whatsapp',
+          to: normalizedTo,
+          type: 'template',
+          template: {
+            name: 'hello_world',
+            language: {
+              code: 'en_US'
+            }
+          }
+        };
+
+        console.log(`🔍 Sending template message as fallback:`, JSON.stringify(templateData, null, 2));
+
+        const templateResponse = await axios.post(
+          `${META_API_BASE_URL}/messages`,
+          templateData,
+          {
+            headers: {
+              'Authorization': `Bearer ${META_ACCESS_TOKEN}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        console.log(`✅ Sent template message fallback to ${normalizedTo}:`, templateResponse.data);
+        return templateResponse.data;
+      } catch (templateError) {
+        console.error(`❌ Template message fallback also failed for ${to}:`, templateError.response?.data || templateError.message);
+        return null;
+      }
+    }
+    
+    console.error('🔍 Full error details:', {
+      message: error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      config: {
+        url: error.config?.url,
+        method: error.config?.method,
+        headers: error.config?.headers
+      }
+    });
     return null;
   }
 }
