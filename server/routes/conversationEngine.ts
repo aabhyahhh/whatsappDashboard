@@ -367,7 +367,128 @@ async function handleMessageStatus(status: any) {
 
 // Conversation flow handlers
 async function isSupportConversation(from: string, text: string): Promise<boolean> {
-  return text === 'yes' || text === 'हाँ' || text === 'हां' || text.includes('support');
+  return isYesResponse(text) || isHelpRequest(text) || text.includes('support');
+}
+
+/**
+ * Check if the text is a "yes" response in any form
+ */
+function isYesResponse(text: string): boolean {
+  if (!text) return false;
+  
+  const normalizedText = text.toLowerCase().trim();
+  
+  // English variations
+  const englishYes = [
+    'yes', 'yess', 'yesss', 'yessss', 'yesssss',
+    'yeah', 'yea', 'yep', 'yup', 'ya', 'yah',
+    'ok', 'okay', 'okey', 'sure', 'alright'
+  ];
+  
+  // Hindi variations
+  const hindiYes = [
+    'हाँ', 'हां', 'हा', 'हान', 'हान्',
+    'जी', 'जी हाँ', 'जी हां', 'जी हा',
+    'ठीक', 'ठीक है', 'बिल्कुल', 'सही'
+  ];
+  
+  // Check exact matches
+  if (englishYes.includes(normalizedText) || hindiYes.includes(normalizedText)) {
+    return true;
+  }
+  
+  // Check if text starts with yes variations
+  for (const yes of englishYes) {
+    if (normalizedText.startsWith(yes)) {
+      return true;
+    }
+  }
+  
+  for (const yes of hindiYes) {
+    if (normalizedText.startsWith(yes)) {
+      return true;
+    }
+  }
+  
+  // Check for patterns like "yes i need help", "yes please", etc.
+  const yesPatterns = [
+    /^yes\s+/i,
+    /^yeah\s+/i,
+    /^yep\s+/i,
+    /^yup\s+/i,
+    /^हाँ\s+/i,
+    /^हां\s+/i,
+    /^जी\s+/i
+  ];
+  
+  for (const pattern of yesPatterns) {
+    if (pattern.test(normalizedText)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+/**
+ * Check if the text is a "help" request in any form
+ */
+function isHelpRequest(text: string): boolean {
+  if (!text) return false;
+  
+  const normalizedText = text.toLowerCase().trim();
+  
+  // English help variations
+  const englishHelp = [
+    'help', 'helpp', 'helppp', 'helpppp',
+    'support', 'assist', 'assistance',
+    'aid', 'rescue', 'save', 'emergency'
+  ];
+  
+  // Hindi help variations
+  const hindiHelp = [
+    'सहायता', 'मदद', 'सहायता चाहिए', 'मदद चाहिए',
+    'बचाव', 'राहत', 'समर्थन', 'सहयोग'
+  ];
+  
+  // Check exact matches
+  if (englishHelp.includes(normalizedText) || hindiHelp.includes(normalizedText)) {
+    return true;
+  }
+  
+  // Check if text starts with help variations
+  for (const help of englishHelp) {
+    if (normalizedText.startsWith(help)) {
+      return true;
+    }
+  }
+  
+  for (const help of hindiHelp) {
+    if (normalizedText.startsWith(help)) {
+      return true;
+    }
+  }
+  
+  // Check for patterns like "help me", "i need help", etc.
+  const helpPatterns = [
+    /^help\s+/i,
+    /^support\s+/i,
+    /^assist\s+/i,
+    /i\s+need\s+help/i,
+    /can\s+you\s+help/i,
+    /please\s+help/i,
+    /help\s+me/i,
+    /मुझे\s+मदद/i,
+    /सहायता\s+चाहिए/i
+  ];
+  
+  for (const pattern of helpPatterns) {
+    if (pattern.test(normalizedText)) {
+      return true;
+    }
+  }
+  
+  return false;
 }
 
 async function isLoanConversation(from: string, text: string): Promise<boolean> {

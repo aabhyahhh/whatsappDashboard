@@ -5,7 +5,7 @@ const router = Router();
 // Meta WhatsApp API configuration
 const META_ACCESS_TOKEN = process.env.META_ACCESS_TOKEN;
 const META_PHONE_NUMBER_ID = process.env.META_PHONE_NUMBER_ID;
-// POST /api/send - Send WhatsApp message via Twilio
+// POST /api/send - Send WhatsApp message via Meta WhatsApp API
 router.post('/send', async (req, res, next) => {
     try {
         const { to, body } = req.body;
@@ -82,7 +82,7 @@ router.post('/send', async (req, res, next) => {
             }
             if (error.message.includes('authentication')) {
                 return res.status(500).json({
-                    error: 'Twilio authentication failed'
+                    error: 'Meta WhatsApp authentication failed'
                 });
             }
         }

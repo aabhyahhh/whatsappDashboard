@@ -15,6 +15,127 @@ import { toE164, variants } from '../utils/phone.js';
 
 const router = Router();
 
+/**
+ * Check if the text is a "yes" response in any form
+ */
+function isYesResponse(text: string): boolean {
+  if (!text) return false;
+  
+  const normalizedText = text.toLowerCase().trim();
+  
+  // English variations
+  const englishYes = [
+    'yes', 'yess', 'yesss', 'yessss', 'yesssss',
+    'yeah', 'yea', 'yep', 'yup', 'ya', 'yah',
+    'ok', 'okay', 'okey', 'sure', 'alright'
+  ];
+  
+  // Hindi variations
+  const hindiYes = [
+    'हाँ', 'हां', 'हा', 'हान', 'हान्',
+    'जी', 'जी हाँ', 'जी हां', 'जी हा',
+    'ठीक', 'ठीक है', 'बिल्कुल', 'सही'
+  ];
+  
+  // Check exact matches
+  if (englishYes.includes(normalizedText) || hindiYes.includes(normalizedText)) {
+    return true;
+  }
+  
+  // Check if text starts with yes variations
+  for (const yes of englishYes) {
+    if (normalizedText.startsWith(yes)) {
+      return true;
+    }
+  }
+  
+  for (const yes of hindiYes) {
+    if (normalizedText.startsWith(yes)) {
+      return true;
+    }
+  }
+  
+  // Check for patterns like "yes i need help", "yes please", etc.
+  const yesPatterns = [
+    /^yes\s+/i,
+    /^yeah\s+/i,
+    /^yep\s+/i,
+    /^yup\s+/i,
+    /^हाँ\s+/i,
+    /^हां\s+/i,
+    /^जी\s+/i
+  ];
+  
+  for (const pattern of yesPatterns) {
+    if (pattern.test(normalizedText)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+/**
+ * Check if the text is a "help" request in any form
+ */
+function isHelpRequest(text: string): boolean {
+  if (!text) return false;
+  
+  const normalizedText = text.toLowerCase().trim();
+  
+  // English help variations
+  const englishHelp = [
+    'help', 'helpp', 'helppp', 'helpppp',
+    'support', 'assist', 'assistance',
+    'aid', 'rescue', 'save', 'emergency'
+  ];
+  
+  // Hindi help variations
+  const hindiHelp = [
+    'सहायता', 'मदद', 'सहायता चाहिए', 'मदद चाहिए',
+    'बचाव', 'राहत', 'समर्थन', 'सहयोग'
+  ];
+  
+  // Check exact matches
+  if (englishHelp.includes(normalizedText) || hindiHelp.includes(normalizedText)) {
+    return true;
+  }
+  
+  // Check if text starts with help variations
+  for (const help of englishHelp) {
+    if (normalizedText.startsWith(help)) {
+      return true;
+    }
+  }
+  
+  for (const help of hindiHelp) {
+    if (normalizedText.startsWith(help)) {
+      return true;
+    }
+  }
+  
+  // Check for patterns like "help me", "i need help", etc.
+  const helpPatterns = [
+    /^help\s+/i,
+    /^support\s+/i,
+    /^assist\s+/i,
+    /i\s+need\s+help/i,
+    /can\s+you\s+help/i,
+    /please\s+help/i,
+    /help\s+me/i,
+    /मुझे\s+मदद/i,
+    /सहायता\s+चाहिए/i
+  ];
+  
+  for (const pattern of helpPatterns) {
+    if (pattern.test(normalizedText)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
 // Environment variables
 const META_APP_SECRET = process.env.META_APP_SECRET;           // from Meta App
 const META_VERIFY_TOKEN = process.env.META_VERIFY_TOKEN;       // must match what you typed in Meta UI
@@ -347,15 +468,15 @@ async function processInboundMessage(message: any) {
         console.log(`✅ Detected loan reply from ${fromE164}: "${normalizedText}"`);
         await handleLoanReply(fromWaId, fromE164, text.body);
       }
-      // Check for support call response (yes)
-      else if (normalizedText === 'yes' || normalizedText === 'हाँ' || normalizedText === 'हां') {
+      // Check for support call response (yes) - handle all variations
+      else if (isYesResponse(normalizedText)) {
         console.log(`📞 Detected support call response from ${fromE164}: "${normalizedText}"`);
         await handleSupportCallResponse(fromWaId, fromE164);
       }
-      // Check for help request
-      else if (normalizedText === 'help' || normalizedText === 'सहायता' || normalizedText === 'मदद') {
+      // Check for help request - treat as support call request
+      else if (isHelpRequest(normalizedText)) {
         console.log(`🆘 Detected help request from ${fromE164}: "${normalizedText}"`);
-        await handleHelpRequest(fromWaId, fromE164);
+        await handleSupportCallResponse(fromWaId, fromE164);
       }
       // Check for Aadhaar verification confirmation (text message)
       else if (/yes.*verify.*aadha?r/i.test(normalizedText) || /verify.*aadha?r/i.test(normalizedText)) {

@@ -36,9 +36,11 @@ The system automatically sends location update reminders to vendors:
 ```env
 MONGODB_URI=your_mongodb_connection_string
 JWT_SECRET=your_jwt_secret_key
-TWILIO_ACCOUNT_SID=your_twilio_account_sid
-TWILIO_AUTH_TOKEN=your_twilio_auth_token
-TWILIO_PHONE_NUMBER=your_twilio_whatsapp_number_here
+# Meta WhatsApp API credentials (required)
+META_ACCESS_TOKEN=your_meta_access_token
+META_PHONE_NUMBER_ID=your_meta_phone_number_id
+META_VERIFY_TOKEN=your_meta_verify_token
+META_APP_SECRET=your_meta_app_secret
 ```
 
 ## Installation
@@ -88,10 +90,11 @@ TWILIO_PHONE_NUMBER=your_twilio_whatsapp_number_here
 
 3. Create a `.env` file in the root directory with the following variables:
    ```env
-   # Twilio Configuration
-   TWILIO_ACCOUNT_SID=your_twilio_account_sid_here
-   TWILIO_AUTH_TOKEN=your_twilio_auth_token_here
-   TWILIO_PHONE_NUMBER=your_twilio_whatsapp_number_here
+   # Meta WhatsApp API Configuration
+   META_ACCESS_TOKEN=your_meta_access_token_here
+   META_PHONE_NUMBER_ID=your_meta_phone_number_id_here
+   META_VERIFY_TOKEN=your_meta_verify_token_here
+   META_APP_SECRET=your_meta_app_secret_here
 
    # JWT Secret
    JWT_SECRET=your_jwt_secret_here
@@ -103,14 +106,14 @@ TWILIO_PHONE_NUMBER=your_twilio_whatsapp_number_here
    PORT=5000
    ```
 
-### Twilio Setup
+### Meta WhatsApp API Setup
 
-1. Sign up for a Twilio account at [twilio.com](https://www.twilio.com)
-2. Get your Account SID and Auth Token from the Twilio Console
+1. Set up a Meta WhatsApp Business API account
+2. Get your Access Token and Phone Number ID from the Meta Developer Console
 3. Set up WhatsApp Business API:
-   - Go to Messaging > Try it out > Send a WhatsApp message
-   - Follow the setup instructions to get your WhatsApp number
-4. Configure webhook URL in Twilio Console to point to your server's `/api/webhook` endpoint
+   - Go to WhatsApp > API Setup
+   - Follow the setup instructions to get your WhatsApp Business API credentials
+4. Configure webhook URL in Meta Console to point to your server's `/api/webhook` endpoint
 
 ### Running the Application
 

@@ -237,58 +237,71 @@ router.get('/active-vendor-list-24h', async (_req: Request, res: Response) => {
 // GET /api/messages/active-vendors-stats - Day-wise, week, and month unique vendor stats
 router.get('/active-vendors-stats', async (_req, res) => {
   try {
-    const now = new Date();
-    // Get start of week (Monday)
-    const dayOfWeek = (now.getDay() + 6) % 7; // 0=Monday, 6=Sunday
-    const startOfWeek = new Date(now);
-    startOfWeek.setHours(0, 0, 0, 0);
-    startOfWeek.setDate(now.getDate() - dayOfWeek);
-    // Get start of month
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    // Get all inbound messages from start of month
+    // Import moment-timezone for proper timezone handling
+    const moment = require('moment-timezone');
+    
+    // Set timezone to Asia/Kolkata
+    const timezone = 'Asia/Kolkata';
+    const now = moment().tz(timezone);
+    
+    // Get start of week (Monday) using proper timezone
+    const startOfWeek = now.clone().startOf('isoWeek'); // Monday
+    const startOfMonth = now.clone().startOf('month');
+    
+    // Get all inbound messages from start of month with proper timezone handling
     const messages = await Message.find({
       direction: 'inbound',
-      timestamp: { $gte: startOfMonth }
+      timestamp: { $gte: startOfMonth.toDate() }
     }).select('from timestamp');
+    
     // Helper to normalize phone
     const normalize = (n: string) => (n || '').replace(/^whatsapp:/, '');
-    // Day-wise aggregation for current week
+    
+    // Day-wise aggregation for current week with proper timezone
     const days = [];
     for (let i = 0; i < 7; i++) {
-      const day = new Date(startOfWeek);
-      day.setDate(startOfWeek.getDate() + i);
-      const nextDay = new Date(day);
-      nextDay.setDate(day.getDate() + 1);
+      const day = startOfWeek.clone().add(i, 'days');
+      const dayStart = day.clone().startOf('day');
+      const dayEnd = day.clone().endOf('day');
+      
       const vendors = new Set();
       for (const msg of messages) {
-        if (msg.timestamp >= day && msg.timestamp < nextDay) {
+        const msgTime = moment(msg.timestamp).tz(timezone);
+        if (msgTime.isBetween(dayStart, dayEnd, null, '[]')) {
           vendors.add(normalize(msg.from));
         }
       }
-      days.push({ date: day.toISOString().slice(0, 10), count: vendors.size });
+      
+      days.push({ date: day.format('YYYY-MM-DD'), count: vendors.size });
     }
-    // Week unique vendors
+    
+    // Week unique vendors with proper timezone
+    const weekEnd = startOfWeek.clone().add(6, 'days').endOf('day');
     const weekVendors = new Set();
     for (const msg of messages) {
-      if (msg.timestamp >= startOfWeek && msg.timestamp < new Date(startOfWeek.getTime() + 7 * 24 * 60 * 60 * 1000)) {
+      const msgTime = moment(msg.timestamp).tz(timezone);
+      if (msgTime.isBetween(startOfWeek, weekEnd, null, '[]')) {
         weekVendors.add(normalize(msg.from));
       }
     }
+    
     // Month unique vendors
     const monthVendors = new Set(messages.map(msg => normalize(msg.from)));
+    
     res.json({
       days,
       week: {
-        start: startOfWeek.toISOString().slice(0, 10),
-        end: new Date(startOfWeek.getTime() + 6 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+        start: startOfWeek.format('YYYY-MM-DD'),
+        end: startOfWeek.clone().add(6, 'days').format('YYYY-MM-DD'),
         count: weekVendors.size
       },
       month: {
-        month: startOfMonth.toISOString().slice(0, 7),
+        month: startOfMonth.format('YYYY-MM'),
         count: monthVendors.size
       }
     });
   } catch (err) {
+    console.error('Error in active-vendors-stats:', err);
     res.status(500).json({ error: 'Failed to fetch active vendor stats' });
   }
 });

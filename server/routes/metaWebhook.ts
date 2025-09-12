@@ -8,6 +8,127 @@ import { toE164, variants } from '../utils/phone.js';
 
 const router = Router();
 
+/**
+ * Check if the text is a "yes" response in any form
+ */
+function isYesResponse(text: string): boolean {
+  if (!text) return false;
+  
+  const normalizedText = text.toLowerCase().trim();
+  
+  // English variations
+  const englishYes = [
+    'yes', 'yess', 'yesss', 'yessss', 'yesssss',
+    'yeah', 'yea', 'yep', 'yup', 'ya', 'yah',
+    'ok', 'okay', 'okey', 'sure', 'alright'
+  ];
+  
+  // Hindi variations
+  const hindiYes = [
+    'हाँ', 'हां', 'हा', 'हान', 'हान्',
+    'जी', 'जी हाँ', 'जी हां', 'जी हा',
+    'ठीक', 'ठीक है', 'बिल्कुल', 'सही'
+  ];
+  
+  // Check exact matches
+  if (englishYes.includes(normalizedText) || hindiYes.includes(normalizedText)) {
+    return true;
+  }
+  
+  // Check if text starts with yes variations
+  for (const yes of englishYes) {
+    if (normalizedText.startsWith(yes)) {
+      return true;
+    }
+  }
+  
+  for (const yes of hindiYes) {
+    if (normalizedText.startsWith(yes)) {
+      return true;
+    }
+  }
+  
+  // Check for patterns like "yes i need help", "yes please", etc.
+  const yesPatterns = [
+    /^yes\s+/i,
+    /^yeah\s+/i,
+    /^yep\s+/i,
+    /^yup\s+/i,
+    /^हाँ\s+/i,
+    /^हां\s+/i,
+    /^जी\s+/i
+  ];
+  
+  for (const pattern of yesPatterns) {
+    if (pattern.test(normalizedText)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+/**
+ * Check if the text is a "help" request in any form
+ */
+function isHelpRequest(text: string): boolean {
+  if (!text) return false;
+  
+  const normalizedText = text.toLowerCase().trim();
+  
+  // English help variations
+  const englishHelp = [
+    'help', 'helpp', 'helppp', 'helpppp',
+    'support', 'assist', 'assistance',
+    'aid', 'rescue', 'save', 'emergency'
+  ];
+  
+  // Hindi help variations
+  const hindiHelp = [
+    'सहायता', 'मदद', 'सहायता चाहिए', 'मदद चाहिए',
+    'बचाव', 'राहत', 'समर्थन', 'सहयोग'
+  ];
+  
+  // Check exact matches
+  if (englishHelp.includes(normalizedText) || hindiHelp.includes(normalizedText)) {
+    return true;
+  }
+  
+  // Check if text starts with help variations
+  for (const help of englishHelp) {
+    if (normalizedText.startsWith(help)) {
+      return true;
+    }
+  }
+  
+  for (const help of hindiHelp) {
+    if (normalizedText.startsWith(help)) {
+      return true;
+    }
+  }
+  
+  // Check for patterns like "help me", "i need help", etc.
+  const helpPatterns = [
+    /^help\s+/i,
+    /^support\s+/i,
+    /^assist\s+/i,
+    /i\s+need\s+help/i,
+    /can\s+you\s+help/i,
+    /please\s+help/i,
+    /help\s+me/i,
+    /मुझे\s+मदद/i,
+    /सहायता\s+चाहिए/i
+  ];
+  
+  for (const pattern of helpPatterns) {
+    if (pattern.test(normalizedText)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
 // Webhook verification endpoint
 router.get('/', (req, res) => {
   const mode = req.query['hub.mode'] as string;
@@ -310,8 +431,8 @@ async function handleTextMessage(from: string, text: string) {
     });
   }
   
-  // Handle support call response (yes)
-  else if (normalizedText === 'yes' || normalizedText === 'हाँ' || normalizedText === 'हां') {
+  // Handle support call response (yes) - handle all variations
+  else if (isYesResponse(normalizedText)) {
     console.log('📞 Vendor responded "yes" to support call reminder');
     
     try {
@@ -382,6 +503,95 @@ async function handleTextMessage(from: string, text: string) {
       }
     } catch (err) {
       console.error('❌ Error handling support call text response:', err);
+    }
+  }
+  
+  // Handle help request - treat as support call request
+  else if (isHelpRequest(normalizedText)) {
+    console.log('🆘 Vendor requested help/support');
+    
+    try {
+      // Check if this vendor recently received a support call reminder
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      const recentSupportReminder = await Message.findOne({
+        to: from,
+        direction: 'outbound',
+        $or: [
+          { body: { $regex: /inactive_vendors_support_prompt_util/ } },
+          { 'meta.template': 'inactive_vendors_support_prompt_util' }
+        ],
+        timestamp: { $gte: oneHourAgo }
+      });
+      
+      if (recentSupportReminder) {
+        console.log('✅ Found recent support call reminder, processing help request');
+        
+        // Find vendor details
+        const userNumbers = [from];
+        if (from.startsWith('+91')) userNumbers.push(from.replace('+91', '91'));
+        if (from.startsWith('+')) userNumbers.push(from.substring(1));
+        
+        const user = await User.findOne({ contactNumber: { $in: userNumbers } });
+        const vendorName = user ? user.name : 'Unknown Vendor';
+        
+        // Check if support call already exists (to avoid duplicates)
+        const existingSupportCall = await Message.findOne({
+          from: process.env.META_PHONE_NUMBER_ID,
+          to: from,
+          direction: 'outbound',
+          $or: [
+            { body: { $regex: /inactive_vendors_reply_to_yes_support_call_util/ } },
+            { 'meta.template': 'inactive_vendors_reply_to_yes_support_call_util' }
+          ],
+          timestamp: { $gte: oneHourAgo }
+        });
+        
+        if (!existingSupportCall) {
+          // Create support call log entry
+          await Message.create({
+            from: process.env.META_PHONE_NUMBER_ID,
+            to: from,
+            body: `Support call scheduled for ${vendorName} via help request`,
+            direction: 'outbound',
+            timestamp: new Date(),
+            meta: {
+              type: 'support_call_scheduled',
+              vendorName: vendorName,
+              contactNumber: from,
+              requestType: 'help_request',
+              originalMessage: normalizedText
+            }
+          });
+          
+          console.log(`✅ Created support call log for ${vendorName} (${from}) via help request`);
+          
+          // Send confirmation message
+          await sendTemplateMessage(from, 'inactive_vendors_reply_to_yes_support_call_util');
+          
+          // Save the confirmation message to database
+          await Message.create({
+            from: process.env.META_PHONE_NUMBER_ID,
+            to: from,
+            body: 'Template: inactive_vendors_reply_to_yes_support_call_util',
+            direction: 'outbound',
+            timestamp: new Date(),
+            meta: {
+              template: 'inactive_vendors_reply_to_yes_support_call_util',
+              vendorName: vendorName,
+              contactNumber: from,
+              requestType: 'help_request'
+            }
+          });
+          
+          console.log(`✅ Sent support call confirmation to ${vendorName} (${from}) via help request`);
+        } else {
+          console.log(`ℹ️ Support call already exists for ${from} within last hour`);
+        }
+      } else {
+        console.log('ℹ️ No recent support call reminder found for this help request');
+      }
+    } catch (err) {
+      console.error('❌ Error handling help request:', err);
     }
   }
 }
