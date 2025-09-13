@@ -193,64 +193,7 @@ const locationJob = schedule.scheduleJob('* * * * *', async () => {
           continue;
         }
         
-        // Send reminder exactly 15 minutes before opening time
-        if (diff === 15) {
-          const dispatchType = 'preOpen';
-          
-          try {
-            // Check if already dispatched today using dispatch log
-            const existingDispatch = await DispatchLog.findOne({
-              vendorId: vendor._id,
-              date: todayDate,
-              type: dispatchType
-            });
-            
-            if (existingDispatch) {
-              skippedCount++;
-              continue;
-            }
-            
-            console.log(`📍 Sending preOpen reminder to ${vendor.name} (${vendor.contactNumber}) - 15 mins before open time`);
-            
-            const result = await sendMetaTemplateMessage(vendor.contactNumber, 'update_location_cron_util', vendor.name);
-            
-            // Log to dispatch log
-            await DispatchLog.create({
-              vendorId: vendor._id,
-              date: todayDate,
-              type: dispatchType,
-              messageId: result.messageId,
-              success: result.success,
-              error: result.error
-            });
-            
-            if (result.success) {
-              // Also save to Message collection for tracking
-              await Message.create({
-                from: process.env.META_PHONE_NUMBER_ID,
-                to: vendor.contactNumber,
-                body: 'Template: update_location_cron_util',
-                direction: 'outbound',
-                timestamp: new Date(),
-                meta: {
-                  reminderType: 'vendor_location_15min',
-                  vendorName: vendor.name,
-                  openTime: operatingHours.openTime,
-                  dispatchType: dispatchType,
-                  success: true
-                },
-                messageId: result.messageId
-              });
-              
-              sentCount++;
-            } else {
-              errorCount++;
-            }
-          } catch (dispatchError) {
-            console.error(`❌ Error processing preOpen dispatch for ${vendor.contactNumber}:`, dispatchError);
-            errorCount++;
-          }
-        }
+        // REMOVED: 15-minute reminder - now only sending at opening time
         
         // Send reminder exactly at opening time
         if (diff === 0) {
@@ -484,7 +427,7 @@ schedule.scheduleJob('*/5 * * * *', () => {
 
 console.log('✅ FIXED Open-time location update scheduler started');
 console.log('📍 Runs every minute in Asia/Kolkata timezone');
-console.log('📅 Sends update_location_cron_util exactly twice: T-15min and T');
+console.log('📅 Sends update_location_cron_util only once at opening time (T)');
 console.log('🔒 Uses dispatch log with unique index to prevent duplicates');
 console.log('🔧 Using Meta WhatsApp API for all messaging');
 console.log('✅ FIXED Inactive vendor support scheduler started');
